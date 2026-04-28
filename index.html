@@ -71,8 +71,29 @@ h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; color: var(--text); 
 .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
 .leg-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 
-/* PHASE */
-.phase-block { margin-bottom: 4px; }
+/* CURRENT WEEK HIGHLIGHT */
+.week-wrap.current-week {
+  background: var(--surface);
+  border: 1.5px solid var(--border-mid);
+  border-radius: 8px;
+  padding: 4px 8px 6px;
+  margin-bottom: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.week-wrap.current-week .week-meta::before {
+  content: '▸ Now';
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #1a1a18;
+  color: #f7f6f3;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-bottom: 3px;
+  display: block;
+}
 .phase-label {
   font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--muted);
@@ -700,7 +721,26 @@ else if (window.__SAVED_STATE__) applyState(window.__SAVED_STATE__);
 // 2. Build calendar with local state right away
 build();
 
-// 3. Then fetch cloud state in background and re-render if different
+// ── CURRENT WEEK HIGHLIGHT ────────────────────────────────────────────────
+(function() {
+  // Monday of each plan week (used to determine which week is current)
+  const WEEK_MONDAYS = [
+    [2026,4,13],[2026,4,20],[2026,4,27],[2026,5,4],[2026,5,11],
+    [2026,5,18],[2026,5,25],[2026,6,1],[2026,6,8],[2026,6,15],
+    [2026,6,22],[2026,6,29],[2026,7,6],[2026,7,13],[2026,7,20],
+    [2026,7,27],[2026,8,3],[2026,8,10],[2026,8,17],[2026,8,24],
+  ];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  WEEK_MONDAYS.forEach(([y,m,d], wi) => {
+    const mon = new Date(y, m-1, d);
+    const sun = new Date(y, m-1, d+6);
+    if (today >= mon && today <= sun) {
+      const wrap = document.getElementById('week-' + wi);
+      if (wrap) wrap.classList.add('current-week');
+    }
+  });
+})();
 (async () => {
   const cloud = await loadCloudState();
   if (!cloud) return;
