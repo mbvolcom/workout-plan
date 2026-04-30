@@ -290,7 +290,34 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .run-workout-pace { display:inline-block; background:var(--qual-bg); color:var(--qual-c); border:0.5px solid var(--qual-b); border-radius:4px; padding:3px 8px; font-size:13px; font-weight:600; margin-top:4px; }
 
 /* LIBRARY MODAL */
-#lib-modal-overlay { display:none; position:fixed; inset:0; z-index:12000; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; }
+#lib-new-folder-row { display:flex; gap:8px; margin-bottom:14px; }
+#lib-new-folder-input { flex:1; border:0.5px solid var(--border-mid); border-radius:6px; padding:7px 10px; font-size:12px; font-family:inherit; color:var(--text); background:var(--bg); outline:none; }
+#lib-new-folder-input:focus { border-color:var(--text); }
+#lib-new-folder-btn { background:var(--surface); color:var(--text); border:1px solid var(--border-mid); border-radius:6px; padding:7px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+#lib-new-folder-btn:hover { background:var(--bg); }
+
+.lib-folder { margin-bottom:10px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.lib-folder-header { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--bg); cursor:pointer; user-select:none; }
+.lib-folder-chevron { font-size:11px; color:var(--muted); transition:transform 0.2s; }
+.lib-folder-chevron.open { transform:rotate(90deg); }
+.lib-folder-name { flex:1; font-size:12px; font-weight:700; color:var(--text); letter-spacing:0.04em; text-transform:uppercase; }
+.lib-folder-count { font-size:10px; color:var(--muted); }
+.lib-folder-del { background:none; border:none; font-size:13px; color:var(--border-mid); cursor:pointer; padding:0 2px; }
+.lib-folder-del:hover { color:#b91c1c; }
+.lib-folder-body { display:none; border-top:1px solid var(--border); }
+.lib-folder-body.open { display:block; }
+.lib-entry { display:flex; align-items:center; gap:10px; padding:9px 12px; border-bottom:0.5px solid var(--border); background:var(--surface); cursor:grab; }
+.lib-entry:last-child { border-bottom:none; }
+.lib-entry.dragging { opacity:0.4; }
+.lib-entry.drag-over-top { border-top:2px solid #60a8e0; }
+.lib-entry.drag-over-bottom { border-bottom:2px solid #60a8e0; }
+.lib-entry-handle { font-size:14px; color:var(--border-mid); cursor:grab; flex-shrink:0; }
+.lib-entry-name { flex:1; font-size:13px; font-weight:600; color:var(--text); }
+.lib-entry-actions { display:flex; gap:5px; flex-shrink:0; }
+.lib-entry-edit { background:none; border:1px solid var(--border-mid); border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; color:var(--muted); font-family:inherit; }
+.lib-entry-edit:hover { background:var(--bg); }
+.lib-entry-del { background:none; border:1px solid #f9a8a8; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer; color:#b91c1c; font-family:inherit; }
+.lib-entry-del:hover { background:#fff5f5; }
 #lib-modal-overlay.open { display:flex; }
 #lib-modal { background:var(--surface); border-radius:14px; width:100%; max-width:500px; max-height:85vh; overflow-y:auto; padding:20px; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
 #lib-modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
@@ -440,7 +467,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   <a class="export-btn btn-nav" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
   <a class="export-btn btn-nav" href="https://mbvolcom.github.io/Strength/" target="_blank">💪 Strength</a>
   <button class="strava-connect-btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
-  <button class="export-btn btn-nav" onclick="openLibModal()">📚 Run Library</button>
+  <button class="export-btn btn-nav" onclick="openLibModal().catch(console.error)">📚 Run Library</button>
 </div>
 
 <div class="legend">
@@ -521,14 +548,19 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 <div id="lib-modal-overlay">
   <div id="lib-modal">
     <div id="lib-modal-header">
-      <div id="lib-modal-title">Edit Run Library</div>
+      <div id="lib-modal-title">Run Library</div>
       <button id="lib-modal-close">✕</button>
+    </div>
+    <!-- New folder row -->
+    <div id="lib-new-folder-row">
+      <input id="lib-new-folder-input" type="text" placeholder="New folder name…"/>
+      <button id="lib-new-folder-btn">＋ Folder</button>
     </div>
     <div id="lib-entries"></div>
     <button id="lib-add-btn">＋ Add workout</button>
     <div id="lib-form" style="display:none;">
       <div class="lib-form-row"><label>Name</label><input id="lf-name" type="text" placeholder="e.g. Sub-threshold"/></div>
-      <div class="lib-form-row"><label>Type</label>
+      <div class="lib-form-row"><label>Folder</label>
         <select id="lf-type">
           <option>Easy</option><option>Quality</option><option>Long</option><option>Race</option>
         </select>
@@ -2058,27 +2090,180 @@ function openRunPanel(label, wi, di) {
 const libOverlay = document.getElementById('lib-modal-overlay');
 let editingLibId = null;
 
-function openLibModal() {
+async function openLibModal() {
+  libOverlay.classList.add('open');
+  // Reload library fresh every time modal opens
+  await loadRunLibrary();
+  // Seed libFolders from current library types
+  const existingTypes = [...new Set(runLibrary.map(e => e.type))];
+  existingTypes.forEach(t => { if (!libFolders.includes(t)) libFolders.push(t); });
   renderLibEntries();
   document.getElementById('lib-form').style.display = 'none';
-  libOverlay.classList.add('open');
 }
 document.getElementById('lib-modal-close').addEventListener('click', () => libOverlay.classList.remove('open'));
 libOverlay.addEventListener('click', e => { if (e.target === libOverlay) libOverlay.classList.remove('open'); });
 
+// Folders state — derived from runLibrary types + any custom folders
+let libFolders = []; // ordered list of folder names
+let collapsedFolders = new Set();
+let libDragId = null; // id of entry being dragged
+
+function getFolders() {
+  // All unique types in library, plus any in libFolders not yet in library
+  const fromLib = [...new Set(runLibrary.map(e => e.type))];
+  const extra = libFolders.filter(f => !fromLib.includes(f));
+  return [...libFolders.filter(f => fromLib.includes(f)), ...fromLib.filter(f => !libFolders.includes(f)), ...extra];
+}
+
 function renderLibEntries() {
   const el = document.getElementById('lib-entries');
-  el.innerHTML = runLibrary.map(e => `
-    <div class="lib-entry">
-      <div>
-        <div class="lib-entry-name">${e.name}</div>
-        <div class="lib-entry-type">${e.type}</div>
+  el.innerHTML = '';
+
+  // Sync folder select options
+  const folderSel = document.getElementById('lf-type');
+  const folders = getFolders();
+  folderSel.innerHTML = folders.map(f => `<option value="${f}">${f}</option>`).join('');
+
+  folders.forEach(folder => {
+    const entries = runLibrary.filter(e => e.type === folder).sort((a,b) => a.sort_order - b.sort_order);
+
+    const folderEl = document.createElement('div');
+    folderEl.className = 'lib-folder';
+    folderEl.dataset.folder = folder;
+
+    const isOpen = !collapsedFolders.has(folder);
+    folderEl.innerHTML = `
+      <div class="lib-folder-header">
+        <span class="lib-folder-chevron ${isOpen ? 'open' : ''}">▶</span>
+        <span class="lib-folder-name">${folder}</span>
+        <span class="lib-folder-count">${entries.length} workout${entries.length !== 1 ? 's' : ''}</span>
+        <button class="lib-folder-del" title="Delete folder" onclick="deleteFolderLib('${folder}', event)">🗑</button>
       </div>
-      <div style="display:flex;gap:6px;">
-        <button class="lib-entry-edit" onclick="editLibEntry('${e.id}')">✏️ Edit</button>
-        <button class="lib-entry-edit" style="color:#b91c1c;border-color:#f9a8a8;" onclick="deleteLibEntry('${e.id}','${e.name.replace(/'/g,"\\'")}')">✕</button>
-      </div>
-    </div>`).join('');
+      <div class="lib-folder-body ${isOpen ? 'open' : ''}"></div>`;
+
+    const header = folderEl.querySelector('.lib-folder-header');
+    const body   = folderEl.querySelector('.lib-folder-body');
+    const chev   = folderEl.querySelector('.lib-folder-chevron');
+    header.addEventListener('click', e => {
+      if (e.target.classList.contains('lib-folder-del')) return;
+      const opening = !body.classList.contains('open');
+      body.classList.toggle('open', opening);
+      chev.classList.toggle('open', opening);
+      if (opening) collapsedFolders.delete(folder);
+      else collapsedFolders.add(folder);
+    });
+
+    entries.forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'lib-entry';
+      row.dataset.id = entry.id;
+      row.draggable = true;
+      row.innerHTML = `
+        <span class="lib-entry-handle" title="Drag to reorder">⠿</span>
+        <span class="lib-entry-name">${entry.name}</span>
+        <div class="lib-entry-actions">
+          <button class="lib-entry-edit" onclick="editLibEntry('${entry.id}')">✏️ Edit</button>
+          <button class="lib-entry-del" onclick="deleteLibEntry('${entry.id}','${entry.name.replace(/'/g,"\\'").replace(/"/g,'\\"')}')">✕</button>
+        </div>`;
+
+      // Drag to reorder within folder
+      row.addEventListener('dragstart', e => {
+        libDragId = entry.id;
+        row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      row.addEventListener('dragend', () => {
+        libDragId = null;
+        row.classList.remove('dragging');
+        document.querySelectorAll('.lib-entry').forEach(r => {
+          r.classList.remove('drag-over-top','drag-over-bottom');
+        });
+      });
+      row.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!libDragId || libDragId === entry.id) return;
+        const rect = row.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        row.classList.toggle('drag-over-top', e.clientY < mid);
+        row.classList.toggle('drag-over-bottom', e.clientY >= mid);
+      });
+      row.addEventListener('dragleave', () => {
+        row.classList.remove('drag-over-top','drag-over-bottom');
+      });
+      row.addEventListener('drop', async e => {
+        e.preventDefault();
+        row.classList.remove('drag-over-top','drag-over-bottom');
+        if (!libDragId || libDragId === entry.id) return;
+
+        const dragEntry = runLibrary.find(x => x.id === libDragId);
+        if (!dragEntry) return;
+
+        const rect = row.getBoundingClientRect();
+        const dropBefore = e.clientY < rect.top + rect.height / 2;
+
+        // Get all entries in this folder sorted
+        let folderEntries = runLibrary.filter(x => x.type === folder).sort((a,b) => a.sort_order - b.sort_order);
+
+        // Remove dragEntry from its current position (may be different folder)
+        const wasInFolder = dragEntry.type === folder;
+
+        // Move dragEntry to this folder
+        dragEntry.type = folder;
+
+        // Rebuild order for this folder
+        folderEntries = runLibrary.filter(x => x.type === folder && x.id !== libDragId).sort((a,b) => a.sort_order - b.sort_order);
+        const targetIdx = folderEntries.findIndex(x => x.id === entry.id);
+        const insertIdx = dropBefore ? targetIdx : targetIdx + 1;
+        folderEntries.splice(insertIdx, 0, dragEntry);
+
+        // Assign sort_order and save
+        const updates = folderEntries.map((x, i) => ({ id: x.id, type: x.type, sort_order: i }));
+        try {
+          await Promise.all(updates.map(u =>
+            fetch(SUPA_BASE + 'run_library?id=eq.' + u.id, {
+              method: 'PATCH', headers: SUPA_HDR,
+              body: JSON.stringify({ type: u.type, sort_order: u.sort_order })
+            })
+          ));
+          await loadRunLibrary();
+          renderLibEntries();
+        } catch(err) { console.error('Reorder failed:', err); }
+      });
+
+      body.appendChild(row);
+    });
+
+    // Allow dropping into empty folder
+    body.addEventListener('dragover', e => { e.preventDefault(); });
+    body.addEventListener('drop', async e => {
+      e.preventDefault();
+      if (!libDragId) return;
+      const dragEntry = runLibrary.find(x => x.id === libDragId);
+      if (!dragEntry || dragEntry.type === folder) return;
+      const maxOrder = Math.max(0, ...runLibrary.filter(x => x.type === folder).map(x => x.sort_order));
+      try {
+        await fetch(SUPA_BASE + 'run_library?id=eq.' + libDragId, {
+          method: 'PATCH', headers: SUPA_HDR,
+          body: JSON.stringify({ type: folder, sort_order: maxOrder + 1 })
+        });
+        await loadRunLibrary();
+        renderLibEntries();
+      } catch(err) { console.error('Move failed:', err); }
+    });
+
+    el.appendChild(folderEl);
+  });
+}
+
+async function deleteFolderLib(folder, e) {
+  e.stopPropagation();
+  const count = runLibrary.filter(x => x.type === folder).length;
+  if (count > 0) {
+    alert(`Cannot delete "${folder}" — it still has ${count} workout${count>1?'s':''}. Move or delete them first.`);
+    return;
+  }
+  libFolders = libFolders.filter(f => f !== folder);
+  renderLibEntries();
 }
 
 async function deleteLibEntry(id, name) {
@@ -2093,12 +2278,29 @@ async function deleteLibEntry(id, name) {
   } catch(e) { console.error(e); alert('Delete failed: ' + e.message); }
 }
 
+// New folder button
+document.getElementById('lib-new-folder-btn').addEventListener('click', () => {
+  const input = document.getElementById('lib-new-folder-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (getFolders().map(f=>f.toLowerCase()).includes(name.toLowerCase())) {
+    alert('A folder with that name already exists.'); return;
+  }
+  libFolders.push(name);
+  input.value = '';
+  renderLibEntries();
+});
+
 function editLibEntry(id) {
   const e = runLibrary.find(x => x.id === id);
   if (!e) return;
   editingLibId = id;
+  // Make sure folder options are populated first
+  const folderSel = document.getElementById('lf-type');
+  const folders = getFolders();
+  folderSel.innerHTML = folders.map(f => `<option value="${f}">${f}</option>`).join('');
   document.getElementById('lf-name').value   = e.name || '';
-  document.getElementById('lf-type').value   = e.type || 'Easy';
+  folderSel.value                            = e.type || folders[0];
   document.getElementById('lf-desc').value   = e.description || '';
   document.getElementById('lf-struct').value = e.structure || '';
   document.getElementById('lf-pace').value   = e.pace_target || '';
@@ -2109,8 +2311,10 @@ function editLibEntry(id) {
 
 document.getElementById('lib-add-btn').addEventListener('click', () => {
   editingLibId = null;
+  const folders = getFolders();
+  const folderSel = document.getElementById('lf-type');
+  folderSel.innerHTML = folders.map(f => `<option value="${f}">${f}</option>`).join('');
   ['lf-name','lf-desc','lf-struct','lf-pace','lf-notes'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('lf-type').value = 'Easy';
   document.getElementById('lib-form').style.display = 'block';
   document.getElementById('lib-form').scrollIntoView({ behavior: 'smooth' });
 });
