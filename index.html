@@ -257,11 +257,10 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .weather-slot-wind { font-size:12px; color:var(--muted); }
 .weather-slot-desc { font-size:11px; color:var(--muted); }
 .weather-dot {
-  display:inline-block; width:7px; height:7px; border-radius:50%;
-  background:#60a8e0; margin-left:4px; vertical-align:middle;
-  cursor:pointer; opacity:1;
-  border: 1px solid #3d8ec7;
-  flex-shrink: 0;
+  display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:#1a6bbf; margin-left:3px; vertical-align:middle;
+  cursor:pointer; flex-shrink:0;
+  box-shadow: 0 0 0 1px #1a6bbf;
 }
 
 /* STRAVA DETAIL PANEL */
@@ -1371,6 +1370,9 @@ async function fetchStravaActivities() {
 
     // Re-render all weeks to show overlays
     WEEKS.forEach((_, wi) => renderWeek(wi));
+
+    // Re-add weather dots after re-render
+    if (Object.keys(weatherData).length) addWeatherDots();
 
     // Update button to show connected
     const btn = document.getElementById('strava-btn');
