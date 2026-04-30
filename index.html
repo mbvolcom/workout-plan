@@ -2074,8 +2074,23 @@ function renderLibEntries() {
         <div class="lib-entry-name">${e.name}</div>
         <div class="lib-entry-type">${e.type}</div>
       </div>
-      <button class="lib-entry-edit" onclick="editLibEntry('${e.id}')">✏️ Edit</button>
+      <div style="display:flex;gap:6px;">
+        <button class="lib-entry-edit" onclick="editLibEntry('${e.id}')">✏️ Edit</button>
+        <button class="lib-entry-edit" style="color:#b91c1c;border-color:#f9a8a8;" onclick="deleteLibEntry('${e.id}','${e.name.replace(/'/g,"\\'")}')">✕</button>
+      </div>
     </div>`).join('');
+}
+
+async function deleteLibEntry(id, name) {
+  if (!confirm(`Delete "${name}" from the library?`)) return;
+  try {
+    const res = await fetch(SUPA_BASE + 'run_library?id=eq.' + id, {
+      method: 'DELETE', headers: SUPA_HDR
+    });
+    if (!res.ok) throw new Error(await res.text());
+    await loadRunLibrary();
+    renderLibEntries();
+  } catch(e) { console.error(e); alert('Delete failed: ' + e.message); }
 }
 
 function editLibEntry(id) {
