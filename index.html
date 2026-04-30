@@ -335,6 +335,26 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #lf-cancel { background:var(--border); color:var(--muted); }
 #lf-save { background:var(--text); color:var(--bg); }
 
+/* WEEK PLAN PANEL */
+#week-plan-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,0.4); align-items:flex-end; justify-content:center; }
+@media(min-width:600px){ #week-plan-overlay { align-items:center; } }
+#week-plan-overlay.open { display:flex; }
+#week-plan-panel { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; padding:20px; box-shadow:0 -4px 32px rgba(0,0,0,0.15); }
+@media(min-width:600px){ #week-plan-panel { border-radius:16px; max-height:85vh; } }
+#week-plan-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:18px; gap:10px; }
+#week-plan-name { font-size:16px; font-weight:700; color:var(--text); margin-bottom:3px; }
+#week-plan-focus { font-size:11px; color:var(--muted); }
+#week-plan-close { background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:0; flex-shrink:0; }
+.wp-day { display:grid; grid-template-columns:36px 1fr; gap:8px; padding:9px 0; border-bottom:0.5px solid var(--border); align-items:start; }
+.wp-day:last-child { border-bottom:none; }
+.wp-day-lbl { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; padding-top:1px; }
+.wp-day-text { font-size:13px; line-height:1.55; }
+.wp-day-text.is-rest    { color:var(--muted); font-style:italic; }
+.wp-day-text.is-easy    { color:#0C447C; }
+.wp-day-text.is-quality { color:#633806; }
+.wp-day-text.is-long    { color:#0F6E56; }
+.wp-day-text.is-race    { color:#791F1F; font-weight:600; }
+
 /* STRAVA DETAIL PANEL */
 #strava-panel-overlay {
   display: none; position: fixed; inset: 0; z-index: 11000;
@@ -570,6 +590,20 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
         <button id="lf-save">Save</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- WEEK PLAN PANEL -->
+<div id="week-plan-overlay">
+  <div id="week-plan-panel">
+    <div id="week-plan-header">
+      <div>
+        <div id="week-plan-name"></div>
+        <div id="week-plan-focus"></div>
+      </div>
+      <button id="week-plan-close">✕</button>
+    </div>
+    <div id="week-plan-days"></div>
   </div>
 </div>
 
@@ -1130,7 +1164,12 @@ function renderWeek(wi) {
       btn.className = 'week-toggle';
       btn.textContent = (isCollapsed ? '＋' : '－') + ' ' + w.num;
       btn.addEventListener('click', () => toggleCollapse(wi));
-      const wDates = document.createElement('span'); wDates.className='week-dates'; wDates.textContent=w.dates;
+      const wDates = document.createElement('span');
+  wDates.className='week-dates';
+  wDates.textContent=w.dates;
+  wDates.style.cssText='cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;';
+  wDates.title='View running plan for this week';
+  wDates.addEventListener('click', e => { e.stopPropagation(); openWeekPlan(w.num); });
       const wKm    = document.createElement('span'); wKm.className='week-km'; wKm.textContent=w.km+' km';
       meta.appendChild(btn); meta.appendChild(wDates); meta.appendChild(wKm);
       if (w.moved) { const t=document.createElement('span'); t.className='moved-tag'; t.textContent='long→Fri'; meta.appendChild(t); }
@@ -2014,7 +2053,188 @@ function openWeather(dateStr) {
   weatherOverlay.classList.add('open');
 }
 
-// ── RUN LIBRARY ────────────────────────────────────────────────────────────
+// ── MARATHON PLAN DATA ─────────────────────────────────────────────────────
+const MARATHON_WEEKS = [
+  {num:'Pre 1',focus:'Aerobic base',km:47,days:[
+    {d:'Mon',s:'Rest or cross-train (30 min easy bike/swim)',t:'rest'},
+    {d:'Tue',s:'Easy run 10 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 8 km easy + 2×10 min sub-threshold (3 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Rest',t:'rest'},
+    {d:'Fri',s:'Easy run 10 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 14 km easy',t:'long'}]},
+  {num:'Pre 2',focus:'Double quality begins',km:50,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 10 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 8 km easy + 3×8 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Rest',t:'rest'},
+    {d:'Fri',s:'Easy run 10 km',t:'easy'},
+    {d:'Sat',s:'Sub-threshold: 6 km easy + 20 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sun',s:'Long run 16 km easy',t:'long'}]},
+  {num:'Pre 3',focus:'Build tempo volume',km:54,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 3×10 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 10 km',t:'easy'},
+    {d:'Fri',s:'Rest',t:'rest'},
+    {d:'Sat',s:'Sub-threshold: 6 km easy + 25 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sun',s:'Long run 18 km easy',t:'long'}]},
+  {num:'Pre 4',focus:'Recovery week',km:42,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 10 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 6 km easy + 2×10 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Rest',t:'rest'},
+    {d:'Fri',s:'Easy run 8 km',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 14 km easy',t:'long'}]},
+  {num:'Pre 5',focus:'Ready to build',km:58,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 3×12 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 10 km',t:'easy'},
+    {d:'Fri',s:'Rest',t:'rest'},
+    {d:'Sat',s:'Sub-threshold: 6 km easy + 30 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sun',s:'Long run 21 km easy',t:'long'}]},
+  {num:'Week 1',focus:'5-day week, 2 quality sessions',km:61,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 4×10 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 10 km',t:'easy'},
+    {d:'Fri',s:'Sub-threshold: 6 km easy + 30 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 23 km easy',t:'long'}]},
+  {num:'Week 2',focus:'Extend sessions',km:64,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 4×12 min sub-threshold (90 sec jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 10 km',t:'easy'},
+    {d:'Fri',s:'Sub-threshold: 6 km easy + 35 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 25 km easy',t:'long'}]},
+  {num:'Week 3',focus:'Introduce MP on long run',km:66,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 40 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 11 km',t:'easy'},
+    {d:'Fri',s:'Easy run 10 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 27 km — last 6 km at MP (replaces 2nd sub-threshold this week)',t:'long'}]},
+  {num:'Week 4',focus:'Recovery week',km:48,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 10 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 2×12 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Rest',t:'rest'},
+    {d:'Fri',s:'Easy run 8 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 18 km easy',t:'long'}]},
+  {num:'Week 5',focus:'Push tempo volume',km:68,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 13 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 4×12 min sub-threshold (90 sec jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 12 km',t:'easy'},
+    {d:'Fri',s:'Sub-threshold: 6 km easy + 40 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 29 km easy',t:'long'}]},
+  {num:'Week 6',focus:'MP on long run',km:69,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 13 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 5×10 min sub-threshold (90 sec jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 12 km',t:'easy'},
+    {d:'Fri',s:'Easy run 10 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 29 km — last 8 km at MP (replaces 2nd sub-threshold this week)',t:'long'}]},
+  {num:'Week 7',focus:'Near-threshold begins',km:71,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 13 km',t:'easy'},
+    {d:'Wed',s:'Near-threshold: 2 km warm-up + 4×12 min near-threshold (90 sec jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 12 km',t:'easy'},
+    {d:'Fri',s:'Sub-threshold: 6 km easy + 40 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 31 km easy',t:'long'}]},
+  {num:'Week 8',focus:'High volume + MP',km:73,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 14 km',t:'easy'},
+    {d:'Wed',s:'Near-threshold: 2 km warm-up + 5×10 min near-threshold (90 sec jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 12 km',t:'easy'},
+    {d:'Fri',s:'Easy run 10 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 33 km — last 10 km at MP (replaces 2nd sub-threshold this week)',t:'long'}]},
+  {num:'Week 9',focus:'Recovery week',km:51,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 2×12 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Rest',t:'rest'},
+    {d:'Fri',s:'Easy run 10 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 21 km easy',t:'long'}]},
+  {num:'Week 10',focus:'Peak tempo block',km:73,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 14 km',t:'easy'},
+    {d:'Wed',s:'Near-threshold: 2 km warm-up + 50 min continuous near-threshold + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 12 km',t:'easy'},
+    {d:'Fri',s:'Sub-threshold: 6 km easy + 35 min continuous sub-threshold + 2 km cool-down',t:'quality'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 33 km easy',t:'long'}]},
+  {num:'Week 11',focus:'PEAK long run 37 km',km:75,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 14 km',t:'easy'},
+    {d:'Wed',s:'Near-threshold: 2 km warm-up + 4×12 min near-threshold (90 sec jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 12 km',t:'easy'},
+    {d:'Fri',s:'Easy run 10 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'PEAK LONG RUN — 37 km easy (5:30–6:00/km). Fuel and hydrate exactly as race day.',t:'long'}]},
+  {num:'Week 12',focus:'Recovery week',km:50,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 2×12 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 10 km',t:'easy'},
+    {d:'Fri',s:'Rest',t:'rest'},
+    {d:'Sat',s:'Easy run 8 km + 4×20 sec strides',t:'easy'},
+    {d:'Sun',s:'Long run 18 km easy',t:'long'}]},
+  {num:'Week 13',focus:'Taper week 1',km:56,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 12 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 3×10 min sub-threshold (2 min jog) + 2 km cool-down',t:'quality'},
+    {d:'Thu',s:'Easy run 10 km',t:'easy'},
+    {d:'Fri',s:'Easy run 8 km + 4×20 sec strides',t:'easy'},
+    {d:'Sat',s:'Rest',t:'rest'},
+    {d:'Sun',s:'Long run 25 km — middle 10 km at MP. Last big effort.',t:'long'}]},
+  {num:'Week 14',focus:'Taper week 2 — sharpen',km:38,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 10 km',t:'easy'},
+    {d:'Wed',s:'Sub-threshold: 2 km warm-up + 20 min sub-threshold + 2 km cool-down. Keep it controlled.',t:'quality'},
+    {d:'Thu',s:'Easy run 8 km + 4×20 sec strides',t:'easy'},
+    {d:'Fri',s:'Rest',t:'rest'},
+    {d:'Sat',s:'Easy run 6 km',t:'easy'},
+    {d:'Sun',s:'Easy run 10 km — relaxed, feel good',t:'easy'}]},
+  {num:'Week 15',focus:'Race week',km:18,days:[
+    {d:'Mon',s:'Rest',t:'rest'},
+    {d:'Tue',s:'Easy run 8 km + 4×20 sec strides',t:'easy'},
+    {d:'Wed',s:'Easy run 5 km',t:'easy'},
+    {d:'Thu',s:'Rest',t:'rest'},
+    {d:'Fri',s:'Easy run 4 km — very easy, just shake the legs out',t:'easy'},
+    {d:'Sat',s:'Rest — prepare kit, eat well, sleep early',t:'rest'},
+    {d:'Sun',s:'RACE DAY — Stavanger Marathon. Goal: 3:25 🏃',t:'race'}]}
+];
+
+// ── WEEK PLAN PANEL ────────────────────────────────────────────────────────
+const weekPlanOverlay = document.getElementById('week-plan-overlay');
+document.getElementById('week-plan-close').addEventListener('click', () => weekPlanOverlay.classList.remove('open'));
+weekPlanOverlay.addEventListener('click', e => { if (e.target === weekPlanOverlay) weekPlanOverlay.classList.remove('open'); });
+
+function openWeekPlan(weekNum) {
+  const w = MARATHON_WEEKS.find(x => x.num === weekNum);
+  if (!w) return;
+  document.getElementById('week-plan-name').textContent = weekNum + ' — ' + w.focus;
+  document.getElementById('week-plan-focus').textContent = w.km + ' km planned';
+  const daysEl = document.getElementById('week-plan-days');
+  daysEl.innerHTML = w.days.map(day => `
+    <div class="wp-day">
+      <span class="wp-day-lbl">${day.d}</span>
+      <span class="wp-day-text is-${day.t}">${day.s}</span>
+    </div>`).join('');
+  weekPlanOverlay.classList.add('open');
+}
 let runLibrary = []; // loaded from Supabase
 
 async function loadRunLibrary() {
