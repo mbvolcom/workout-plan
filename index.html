@@ -1679,6 +1679,7 @@ async function fetchWeather() {
     if (!timeseries) return;
 
     weatherData = {};
+    if (timeseries.length) console.log('Sample entry:', JSON.stringify(timeseries[0], null, 2));
     timeseries.forEach(entry => {
       const dt = new Date(entry.time);
       // Convert to Norwegian local time (UTC+2 in summer)
