@@ -747,12 +747,28 @@ function parse(s) {
 }
 
 // ── TYPE LISTS ─────────────────────────────────────────────────────────────
-const RUN_TYPES = [
-  {key:'long:Long run',cls:'long-run'},{key:'easy:Easy run',cls:'easy-run'},
-  {key:'easy-pm:Easy run (PM)',cls:'easy-pm'},{key:'quality:Sub-threshold',cls:'quality-run'},
-  {key:'quality:Near-threshold',cls:'quality-run'},{key:'kinder:Kindergarten run',cls:'kinder-run'},
-  {key:'race:Race day',cls:'race'},
-];
+function getRunTypes() {
+  if (!runLibrary.length) return [
+    {key:'easy:Easy',cls:'easy-run'},
+    {key:'quality:Sub-threshold',cls:'quality-run'},
+    {key:'long:Long run',cls:'long-run'},
+    {key:'kinder:Kindergarten run',cls:'kinder-run'},
+    {key:'race:Race day',cls:'race'},
+  ];
+  // Map library type to pill css class
+  const typeClass = { Easy:'easy-run', Quality:'quality-run', Long:'long-run', Race:'race' };
+  return runLibrary.map(e => ({
+    key: `${typeToPrefix(e.type)}:${e.name}`,
+    cls: typeClass[e.type] || 'easy-run',
+  }));
+}
+function typeToPrefix(type) {
+  if (type === 'Quality') return 'quality';
+  if (type === 'Long')    return 'long';
+  if (type === 'Race')    return 'race';
+  if (type === 'Kinder')  return 'kinder';
+  return 'easy';
+}
 const STR_TYPES = [
   {key:'upper:Upper 1',cls:'upper'},{key:'upper:Upper 2',cls:'upper'},
   {key:'lower:Lower 1',cls:'lower'},{key:'lower:Lower 2',cls:'lower'},
@@ -876,7 +892,7 @@ const ctxTypesEl = document.getElementById('ctx-types');
 function openCtxMenuAt(x, y, weekIdx, row, dayIdx) {
   ctxTarget = { weekIdx, row, dayIdx };
   ctxTypesEl.innerHTML = '';
-  const types = row === 'runs' ? RUN_TYPES : row === 'str' ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
+  const types = row === 'runs' ? getRunTypes() : row === 'str' ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
   types.forEach(({ key, cls }) => {
     const label = key.split(':')[1];
     const opt = document.createElement('div');
@@ -919,7 +935,7 @@ function openAddModal(weekIdx, row, dayIdx) {
   addLabelInput.value = ''; addLabelInput.dataset.auto = '0';
   addConfirmBtn.disabled = true;
   addTypeGrid.innerHTML = '';
-  const types = row === 'runs' ? RUN_TYPES : row === 'str' ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
+  const types = row === 'runs' ? getRunTypes() : row === 'str' ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
   types.forEach(({ key, cls }) => {
     const label = key.split(':')[1];
     const opt = document.createElement('div');
