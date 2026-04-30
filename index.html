@@ -83,6 +83,17 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .btn-edit-wife.active { background:#FAEEDA; color:#633806; border-color:#EF9F27; }
 .btn-nav       { background:var(--surface); color:var(--text); border:1px solid var(--border-mid); }
 
+/* PLAN BANNER */
+.plan-banner {
+  padding: 18px 0 8px;
+  border-top: 2px solid var(--border-mid);
+  margin-bottom: 6px;
+}
+.plan-banner:first-child { border-top: none; padding-top: 0; }
+.plan-banner-name { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.plan-banner-meta { font-size: 11px; color: var(--muted); }
+.plan-header-row { margin-bottom: 4px; }
+
 /* PHASE */
 .phase-block { margin-bottom:4px; }
 .phase-label { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:14px 0 6px; border-top:0.5px solid var(--border-mid); margin-top:4px; }
@@ -1412,20 +1423,47 @@ function headerRow(wi) {
   return row;
 }
 
+function planBanner(planName, raceName, raceDate, goal) {
+  const el = document.createElement('div');
+  el.className = 'plan-banner';
+  const raceStr = raceDate ? new Date(raceDate).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '';
+  el.innerHTML = `
+    <div class="plan-banner-name">${planName}</div>
+    <div class="plan-banner-meta">${raceName ? raceName+' · ' : ''}${raceStr}${goal ? ' · Goal: '+goal : ''}</div>`;
+  return el;
+}
+
 function build() {
   const cal = document.getElementById('cal'); cal.innerHTML = '';
   let lastPhase = null;
+  let lastPlanName = null;
+
   WEEKS.forEach((w, wi) => {
-    if (w.phase && w.phase !== lastPhase) {
-      const pb=document.createElement('div'); pb.className='phase-block';
-      const pl=document.createElement('div'); pl.className='phase-label'; pl.textContent=w.phase+' phase';
-      const ph = document.createElement('div'); ph.className='grid-header';
+    // Plan boundary — show plan banner + day headers when plan changes
+    const thisPlan = w._planName || 'Stavanger Marathon 2026';
+    if (thisPlan !== lastPlanName) {
+      const banner = planBanner(thisPlan, w._raceName, w._raceDate, w._goal);
+      cal.appendChild(banner);
+      // Day headers once per plan
+      const ph = document.createElement('div'); ph.className = 'grid-header plan-header-row';
       ph.appendChild(document.createElement('div'));
       ph.appendChild(document.createElement('div'));
       DAYS.forEach(d => { const h=document.createElement('div'); h.className='col-head'; h.textContent=d; ph.appendChild(h); });
-      pb.appendChild(pl); pb.appendChild(ph); cal.appendChild(pb); lastPhase=w.phase;
+      cal.appendChild(ph);
+      lastPlanName = thisPlan;
+      lastPhase = null; // reset so phase headers show fresh
     }
-    if (wi > 0 && !w.phase) { const d=document.createElement('div'); d.className='week-divider'; cal.appendChild(d); }
+
+    // Phase header within plan
+    if (w.phase && w.phase !== lastPhase) {
+      const pb=document.createElement('div'); pb.className='phase-block';
+      const pl=document.createElement('div'); pl.className='phase-label'; pl.textContent=w.phase+' phase';
+      pb.appendChild(pl); cal.appendChild(pb); lastPhase=w.phase;
+    }
+
+    if (wi > 0 && !w.phase && w._planName === WEEKS[wi-1]?._planName) {
+      const d=document.createElement('div'); d.className='week-divider'; cal.appendChild(d);
+    }
     const wrap=document.createElement('div'); wrap.id='week-'+wi; wrap.className='week-wrap';
     cal.appendChild(wrap); renderWeek(wi);
   });
