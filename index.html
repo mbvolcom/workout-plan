@@ -335,7 +335,52 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #lf-cancel { background:var(--border); color:var(--muted); }
 #lf-save { background:var(--text); color:var(--bg); }
 
-/* WEEK PLAN PANEL */
+/* LIBRARY TABS */
+#lib-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px; }
+.lib-tab-btn { background:none; border:none; padding:8px 18px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; font-family:inherit; transition:color 0.2s,border-color 0.2s; }
+.lib-tab-btn.active { color:var(--text); border-bottom-color:var(--text); }
+.lib-tab-panel { display:none; }
+.lib-tab-panel.active { display:block; }
+
+/* STRENGTH EXERCISE TABLE */
+.str-ex-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:4px; }
+.str-ex-table th { text-align:left; font-size:10px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); padding:4px 8px; border-bottom:1px solid var(--border); }
+.str-ex-table td { padding:8px 8px; border-bottom:0.5px solid var(--border); color:var(--text); }
+.str-ex-table tr:last-child td { border-bottom:none; }
+.str-ex-table td:first-child { color:var(--muted); font-size:11px; }
+.str-ex-tag { display:inline-block; background:var(--low-bg); color:var(--low-c); border:0.5px solid var(--low-b); border-radius:3px; padding:2px 6px; font-size:11px; font-weight:600; }
+.str-ex-tag.upper { background:var(--upp-bg); color:var(--upp-c); border-color:var(--upp-b); }
+
+/* STRENGTH LIB FORM */
+#str-lib-add-btn { background:var(--text); color:var(--bg); border:none; border-radius:6px; padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; margin-top:4px; }
+#str-lib-form { background:var(--bg); border-radius:10px; padding:14px; margin-top:12px; }
+.slf-ex-row { display:grid; grid-template-columns:1fr 60px 80px 28px; gap:6px; margin-bottom:6px; align-items:center; }
+.slf-ex-row input { border:0.5px solid var(--border-mid); border-radius:5px; padding:5px 8px; font-size:12px; font-family:inherit; color:var(--text); background:var(--surface); outline:none; width:100%; }
+.slf-ex-row input:focus { border-color:var(--text); }
+.slf-ex-del { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0; }
+.slf-ex-del:hover { color:#b91c1c; }
+#slf-add-ex { background:none; border:1px dashed var(--border-mid); border-radius:5px; padding:5px 10px; font-size:11px; color:var(--muted); cursor:pointer; font-family:inherit; margin-top:4px; }
+#slf-add-ex:hover { background:var(--surface); }
+#str-lib-form-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+#str-lib-form-btns button { border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+#slf-cancel { background:var(--border); color:var(--muted); }
+#slf-save { background:var(--text); color:var(--bg); }
+
+/* STRENGTH DETAIL PANEL */
+#str-panel-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,0.4); align-items:flex-end; justify-content:center; }
+@media(min-width:600px){ #str-panel-overlay { align-items:center; } }
+#str-panel-overlay.open { display:flex; }
+#str-panel { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; padding:20px; box-shadow:0 -4px 32px rgba(0,0,0,0.15); }
+@media(min-width:600px){ #str-panel { border-radius:16px; max-height:85vh; } }
+#str-panel-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; gap:10px; }
+#str-panel-name { font-size:16px; font-weight:700; color:var(--text); margin-bottom:3px; }
+#str-panel-sub { font-size:11px; color:var(--muted); }
+#str-panel-close { background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:0; flex-shrink:0; }
+#str-panel-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px; }
+.str-tab-btn { background:none; border:none; padding:8px 16px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; font-family:inherit; transition:color 0.2s,border-color 0.2s; }
+.str-tab-btn.active { color:var(--text); border-bottom-color:var(--text); }
+.str-tab-panel { display:none; }
+.str-tab-panel.active { display:block; }
 #week-plan-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,0.4); align-items:flex-end; justify-content:center; }
 @media(min-width:600px){ #week-plan-overlay { align-items:center; } }
 #week-plan-overlay.open { display:flex; }
@@ -564,31 +609,75 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 <div id="lib-modal-overlay">
   <div id="lib-modal">
     <div id="lib-modal-header">
-      <div id="lib-modal-title">Run Library</div>
+      <div id="lib-modal-title">Library</div>
       <button id="lib-modal-close">✕</button>
     </div>
-    <!-- New folder row -->
-    <div id="lib-new-folder-row">
-      <input id="lib-new-folder-input" type="text" placeholder="New folder name…"/>
-      <button id="lib-new-folder-btn">＋ Folder</button>
+    <div id="lib-tabs">
+      <button class="lib-tab-btn active" data-tab="run">🏃 Run</button>
+      <button class="lib-tab-btn" data-tab="strength">💪 Strength</button>
     </div>
-    <div id="lib-entries"></div>
-    <button id="lib-add-btn">＋ Add workout</button>
-    <div id="lib-form" style="display:none;">
-      <div class="lib-form-row"><label>Name</label><input id="lf-name" type="text" placeholder="e.g. Sub-threshold"/></div>
-      <div class="lib-form-row"><label>Folder</label>
-        <select id="lf-type">
-          <option>Easy</option><option>Quality</option><option>Long</option><option>Race</option>
-        </select>
+
+    <!-- RUN TAB -->
+    <div id="lib-tab-run" class="lib-tab-panel active">
+      <div id="lib-new-folder-row">
+        <input id="lib-new-folder-input" type="text" placeholder="New folder name…"/>
+        <button id="lib-new-folder-btn">＋ Folder</button>
       </div>
-      <div class="lib-form-row"><label>Description</label><textarea id="lf-desc" rows="2" placeholder="What is this session?"></textarea></div>
-      <div class="lib-form-row"><label>Structure</label><textarea id="lf-struct" rows="2" placeholder="Warm-up, intervals, cool-down..."></textarea></div>
-      <div class="lib-form-row"><label>Pace target</label><input id="lf-pace" type="text" placeholder="e.g. 5:00–5:10/km"/></div>
-      <div class="lib-form-row"><label>Notes</label><textarea id="lf-notes" rows="2" placeholder="Tips, caveats..."></textarea></div>
-      <div id="lib-form-btns">
-        <button id="lf-cancel">Cancel</button>
-        <button id="lf-save">Save</button>
+      <div id="lib-entries"></div>
+      <button id="lib-add-btn">＋ Add run workout</button>
+      <div id="lib-form" style="display:none;">
+        <div class="lib-form-row"><label>Name</label><input id="lf-name" type="text" placeholder="e.g. Sub-threshold"/></div>
+        <div class="lib-form-row"><label>Folder</label><select id="lf-type"></select></div>
+        <div class="lib-form-row"><label>Description</label><textarea id="lf-desc" rows="2" placeholder="What is this session?"></textarea></div>
+        <div class="lib-form-row"><label>Structure</label><textarea id="lf-struct" rows="2" placeholder="Warm-up, intervals, cool-down..."></textarea></div>
+        <div class="lib-form-row"><label>Pace target</label><input id="lf-pace" type="text" placeholder="e.g. 5:00–5:10/km"/></div>
+        <div class="lib-form-row"><label>Notes</label><textarea id="lf-notes" rows="2" placeholder="Tips, caveats..."></textarea></div>
+        <div id="lib-form-btns">
+          <button id="lf-cancel">Cancel</button>
+          <button id="lf-save">Save</button>
+        </div>
       </div>
+    </div>
+
+    <!-- STRENGTH TAB -->
+    <div id="lib-tab-strength" class="lib-tab-panel">
+      <div id="str-lib-entries"></div>
+      <button id="str-lib-add-btn">＋ Add strength workout</button>
+      <div id="str-lib-form" style="display:none;">
+        <div class="lib-form-row"><label>Name</label><input id="slf-name" type="text" placeholder="e.g. Upper 1"/></div>
+        <div class="lib-form-row">
+          <label>Exercises</label>
+          <div id="slf-exercises"></div>
+          <button id="slf-add-ex">＋ Add exercise</button>
+        </div>
+        <div id="str-lib-form-btns">
+          <button id="slf-cancel">Cancel</button>
+          <button id="slf-save">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STRENGTH DETAIL PANEL -->
+<div id="str-panel-overlay">
+  <div id="str-panel">
+    <div id="str-panel-header">
+      <div>
+        <div id="str-panel-name"></div>
+        <div id="str-panel-sub"></div>
+      </div>
+      <button id="str-panel-close">✕</button>
+    </div>
+    <div id="str-panel-tabs">
+      <button class="str-tab-btn active" data-tab="workout">Workout</button>
+      <button class="str-tab-btn" data-tab="strava">Strava</button>
+    </div>
+    <div id="str-tab-workout" class="str-tab-panel active">
+      <div id="str-workout-body"></div>
+    </div>
+    <div id="str-tab-strava" class="str-tab-panel">
+      <div id="str-strava-body"></div>
     </div>
   </div>
 </div>
@@ -1246,13 +1335,20 @@ function renderWeek(wi) {
                   el.appendChild(sub);
                 });
               }
-              // Run pills open run panel; str/cross open Strava panel directly
+              // Run pills → run panel; str pills → strength panel; cross → Strava
               if (row === 'runs') {
                 el.style.cursor = 'pointer';
                 el.addEventListener('click', e => {
                   e.stopPropagation();
                   const p = parse(s[row][di]);
                   openRunPanel(p ? p.label : '', wi, di);
+                });
+              } else if (row === 'str') {
+                el.style.cursor = 'pointer';
+                el.addEventListener('click', e => {
+                  e.stopPropagation();
+                  const p = parse(s[row][di]);
+                  openStrPanel(p ? p.label : '', wi, di);
                 });
               } else if (acts) {
                 el.style.cursor = 'pointer';
@@ -1467,8 +1563,8 @@ if (_local) applyState(JSON.parse(_local));
     }
   }
 
-  // 2. Load run library
-  await loadRunLibrary();
+  // 2. Load run and strength libraries
+  await Promise.all([loadRunLibrary(), loadStrengthLibrary()]);
 
   // 3. Load user state from Supabase (drag/drop edits etc)
   const cloud = await loadCloudState();
@@ -2053,7 +2149,212 @@ function openWeather(dateStr) {
   weatherOverlay.classList.add('open');
 }
 
-// ── MARATHON PLAN DATA ─────────────────────────────────────────────────────
+// ── STRENGTH LIBRARY ───────────────────────────────────────────────────────
+let strengthLibrary = [];
+
+async function loadStrengthLibrary() {
+  try {
+    const res = await fetch(SUPA_BASE + 'strength_library?select=*&order=sort_order', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error();
+    strengthLibrary = await res.json();
+    // Parse exercises if stored as string
+    strengthLibrary.forEach(e => {
+      if (typeof e.exercises === 'string') e.exercises = JSON.parse(e.exercises);
+    });
+    console.log('Strength library loaded:', strengthLibrary.length, 'entries');
+  } catch(e) { console.warn('Failed to load strength library:', e); }
+}
+
+function getStrengthEntry(label) {
+  if (!label) return null;
+  const clean = label.toLowerCase();
+  return strengthLibrary.find(e => clean.includes(e.name.toLowerCase())) || null;
+}
+
+// ── STRENGTH DETAIL PANEL ──────────────────────────────────────────────────
+const strPanelOverlay = document.getElementById('str-panel-overlay');
+document.getElementById('str-panel-close').addEventListener('click', () => strPanelOverlay.classList.remove('open'));
+strPanelOverlay.addEventListener('click', e => { if (e.target === strPanelOverlay) strPanelOverlay.classList.remove('open'); });
+
+document.querySelectorAll('.str-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.str-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.str-tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('str-tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function openStrPanel(label, wi, di) {
+  const entry = getStrengthEntry(label);
+  const stravaActs = getStravaForDay(wi, di, 'str');
+  const isUpper = label.toLowerCase().includes('upper');
+
+  document.getElementById('str-panel-name').textContent = label;
+  document.getElementById('str-panel-sub').textContent = isUpper ? 'Upper body' : 'Lower body';
+
+  // Workout tab
+  const workoutBody = document.getElementById('str-workout-body');
+  if (entry && entry.exercises && entry.exercises.length) {
+    const tagClass = isUpper ? 'upper' : '';
+    workoutBody.innerHTML = `
+      <table class="str-ex-table">
+        <thead><tr><th>#</th><th>Exercise</th><th>Sets</th><th>Reps</th></tr></thead>
+        <tbody>
+          ${entry.exercises.map((ex, i) => `
+            <tr>
+              <td>${i+1}</td>
+              <td>${ex.name}</td>
+              <td><span class="str-ex-tag ${tagClass}">${ex.sets}×</span></td>
+              <td>${ex.reps}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } else {
+    workoutBody.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No library entry found for this session.</div>`;
+  }
+
+  // Strava tab
+  const stravaBody = document.getElementById('str-strava-body');
+  if (stravaActs && stravaActs.length) {
+    const a = stravaActs[0];
+    const time = a.moving_time ? formatDuration(a.moving_time) : null;
+    const kcal = a.calories ? a.calories + ' kcal' : null;
+    const hrAvg = a.average_heartrate ? Math.round(a.average_heartrate) + ' bpm' : null;
+    stravaBody.innerHTML = `
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">${a.name}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">${new Date(a.start_date_local).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        ${[['Duration',time],['Calories',kcal],['Avg HR',hrAvg]].filter(([,v])=>v).map(([l,v])=>`<div class="strava-stat-card"><div class="strava-stat-label">${l}</div><div class="strava-stat-val">${v}</div></div>`).join('')}
+      </div>
+      <a href="https://www.strava.com/activities/${a.id}" target="_blank" rel="noopener" style="color:#FC4C02;font-size:12px;font-weight:600;text-decoration:none;">View on Strava →</a>`;
+  } else {
+    stravaBody.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No Strava activity logged for this day.</div>`;
+  }
+
+  // Default to Strava tab if activity exists
+  document.querySelectorAll('.str-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.str-tab-panel').forEach(p => p.classList.remove('active'));
+  const defaultTab = (stravaActs && stravaActs.length) ? 'strava' : 'workout';
+  document.querySelector(`.str-tab-btn[data-tab="${defaultTab}"]`).classList.add('active');
+  document.getElementById('str-tab-' + defaultTab).classList.add('active');
+  strPanelOverlay.classList.add('open');
+}
+
+// ── STRENGTH LIBRARY EDIT ──────────────────────────────────────────────────
+let editingStrId = null;
+
+function renderStrLibEntries() {
+  const el = document.getElementById('str-lib-entries');
+  el.innerHTML = strengthLibrary.length
+    ? strengthLibrary.map(e => `
+        <div class="lib-entry">
+          <span class="lib-entry-handle">⠿</span>
+          <span class="lib-entry-name">${e.name}</span>
+          <span style="font-size:10px;color:var(--muted);margin-right:4px;">${e.exercises.length} exercises</span>
+          <div class="lib-entry-actions">
+            <button class="lib-entry-edit" onclick="editStrEntry('${e.id}')">✏️ Edit</button>
+            <button class="lib-entry-del" onclick="deleteStrEntry('${e.id}','${e.name.replace(/'/g,"\\'")}')">✕</button>
+          </div>
+        </div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No strength workouts yet.</div>';
+}
+
+function addStrExerciseRow(name='', sets='', reps='') {
+  const container = document.getElementById('slf-exercises');
+  const row = document.createElement('div');
+  row.className = 'slf-ex-row';
+  row.innerHTML = `
+    <input type="text" placeholder="Exercise name" value="${name}"/>
+    <input type="number" placeholder="Sets" value="${sets}" min="1" max="20"/>
+    <input type="text" placeholder="Reps" value="${reps}"/>
+    <button class="slf-ex-del" onclick="this.closest('.slf-ex-row').remove()">✕</button>`;
+  container.appendChild(row);
+}
+
+function editStrEntry(id) {
+  const e = strengthLibrary.find(x => x.id === id);
+  if (!e) return;
+  editingStrId = id;
+  document.getElementById('slf-name').value = e.name || '';
+  const container = document.getElementById('slf-exercises');
+  container.innerHTML = '';
+  (e.exercises || []).forEach(ex => addStrExerciseRow(ex.name, ex.sets, ex.reps));
+  document.getElementById('str-lib-form').style.display = 'block';
+  document.getElementById('str-lib-form').scrollIntoView({ behavior:'smooth' });
+}
+
+document.getElementById('str-lib-add-btn').addEventListener('click', () => {
+  editingStrId = null;
+  document.getElementById('slf-name').value = '';
+  document.getElementById('slf-exercises').innerHTML = '';
+  addStrExerciseRow();
+  document.getElementById('str-lib-form').style.display = 'block';
+  document.getElementById('str-lib-form').scrollIntoView({ behavior:'smooth' });
+});
+
+document.getElementById('slf-add-ex').addEventListener('click', () => addStrExerciseRow());
+
+document.getElementById('slf-cancel').addEventListener('click', () => {
+  document.getElementById('str-lib-form').style.display = 'none';
+  editingStrId = null;
+});
+
+document.getElementById('slf-save').addEventListener('click', async () => {
+  const btn = document.getElementById('slf-save');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  const name = document.getElementById('slf-name').value.trim();
+  if (!name) { alert('Name is required'); btn.textContent='Save'; btn.disabled=false; return; }
+  const exercises = Array.from(document.querySelectorAll('#slf-exercises .slf-ex-row')).map(row => {
+    const inputs = row.querySelectorAll('input');
+    return { name: inputs[0].value.trim(), sets: parseInt(inputs[1].value)||0, reps: inputs[2].value.trim() };
+  }).filter(ex => ex.name);
+
+  const payload = { name, exercises };
+  try {
+    let res;
+    if (editingStrId) {
+      res = await fetch(SUPA_BASE + 'strength_library?id=eq.' + editingStrId, {
+        method:'PATCH', headers:{...SUPA_HDR,'Prefer':'return=representation'},
+        body: JSON.stringify(payload)
+      });
+    } else {
+      payload.sort_order = strengthLibrary.length + 1;
+      res = await fetch(SUPA_BASE + 'strength_library', {
+        method:'POST', headers:{...SUPA_HDR,'Prefer':'return=representation'},
+        body: JSON.stringify(payload)
+      });
+    }
+    if (!res.ok) throw new Error(await res.text());
+    await loadStrengthLibrary();
+    renderStrLibEntries();
+    document.getElementById('str-lib-form').style.display = 'none';
+    editingStrId = null;
+  } catch(e) { console.error(e); alert('Save failed: ' + e.message); }
+  btn.textContent = 'Save'; btn.disabled = false;
+});
+
+async function deleteStrEntry(id, name) {
+  if (!confirm(`Delete "${name}"?`)) return;
+  try {
+    const res = await fetch(SUPA_BASE + 'strength_library?id=eq.' + id, {
+      method:'DELETE', headers: SUPA_HDR
+    });
+    if (!res.ok) throw new Error(await res.text());
+    await loadStrengthLibrary();
+    renderStrLibEntries();
+  } catch(e) { console.error(e); alert('Delete failed: ' + e.message); }
+}
+
+// Library tab switching
+document.querySelectorAll('.lib-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.lib-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.lib-tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('lib-tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
 const MARATHON_WEEKS = [
   {num:'Pre 1',focus:'Aerobic base',km:47,days:[
     {d:'Mon',s:'Rest or cross-train (30 min easy bike/swim)',t:'rest'},
@@ -2284,31 +2585,36 @@ function openRunPanel(label, wi, di) {
       ${entry.pace_target ? `<div class="run-workout-section"><div class="run-workout-label">Target pace</div><div class="run-workout-value"><span class="run-workout-pace">${entry.pace_target}</span></div></div>` : ''}
       ${entry.notes       ? `<div class="run-workout-section"><div class="run-workout-label">Notes</div><div class="run-workout-value">${entry.notes}</div></div>` : ''}`;
   } else {
-    workoutBody.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No library entry found for this session.<br>Add it via 📚 Run Library.</div>`;
+    workoutBody.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No library entry found for this session.<br>Add it via 📚 Library.</div>`;
   }
 
-  // Strava tab
+  // Strava tab — shows a button that opens the full Strava detail panel (with map + splits)
   const stravaBody = document.getElementById('run-strava-body');
   if (stravaActs && stravaActs.length) {
     const a = stravaActs[0];
-    const km    = a.distance ? (a.distance/1000).toFixed(2)+' km' : null;
-    const pace  = a.distance && a.moving_time ? formatPace(a.distance, a.moving_time)+'/km' : null;
-    const time  = a.moving_time ? formatDuration(a.moving_time) : null;
-    const elev  = a.total_elevation_gain != null ? a.total_elevation_gain+'m' : null;
-    const hrAvg = a.average_heartrate ? Math.round(a.average_heartrate)+' bpm' : null;
-    const kcal  = a.calories ? a.calories+' kcal' : null;
+    const km   = a.distance ? (a.distance/1000).toFixed(1)+' km' : '';
+    const pace = a.distance && a.moving_time ? formatPace(a.distance, a.moving_time)+'/km' : '';
+    const time = a.moving_time ? formatDuration(a.moving_time) : '';
     stravaBody.innerHTML = `
       <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">${a.name}</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">${new Date(a.start_date_local).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})} · ${new Date(a.start_date_local).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
-      <div id="run-strava-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
-        ${[['Distance',km],['Moving time',time],['Avg pace',pace],['Elevation',elev],['Avg HR',hrAvg],['Calories',kcal]].filter(([,v])=>v).map(([l,v])=>`<div class="strava-stat-card"><div class="strava-stat-label">${l}</div><div class="strava-stat-val">${v}</div></div>`).join('')}
+      <div style="font-size:11px;color:var(--muted);margin-bottom:16px;">${new Date(a.start_date_local).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})} · ${new Date(a.start_date_local).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="display:flex;gap:16px;margin-bottom:20px;font-size:14px;">
+        ${km   ? `<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Distance</div><div style="font-weight:700;">${km}</div></div>` : ''}
+        ${pace ? `<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Avg pace</div><div style="font-weight:700;">${pace}</div></div>` : ''}
+        ${time ? `<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Time</div><div style="font-weight:700;">${time}</div></div>` : ''}
       </div>
-      <a href="https://www.strava.com/activities/${a.id}" target="_blank" rel="noopener" style="color:#FC4C02;font-size:12px;font-weight:600;text-decoration:none;">View on Strava →</a>`;
+      <button id="open-full-strava-btn" style="width:100%;padding:11px;background:#FC4C02;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+        View full Strava detail (map + splits) →
+      </button>`;
+    document.getElementById('open-full-strava-btn').addEventListener('click', () => {
+      runPanelOverlay.classList.remove('open');
+      openStravaDetail(a);
+    });
   } else {
     stravaBody.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No Strava activity logged for this day.</div>`;
   }
 
-  // Default to Strava tab if activity exists
+  // Default to Strava tab if activity exists, else workout
   document.querySelectorAll('.run-tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.run-tab-panel').forEach(p => p.classList.remove('active'));
   const defaultTab = (stravaActs && stravaActs.length) ? 'strava' : 'workout';
@@ -2323,16 +2629,15 @@ const libOverlay = document.getElementById('lib-modal-overlay');
 let editingLibId = null;
 
 async function openLibModal() {
-  // Load library fresh
-  await loadRunLibrary();
-  // Seed libFolders from current library types
+  libOverlay.classList.add('open');
+  await Promise.all([loadRunLibrary(), loadStrengthLibrary()]);
   const existingTypes = [...new Set(runLibrary.map(e => e.type))];
   existingTypes.forEach(t => { if (!libFolders.includes(t)) libFolders.push(t); });
-  // Collapse all folders by default
   libFolders.forEach(f => collapsedFolders.add(f));
   renderLibEntries();
+  renderStrLibEntries();
   document.getElementById('lib-form').style.display = 'none';
-  libOverlay.classList.add('open');
+  document.getElementById('str-lib-form').style.display = 'none';
 }
 document.getElementById('lib-modal-close').addEventListener('click', () => libOverlay.classList.remove('open'));
 libOverlay.addEventListener('click', e => { if (e.target === libOverlay) libOverlay.classList.remove('open'); });
