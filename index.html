@@ -318,16 +318,12 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .lib-entry-edit:hover { background:var(--bg); }
 .lib-entry-del { background:none; border:1px solid #f9a8a8; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer; color:#b91c1c; font-family:inherit; }
 .lib-entry-del:hover { background:#fff5f5; }
+#lib-modal-overlay { display:none; position:fixed; inset:0; z-index:12000; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; }
 #lib-modal-overlay.open { display:flex; }
 #lib-modal { background:var(--surface); border-radius:14px; width:100%; max-width:500px; max-height:85vh; overflow-y:auto; padding:20px; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
 #lib-modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
 #lib-modal-title { font-size:15px; font-weight:700; color:var(--text); }
 #lib-modal-close { background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:0; }
-.lib-entry { background:var(--bg); border-radius:8px; padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; gap:10px; }
-.lib-entry-name { flex:1; font-size:13px; font-weight:600; color:var(--text); }
-.lib-entry-type { font-size:10px; color:var(--muted); }
-.lib-entry-edit { background:none; border:1px solid var(--border-mid); border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; color:var(--muted); font-family:inherit; }
-.lib-entry-edit:hover { background:var(--border); }
 #lib-add-btn { background:var(--text); color:var(--bg); border:none; border-radius:6px; padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; margin-top:4px; }
 #lib-form { background:var(--bg); border-radius:10px; padding:14px; margin-top:12px; }
 .lib-form-row { margin-bottom:10px; }
@@ -2091,14 +2087,16 @@ const libOverlay = document.getElementById('lib-modal-overlay');
 let editingLibId = null;
 
 async function openLibModal() {
-  libOverlay.classList.add('open');
-  // Reload library fresh every time modal opens
+  // Load library fresh
   await loadRunLibrary();
   // Seed libFolders from current library types
   const existingTypes = [...new Set(runLibrary.map(e => e.type))];
   existingTypes.forEach(t => { if (!libFolders.includes(t)) libFolders.push(t); });
+  // Collapse all folders by default
+  libFolders.forEach(f => collapsedFolders.add(f));
   renderLibEntries();
   document.getElementById('lib-form').style.display = 'none';
+  libOverlay.classList.add('open');
 }
 document.getElementById('lib-modal-close').addEventListener('click', () => libOverlay.classList.remove('open'));
 libOverlay.addEventListener('click', e => { if (e.target === libOverlay) libOverlay.classList.remove('open'); });
