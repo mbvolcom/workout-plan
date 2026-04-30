@@ -1480,11 +1480,26 @@ function applyState(saved) {
 
 // ── WEEK PLAN (load from / seed to Supabase) ───────────────────────────────
 async function loadWeekPlan() {
+  // First try the new plans table
+  try {
+    const res = await fetch(SUPA_BASE+'plans?select=*&order=start_date&limit=10', { headers:SUPA_HDR });
+    if (!res.ok) throw new Error();
+    const rows = await res.json();
+    if (rows.length) {
+      console.log('Loaded', rows.length, 'plan(s) from Supabase');
+      return { source: 'plans', plans: rows };
+    }
+  } catch(e) { console.warn('Plans load failed, trying week_plan fallback'); }
+
+  // Fall back to old week_plan table
   try {
     const res = await fetch(SUPA_BASE+'week_plan?id=eq.1&select=data', { headers:SUPA_HDR });
     if (!res.ok) throw new Error();
     const rows = await res.json();
-    if (rows.length && rows[0].data) return rows[0].data;
+    if (rows.length && rows[0].data) {
+      console.log('Loaded plan from legacy week_plan table');
+      return { source: 'legacy', data: rows[0].data };
+    }
   } catch(e) { console.warn('Week plan load failed, using built-in data'); }
   return null;
 }
@@ -1507,22 +1522,66 @@ async function seedWeekPlan() {
   } catch(e) { console.error('Seed failed:', e); }
 }
 
-function applyWeekPlan(plan) {
-  // Overwrite the WEEKS array entries with data from Supabase
+function applyWeekPlan(loaded) {
+  if (!loaded) return;
+
+  let plan;
+  if (loaded.source === 'plans') {
+    // New format: array of plans, each with a weeks array and start_date
+    // Build a flat week list across all plans in date order
+    plan = [];
+    loaded.plans.forEach(p => {
+      const startDate = new Date(p.start_date);
+      p.weeks.forEach((w, wi) => {
+        // Compute the Monday date for this week
+        const monday = new Date(startDate);
+        monday.setDate(startDate.getDate() + wi * 7);
+        plan.push({
+          ...w,
+          _planName: p.name,
+          _raceName: p.race_name,
+          _raceDate: p.race_date,
+          _monday: monday,
+        });
+      });
+    });
+    // Sort by date
+    plan.sort((a, b) => a._monday - b._monday);
+  } else {
+    // Legacy format: flat array
+    plan = loaded.data;
+  }
+
+  // Resize WEEKS, state, wifeState, kinderState if plan is longer
+  while (WEEKS.length < plan.length) {
+    const i = WEEKS.length;
+    WEEKS.push({ phase:null, num:'Week '+(i+1), dates:'', km:0, moved:false, wife:Array(7).fill('') });
+    state.push({ runs:Array(7).fill(null), str:Array(7).fill(null), cross:Array(7).fill(null), wife:Array(7).fill(''), kinder:Array(7).fill(null) });
+    wifeState.push(Array(7).fill(''));
+    kinderState.push(Array(7).fill(null));
+    WEEK_MONDAYS.push([2026,1,1]); // placeholder
+  }
+
   plan.forEach((w, wi) => {
-    if (wi < WEEKS.length) {
-      WEEKS[wi].phase = w.phase;
-      WEEKS[wi].num   = w.num;
-      WEEKS[wi].dates = w.dates;
-      WEEKS[wi].km    = w.km;
-      WEEKS[wi].moved = w.moved;
-      // Restore wife shifts into wifeState from the plan
-      if (w.wife) wifeState[wi] = [...w.wife];
-      // Restore default runs/str into state (will be overridden by calendar_state if saved)
-      if (w.runs) state[wi].runs = [...w.runs];
-      if (w.str)  state[wi].str  = [...w.str];
+    if (wi >= WEEKS.length) return;
+    WEEKS[wi].phase  = w.phase  ?? WEEKS[wi].phase;
+    WEEKS[wi].num    = w.num    ?? WEEKS[wi].num;
+    WEEKS[wi].dates  = w.dates  ?? WEEKS[wi].dates;
+    WEEKS[wi].km     = w.km     ?? WEEKS[wi].km;
+    WEEKS[wi].moved  = w.moved  ?? WEEKS[wi].moved;
+
+    // Update WEEK_MONDAYS from computed monday if available
+    if (w._monday) {
+      const m = w._monday;
+      WEEK_MONDAYS[wi] = [m.getFullYear(), m.getMonth()+1, m.getDate()];
     }
+
+    if (w.wife) wifeState[wi] = [...w.wife];
+    if (w.runs) state[wi].runs = [...w.runs];
+    if (w.str)  state[wi].str  = [...w.str];
   });
+
+  console.log('Plan applied:', plan.length, 'weeks from', loaded.source);
 }
 
 // ── LOADING SCREEN ─────────────────────────────────────────────────────────
