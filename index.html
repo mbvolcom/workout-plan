@@ -1690,9 +1690,9 @@ async function fetchWeather() {
       const localDateStr = `${localDate.getUTCFullYear()}-${String(localDate.getUTCMonth()+1).padStart(2,'0')}-${String(localDate.getUTCDate()).padStart(2,'0')}`;
       if (!weatherData[localDateStr]) weatherData[localDateStr] = [];
 
-      const instant = entry.properties?.instant?.details || {};
-      const next1h  = entry.properties?.next_1_hours  || {};
-      const next6h  = entry.properties?.next_6_hours  || {};
+      const instant = entry.data?.instant?.details || {};
+      const next1h  = entry.data?.next_1_hours  || {};
+      const next6h  = entry.data?.next_6_hours  || {};
 
       weatherData[localDateStr].push({
         hour:   localHour,
