@@ -55,13 +55,31 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
-  min-width: 80px;
+  gap: 0;
 }
-#now-weather .nw-icon { font-size: 28px; line-height: 1; text-align: right; }
-#now-weather .nw-temp { font-size: 20px; font-weight: 700; color: var(--text); text-align: right; }
-#now-weather .nw-details { font-size: 10px; color: var(--muted); text-align: right; }
-#now-weather .nw-label { font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--border-mid); text-align: right; }
+#now-weather .nw-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+#now-weather .nw-label {
+  font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--border-mid);
+}
+#now-weather .nw-icon { font-size: 22px; line-height: 1; }
+#now-weather .nw-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+#now-weather .nw-temp {
+  font-size: 22px; font-weight: 700; color: var(--text); line-height: 1;
+}
+#now-weather .nw-details {
+  font-size: 10px; color: var(--muted); letter-spacing: 0.04em;
+  margin-top: 2px; text-align: right;
+}
 #countdown-banner { display:flex; align-items:baseline; gap:0; }
 .cd-label { display:none; }
 .cd-timer { display:flex; align-items:baseline; gap:2px; }
@@ -1703,9 +1721,13 @@ function renderNowWeather() {
   if (!entry) { el.innerHTML = ''; return; }
 
   el.innerHTML = `
-    <div class="nw-label">Now · Stavanger</div>
-    <div class="nw-icon">${yrSymbol(entry.symbol)}</div>
-    <div class="nw-temp">${entry.temp != null ? Math.round(entry.temp)+'°C' : '—'}</div>
+    <div class="nw-top">
+      <span class="nw-label">Now · Stavanger</span>
+      <span class="nw-icon">${yrSymbol(entry.symbol)}</span>
+    </div>
+    <div class="nw-main">
+      <span class="nw-temp">${entry.temp != null ? Math.round(entry.temp)+'°C' : '—'}</span>
+    </div>
     <div class="nw-details">${entry.wind != null ? entry.wind+' m/s' : ''} ${yrDesc(entry.symbol)}</div>`;
 }
 
