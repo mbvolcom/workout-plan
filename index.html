@@ -1705,8 +1705,12 @@ async function fetchWeather() {
 }
 
 function getIntervalWeather(dateStr, startH, endH) {
-  const entries = (weatherData[dateStr] || []).filter(e => e.hour >= startH && e.hour < endH);
-  if (!entries.length) return null;
+  const all = weatherData[dateStr] || [];
+  const entries = all.filter(e => e.hour >= startH && e.hour < endH);
+  if (!entries.length) {
+    console.log(`No entries for ${dateStr} ${startH}-${endH}, available hours:`, all.map(e=>e.hour));
+    return null;
+  }
   const avg = arr => arr.reduce((a,b) => a+b, 0) / arr.length;
   const temps = entries.map(e => e.temp).filter(v => v != null);
   const winds = entries.map(e => e.wind).filter(v => v != null);
