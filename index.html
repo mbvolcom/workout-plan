@@ -244,7 +244,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #weather-slots { display:flex; flex-direction:column; gap:10px; }
 .weather-slot {
   background:var(--bg); border-radius:10px; padding:12px 14px;
-  display:flex; align-items:center; gap:14px;
+  display:flex; flex-direction:column; gap:0;
 }
 .weather-slot-time {
   font-size:10px; font-weight:600; color:var(--muted);
@@ -1679,23 +1679,26 @@ async function fetchWeather() {
     if (!timeseries) return;
 
     weatherData = {};
-    if (timeseries.length) console.log('Sample entry:', JSON.stringify(timeseries[0], null, 2));
+    if (timeseries.length) {
+      const s = timeseries[0];
+      console.log('yr.no sample:', JSON.stringify(s));
+    }
     timeseries.forEach(entry => {
       const dt = new Date(entry.time);
-      // Convert to Norwegian local time (UTC+2 in summer)
-      const localHour = (dt.getUTCHours() + 2) % 24;
-      const dateStr = localHour < 2
-        ? new Date(dt.getTime() + 2*3600000).toISOString().slice(0,10) // past midnight local
-        : dt.toISOString().slice(0,10);
-      const localDate = new Date(dt.getTime() + 2*3600000);
+      const localDate = new Date(dt.getTime() + 2*3600000); // UTC+2
+      const localHour = localDate.getUTCHours();
       const localDateStr = `${localDate.getUTCFullYear()}-${String(localDate.getUTCMonth()+1).padStart(2,'0')}-${String(localDate.getUTCDate()).padStart(2,'0')}`;
       if (!weatherData[localDateStr]) weatherData[localDateStr] = [];
+
+      const instant = entry.properties?.instant?.details || {};
+      const next1h  = entry.properties?.next_1_hours  || {};
+      const next6h  = entry.properties?.next_6_hours  || {};
+
       weatherData[localDateStr].push({
-        hour: localHour,
-        temp: entry.properties?.instant?.details?.air_temperature,
-        wind: entry.properties?.instant?.details?.wind_speed,
-        symbol: entry.properties?.next_1_hours?.summary?.symbol_code
-               || entry.properties?.next_6_hours?.summary?.symbol_code,
+        hour:   localHour,
+        temp:   instant.air_temperature   ?? null,
+        wind:   instant.wind_speed        ?? null,
+        symbol: next1h.summary?.symbol_code || next6h.summary?.symbol_code || null,
       });
     });
 
@@ -1759,25 +1762,63 @@ function openWeather(dateStr) {
   const slots = document.getElementById('weather-slots');
   slots.innerHTML = '';
 
+  const dayEntries = weatherData[dateStr] || [];
+  console.log('Entries for', dateStr, ':', dayEntries);
+
   INTERVALS.forEach(({ label, start, end }) => {
-    const w = getIntervalWeather(dateStr, start, end);
+    const entries = dayEntries.filter(e => e.hour >= start && e.hour < end);
+    const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    const temps = entries.map(e=>e.temp).filter(v=>v!=null);
+    const winds = entries.map(e=>e.wind).filter(v=>v!=null);
+    const symbol = entries.find(e=>e.symbol)?.symbol || null;
+    const avgTemp = temps.length ? Math.round(avg(temps)) : null;
+    const avgWind = winds.length ? Math.round(avg(winds)*10)/10 : null;
+
     const slot = document.createElement('div');
     slot.className = 'weather-slot';
-    if (w) {
-      slot.innerHTML = `
-        <div class="weather-slot-time">${label}</div>
-        <div class="weather-slot-icon">${yrSymbol(w.symbol)}</div>
-        <div class="weather-slot-info">
-          <div class="weather-slot-temp">${w.temp != null ? w.temp + '°C' : '—'}</div>
-          <div class="weather-slot-wind">${w.wind != null ? w.wind + ' m/s' : '—'}</div>
-          <div class="weather-slot-desc">${yrDesc(w.symbol)}</div>
-        </div>`;
-    } else {
-      slot.innerHTML = `
-        <div class="weather-slot-time">${label}</div>
-        <div class="weather-slot-icon">—</div>
-        <div class="weather-slot-info"><div class="weather-slot-desc" style="color:var(--muted)">No data</div></div>`;
+
+    const summary = document.createElement('div');
+    summary.style.cssText = 'display:flex;align-items:center;gap:14px;width:100%;cursor:pointer;';
+    summary.innerHTML = `
+      <div class="weather-slot-time">${label}</div>
+      <div class="weather-slot-icon">${yrSymbol(symbol)}</div>
+      <div class="weather-slot-info">
+        <div class="weather-slot-temp">${avgTemp != null ? avgTemp+'°C' : '—'}</div>
+        <div class="weather-slot-wind">${avgWind != null ? avgWind+' m/s' : '—'}</div>
+        <div class="weather-slot-desc">${yrDesc(symbol)}</div>
+      </div>
+      <div style="margin-left:auto;font-size:11px;color:var(--muted);">▸</div>`;
+    slot.appendChild(summary);
+
+    // Hourly detail (hidden by default)
+    const hourly = document.createElement('div');
+    hourly.style.cssText = 'display:none;margin-top:10px;border-top:0.5px solid var(--border);padding-top:8px;width:100%;';
+
+    entries.forEach(e => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:3px 0;font-size:12px;';
+      row.innerHTML = `
+        <span style="color:var(--muted);min-width:32px;">${String(e.hour).padStart(2,'0')}:00</span>
+        <span>${yrSymbol(e.symbol)}</span>
+        <span style="font-weight:600;">${e.temp != null ? Math.round(e.temp)+'°C' : '—'}</span>
+        <span style="color:var(--muted);">${e.wind != null ? e.wind+' m/s' : '—'}</span>
+        <span style="color:var(--muted);font-size:10px;">${yrDesc(e.symbol)}</span>`;
+      hourly.appendChild(row);
+    });
+
+    if (!entries.length) {
+      hourly.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0;">No data for this interval</div>';
     }
+
+    slot.appendChild(hourly);
+
+    let expanded = false;
+    summary.addEventListener('click', () => {
+      expanded = !expanded;
+      hourly.style.display = expanded ? 'block' : 'none';
+      summary.querySelector('div:last-child').textContent = expanded ? '▾' : '▸';
+    });
+
     slots.appendChild(slot);
   });
 
