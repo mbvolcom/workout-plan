@@ -50,7 +50,18 @@ body {
 h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .subtitle { font-size:12px; color:var(--muted); margin-bottom:16px; }
 
-/* COUNTDOWN */
+/* NOW WEATHER */
+#now-weather {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 80px;
+}
+#now-weather .nw-icon { font-size: 28px; line-height: 1; text-align: right; }
+#now-weather .nw-temp { font-size: 20px; font-weight: 700; color: var(--text); text-align: right; }
+#now-weather .nw-details { font-size: 10px; color: var(--muted); text-align: right; }
+#now-weather .nw-label { font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--border-mid); text-align: right; }
 #countdown-banner { display:flex; align-items:baseline; gap:0; }
 .cd-label { display:none; }
 .cd-timer { display:flex; align-items:baseline; gap:2px; }
@@ -365,7 +376,9 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 
 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;">
   <h1>Training Calendar 2026</h1>
-  <div id="countdown-banner">
+  <div style="display:flex;align-items:flex-start;gap:16px;">
+    <div id="now-weather"></div>
+    <div id="countdown-banner">
     <div class="cd-label">Stavanger Marathon</div>
     <div class="cd-timer">
       <div class="cd-unit"><span id="cd-weeks">--</span><span class="cd-lbl">weeks</span></div>
@@ -376,6 +389,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div class="cd-sep">:</div>
       <div class="cd-unit"><span id="cd-mins">--</span><span class="cd-lbl">mins</span></div>
     </div>
+  </div>
   </div>
 </div>
 <p class="subtitle">Stavanger Marathon · 29 August · Bjørnson family schedule</p>
@@ -1670,6 +1684,31 @@ function yrDesc(code) {
   return map[c] || code;
 }
 
+function renderNowWeather() {
+  const el = document.getElementById('now-weather');
+  if (!el) return;
+
+  // Get current local time in Norway (UTC+2)
+  const now = new Date(Date.now() + 2*3600000);
+  const dateStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}-${String(now.getUTCDate()).padStart(2,'0')}`;
+  const currentHour = now.getUTCHours();
+
+  const entries = weatherData[dateStr] || [];
+  // Find closest hour
+  const entry = entries.reduce((best, e) => {
+    if (!best) return e;
+    return Math.abs(e.hour - currentHour) < Math.abs(best.hour - currentHour) ? e : best;
+  }, null);
+
+  if (!entry) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div class="nw-label">Now · Stavanger</div>
+    <div class="nw-icon">${yrSymbol(entry.symbol)}</div>
+    <div class="nw-temp">${entry.temp != null ? Math.round(entry.temp)+'°C' : '—'}</div>
+    <div class="nw-details">${entry.wind != null ? entry.wind+' m/s' : ''} ${yrDesc(entry.symbol)}</div>`;
+}
+
 async function fetchWeather() {
   try {
     const res = await fetch(YR_FN);
@@ -1704,6 +1743,7 @@ async function fetchWeather() {
 
     // Re-render current + next week to show weather dots
     setTimeout(addWeatherDots, 500);
+    renderNowWeather();
     console.log('Weather loaded for', Object.keys(weatherData).length, 'days');
   } catch(e) { console.warn('Weather fetch failed:', e); }
 }
