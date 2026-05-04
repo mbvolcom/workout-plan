@@ -1298,7 +1298,7 @@ function renderWeek(wi) {
   container.innerHTML = '';
   const isCollapsed = collapsedWeeks.has(wi);
 
-  ['date','wife','kinder','runs','str','cross','gcal'].forEach((row, ri) => {
+  ['date','gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + ((ri > 0 && isCollapsed) ? ' collapsed-row' : '');
 
@@ -1340,11 +1340,19 @@ function renderWeek(wi) {
         DAYS.forEach((_, di) => {
           const cell = document.createElement('div');
           cell.className = 'drop-zone gcal-cell';
-          // Pills added later by addGCalPills()
+          cell.dataset.wi = wi;
+          cell.dataset.di = di;
+          const dateStr = getDateStr(wi, di);
+          const events = gcalEvents[dateStr] || [];
+          const pill = document.createElement('span');
+          pill.className = 'pill gcal-pill' + (events.length ? ' has-events' : '');
+          pill.textContent = events.length ? `📅 ${events.length} event${events.length>1?'s':''}` : '📅';
+          pill.addEventListener('click', e => { e.stopPropagation(); openGCal(dateStr); });
+          cell.appendChild(pill);
           rowEl.appendChild(cell);
         });
         container.appendChild(rowEl);
-        return; // skip normal day rendering below
+        return;
       }
 
       DAYS.forEach((_, di) => {
@@ -1826,7 +1834,7 @@ async function fetchStravaActivities() {
     // Re-render all weeks to show overlays
     WEEKS.forEach((_, wi) => renderWeek(wi));
 
-    // Re-add weather dots and GCal pills after re-render
+    // Re-add weather dots after re-render
     if (Object.keys(weatherData).length) addWeatherDots();
     if (Object.keys(gcalEvents).length) addGCalPills();
 
@@ -3091,24 +3099,10 @@ function getDateStr(wi, di) {
 }
 
 function addGCalPills() {
-  WEEK_MONDAYS.forEach(([y,m,d], wi) => {
-    const wrap = document.getElementById('week-' + wi);
-    if (!wrap) return;
-    // Find the gcal row in this week
-    const gcalRow = wrap.querySelector('.gcal-row');
-    if (!gcalRow) return;
-    const cells = gcalRow.querySelectorAll('.gcal-cell');
-    cells.forEach((cell, di) => {
-      const dateStr = getDateStr(wi, di);
-      const events = gcalEvents[dateStr] || [];
-      cell.innerHTML = '';
-      const pill = document.createElement('span');
-      pill.className = 'pill gcal-pill' + (events.length ? ' has-events' : '');
-      pill.textContent = events.length ? `📅 ${events.length} event${events.length>1?'s':''}` : '📅';
-      pill.addEventListener('click', e => { e.stopPropagation(); openGCal(dateStr); });
-      cell.appendChild(pill);
-    });
-  });
+  // Re-render all weeks so gcal row picks up fresh event data
+  WEEKS.forEach((_, wi) => renderWeek(wi));
+  // Re-add weather dots since re-render clears them
+  if (Object.keys(weatherData).length) setTimeout(addWeatherDots, 100);
 }
 
 // GCal popup
