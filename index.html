@@ -120,10 +120,30 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .gcal-event-name { font-size:13px; color:var(--text); line-height:1.4; }
 
 /* VIEW SWITCHER */
-.view-switcher { display:flex; gap:2px; background:var(--bg); border:1px solid var(--border-mid); border-radius:8px; padding:2px; margin-left:auto; }
-.view-btn { background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500; color:var(--muted); cursor:pointer; border-radius:6px; font-family:inherit; transition:background 0.15s,color 0.15s; white-space:nowrap; }
+.view-switcher { display:flex; gap:2px; background:var(--bg); border:1px solid var(--border-mid); border-radius:8px; padding:2px; margin-left:auto; align-items:center; }
+.view-btn { background:none; border:none; padding:5px 10px; font-size:12px; font-weight:500; color:var(--muted); cursor:pointer; border-radius:6px; font-family:inherit; transition:background 0.15s,color 0.15s; white-space:nowrap; }
 .view-btn.active { background:var(--text); color:var(--bg); }
 .view-btn:hover:not(.active) { background:var(--border); color:var(--text); }
+.view-divider { width:1px; height:18px; background:var(--border-mid); margin:0 2px; }
+
+/* MONTH VIEW */
+.mv-month-block { margin-bottom: 28px; }
+.mv-month-header {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 10px 0 8px; border-bottom: 2px solid var(--border-mid);
+  margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;
+}
+.mv-month-header span { font-size:11px; font-weight:400; color:var(--muted); text-transform:none; letter-spacing:0; }
+.mv-week-row { margin-bottom: 4px; }
+.mv-show-past {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-bottom: 16px; padding: 7px 12px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: 6px; font-size: 11px; color: var(--muted);
+  cursor: pointer; font-family: inherit;
+}
+.mv-show-past:hover { background: var(--bg); }
 
 /* WEEK VIEW */
 #week-view { max-width:900px; }
@@ -645,34 +665,18 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   <button class="export-btn btn-save"      onclick="saveState()">💾 Save changes</button>
   <button class="export-btn btn-edit-wife" id="edit-wife-btn" onclick="toggleWifeEdit()">✏️ Edit Work</button>
   <a class="export-btn btn-nav" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
-  <a class="export-btn btn-nav" href="https://mbvolcom.github.io/Strength/" target="_blank">💪 Strength</a>
   <button class="strava-connect-btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
   <button class="export-btn btn-nav" onclick="openLibModal().catch(console.error)">📚 Library</button>
   <div class="view-switcher">
-    <button class="view-btn active" id="view-btn-calendar" onclick="setView('calendar')">☰ Calendar</button>
+    <button class="view-btn" id="view-btn-month" onclick="setCalMode('month')">📅 Month</button>
+    <button class="view-btn active" id="view-btn-race" onclick="setCalMode('race')">🏃 Race</button>
+    <span class="view-divider"></span>
+    <button class="view-btn" id="view-btn-calendar" onclick="setView('calendar')">☰ All</button>
     <button class="view-btn" id="view-btn-week" onclick="setView('week')">📆 Week</button>
     <button class="view-btn" id="view-btn-day" onclick="setView('day')">📋 Day</button>
   </div>
 </div>
 
-<div class="legend">
-  <div class="leg"><span class="leg-dot" style="background:#E1F5EE;border:0.5px solid #5DCAA5"></span>Long run</div>
-  <div class="leg"><span class="leg-dot" style="background:#E6F1FB;border:0.5px solid #85B7EB"></span>Easy run</div>
-  <div class="leg"><span class="leg-dot" style="background:#cfe3f7;border:0.5px solid #85B7EB"></span>Easy (PM)</div>
-  <div class="leg"><span class="leg-dot" style="background:#FAEEDA;border:0.5px solid #EF9F27"></span>Quality run</div>
-  <div class="leg"><span class="leg-dot" style="background:#B5D4F4;border:0.5px solid #378ADD"></span>Kindergarten run</div>
-  <div class="leg"><span class="leg-dot" style="background:#EEEDFE;border:0.5px solid #AFA9EC"></span>Upper strength</div>
-  <div class="leg"><span class="leg-dot" style="background:#FBEAF0;border:0.5px solid #ED93B1"></span>Lower strength</div>
-  <div class="leg"><span class="leg-dot" style="background:#F5C4B3;border:0.5px solid #F0997B"></span>Wife: early shift</div>
-  <div class="leg"><span class="leg-dot" style="background:#F4C0D1;border:0.5px solid #ED93B1"></span>Wife: evening shift</div>
-  <div class="leg"><span class="leg-dot" style="background:#EAF3DE;border:0.5px solid #C0DD97"></span>Wife: off (F1)</div>
-  <div class="leg"><span class="leg-dot" style="background:#F1EFE8;border:0.5px solid #B4B2A9"></span>Wife: other</div>
-  <div class="leg"><span class="leg-dot" style="background:#FCEBEB;border:0.5px solid #F09595"></span>Long run → Fri</div>
-  <div class="leg"><span class="leg-dot" style="background:#EEF6F0;border:0.5px solid #7DC99A"></span>Cross-training</div>
-  <div class="leg"><span class="leg-dot" style="background:#E8F4FF;border:0.5px solid #5aaee8"></span>Deliver</div>
-  <div class="leg"><span class="leg-dot" style="background:#F3E8FF;border:0.5px solid #B47FE0"></span>Pick up</div>
-  <div class="leg"><span class="leg-dot" style="background:#FFE8F0;border:0.5px solid #E07FAA"></span>Deliver & pick up</div>
-</div>
 
 <div id="ctx-menu">
   <div class="ctx-item danger" id="ctx-delete">✕ Delete session</div>
@@ -857,6 +861,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 </div>
 
 <div id="cal"></div>
+<div id="month-cal" style="display:none;"></div>
 <div id="week-view" style="display:none;"></div>
 <div id="day-view" style="display:none;"></div>
 
@@ -3334,6 +3339,270 @@ function openGCal(dateStr) {
   gcalOverlay.classList.add('open');
 }
 
+// ── CALENDAR MODE (Month vs Race) ───────────────────────────────────────────
+let calMode = 'race'; // 'race' or 'month'
+let showPastWeeks = false;
+
+function setCalMode(mode) {
+  calMode = mode;
+  document.getElementById('view-btn-month').classList.toggle('active', mode === 'month');
+  document.getElementById('view-btn-race').classList.toggle('active',  mode === 'race');
+
+  if (mode === 'month') {
+    document.getElementById('cal').style.display       = 'none';
+    document.getElementById('month-cal').style.display = '';
+    document.getElementById('week-view').style.display = 'none';
+    document.getElementById('day-view').style.display  = 'none';
+    // Reset view-btn states — month mode doesn't use All/Week/Day
+    document.querySelectorAll('.view-btn[id^="view-btn-"]').forEach(b => {
+      if (!['view-btn-month','view-btn-race'].includes(b.id)) b.classList.remove('active');
+    });
+    buildMonthView();
+  } else {
+    document.getElementById('month-cal').style.display = 'none';
+    // Restore race/calendar view
+    setView('calendar');
+    document.getElementById('view-btn-calendar').classList.add('active');
+  }
+}
+
+function getISOWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function buildMonthView() {
+  const container = document.getElementById('month-cal');
+  container.innerHTML = '';
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Show past button
+  const pastBtn = document.createElement('button');
+  pastBtn.className = 'mv-show-past';
+  pastBtn.innerHTML = showPastWeeks ? '⬆ Hide past weeks' : '📜 Show past weeks';
+  pastBtn.addEventListener('click', () => { showPastWeeks = !showPastWeeks; buildMonthView(); });
+  container.appendChild(pastBtn);
+
+  // Build a map: monthKey → array of { wi, days: [{di, date}] }
+  // Each week can appear in multiple months (split weeks)
+  const monthMap = {}; // "YYYY-MM" → [{wi, weekNum, days:[{di,date}]}]
+
+  WEEK_MONDAYS.forEach(([y,m,d], wi) => {
+    DAYS.forEach((_, di) => {
+      const dt = new Date(y, m-1, d+di);
+      const isPast = dt < today;
+      if (isPast && !showPastWeeks) return;
+
+      const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+      if (!monthMap[mk]) monthMap[mk] = [];
+
+      // Find or create entry for this wi in this month
+      let entry = monthMap[mk].find(e => e.wi === wi);
+      if (!entry) {
+        entry = { wi, weekNum: getISOWeekNumber(new Date(y,m-1,d)), days: Array(7).fill(null) };
+        monthMap[mk].push(entry);
+      }
+      entry.days[di] = dt;
+    });
+  });
+
+  // Sort month keys
+  const monthKeys = Object.keys(monthMap).sort();
+  if (!monthKeys.length) {
+    container.innerHTML += '<div style="color:var(--muted);font-size:13px;padding:20px 0;">No upcoming weeks found.</div>';
+    return;
+  }
+
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  monthKeys.forEach(mk => {
+    const [yr, mo] = mk.split('-').map(Number);
+    const entries = monthMap[mk];
+
+    const block = document.createElement('div');
+    block.className = 'mv-month-block';
+
+    // Month header
+    const hdr = document.createElement('div');
+    hdr.className = 'mv-month-header';
+    hdr.innerHTML = `<span>${MONTH_NAMES[mo-1]} ${yr}</span><span>${entries.length} week${entries.length!==1?'s':''}</span>`;
+    block.appendChild(hdr);
+
+    // Column headers: Wk | Mon Tue Wed Thu Fri Sat Sun
+    const colHdr = document.createElement('div');
+    colHdr.className = 'grid-header';
+    colHdr.style.cssText = 'grid-template-columns:88px 46px repeat(7,minmax(76px,1fr));';
+    ['','Wk',...DAYS].forEach((d,i) => {
+      const h = document.createElement('div');
+      h.className = 'col-head';
+      h.textContent = d;
+      colHdr.appendChild(h);
+    });
+    block.appendChild(colHdr);
+
+    // Each week row
+    entries.forEach(entry => {
+      // Create a temporary override: for this week, only render days that fall in this month
+      // We do this by temporarily patching WEEK_MONDAYS and re-rendering with blanks for out-of-month days
+      const wrapId = `mv-week-${mk}-${entry.wi}`;
+      const wrap = document.createElement('div');
+      wrap.id = wrapId;
+      wrap.className = 'week-wrap mv-week-row';
+      block.appendChild(wrap);
+
+      renderWeekForMonth(entry.wi, entry.days, entry.weekNum, mk, wrap);
+    });
+
+    container.appendChild(block);
+  });
+}
+
+function renderWeekForMonth(wi, days, weekNum, mk, container) {
+  // days is array of 7: Date or null (null = not in this month, show blank)
+  const w = WEEKS[wi], s = state[wi];
+  const isCollapsed = collapsedWeeks.has(wi);
+
+  container.innerHTML = '';
+
+  // Date row with toggle — shows week number instead of plan week name
+  const dateRow = document.createElement('div');
+  dateRow.className = 'week-row date-num-row';
+  const meta = document.createElement('div');
+  meta.className = 'week-meta';
+  const btn = document.createElement('button');
+  btn.className = 'week-toggle';
+  btn.textContent = (isCollapsed ? '＋' : '－') + ' Wk ' + weekNum;
+  btn.addEventListener('click', () => {
+    if (collapsedWeeks.has(wi)) collapsedWeeks.delete(wi);
+    else collapsedWeeks.add(wi);
+    // Re-render this week in month view
+    const wrap = container;
+    renderWeekForMonth(wi, days, weekNum, mk, wrap);
+    // Also update main calendar if visible
+    renderWeek(wi);
+  });
+  meta.appendChild(btn);
+  dateRow.appendChild(meta);
+  dateRow.appendChild(document.createElement('div'));
+  days.forEach((dt, di) => {
+    const c = document.createElement('div');
+    c.className = 'date-num-cell';
+    c.textContent = dt ? dt.getDate() : '';
+    dateRow.appendChild(c);
+  });
+  container.appendChild(dateRow);
+
+  // Summary
+  const sum = weekSummary(wi);
+  const sumWrap = document.createElement('div');
+  sumWrap.className = 'week-summary-wrap' + (isCollapsed ? ' collapsed-row' : '');
+  const sumEl = document.createElement('div'); sumEl.className = 'week-summary';
+  const s1 = document.createElement('div'); s1.className='week-summary-row';
+  s1.innerHTML = `<span class="icon">📋</span>`+(sum.done>0?`<span class="sum-val">${sum.done}</span><span class="sum-planned">/${sum.planned}</span>`:`<span class="sum-planned">0/${sum.planned}</span>`);
+  sumEl.appendChild(s1);
+  if (sum.targetKm > 0) {
+    const pct = Math.min(100, Math.round((sum.totalKm/sum.targetKm)*100));
+    const bar = '█'.repeat(Math.round(pct/12.5)) + '░'.repeat(8-Math.round(pct/12.5));
+    const s2 = document.createElement('div'); s2.className='week-summary-row';
+    s2.innerHTML = `<span class="icon">📍</span><span class="${sum.totalKm>0?'sum-val':'sum-dash'}">${sum.totalKm>0?sum.totalKm.toFixed(1):0}</span><span class="sum-planned">/${sum.targetKm}km</span>`;
+    const s2b = document.createElement('div'); s2b.className='week-summary-row'; s2b.style.cssText='font-size:8px;letter-spacing:-0.5px;padding-left:14px;';
+    s2b.innerHTML=`<span style="color:${sum.totalKm>0?'#FC4C02':'var(--border-mid)'};font-family:monospace;">${bar}</span><span class="sum-planned" style="margin-left:3px;">${pct}%</span>`;
+    sumEl.appendChild(s2); sumEl.appendChild(s2b);
+  } else {
+    const s2 = document.createElement('div'); s2.className='week-summary-row';
+    s2.innerHTML = `<span class="icon">📍</span>`+(sum.totalKm>0?`<span class="sum-val">${sum.totalKm.toFixed(1)} km</span>`:`<span class="sum-dash">— km</span>`);
+    sumEl.appendChild(s2);
+  }
+  const s3 = document.createElement('div'); s3.className='week-summary-row';
+  s3.innerHTML = `<span class="icon">⏱</span>`+(sum.totalSecs>0?`<span class="sum-val">${formatDuration(sum.totalSecs)}</span>`:`<span class="sum-dash">—</span>`);
+  sumEl.appendChild(s3);
+  sumWrap.appendChild(sumEl);
+  container.appendChild(sumWrap);
+
+  // All rows — blank out days not in this month
+  ['gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'week-row' + (isCollapsed ? ' collapsed-row' : '');
+    rowEl.appendChild(document.createElement('div')); // meta spacer
+
+    const lbl = document.createElement('div');
+    lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
+    lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':'Cross';
+    rowEl.appendChild(lbl);
+
+    days.forEach((dt, di) => {
+      if (!dt) {
+        // Out of month — blank cell
+        const blank = document.createElement('div');
+        blank.className = 'drop-zone';
+        blank.style.background = 'var(--bg)';
+        rowEl.appendChild(blank);
+        return;
+      }
+
+      if (row === 'gcal') {
+        const cell = document.createElement('div');
+        cell.className = 'drop-zone gcal-cell';
+        const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+        const events = gcalEvents[dateStr] || [];
+        const pill = document.createElement('span');
+        pill.className = 'pill gcal-pill' + (events.length ? ' has-events' : '');
+        pill.textContent = events.length ? `📅 ${events.length}` : '📅';
+        pill.addEventListener('click', e => { e.stopPropagation(); openGCal(dateStr); });
+        cell.appendChild(pill);
+        rowEl.appendChild(cell);
+      } else if (row === 'wife') {
+        const zone = makeDropZone(wi, 'wife', di, true);
+        const el = wifePillEl(wifeState[wi][di], wi, di);
+        if (el) zone.appendChild(el);
+        rowEl.appendChild(zone);
+      } else if (row === 'kinder') {
+        const zone = document.createElement('div');
+        zone.className = 'drop-zone';
+        const val = getKinder(wi, di);
+        if (val && di < 5) {
+          const p = parse(val);
+          if (p && p.cls !== 'kinder-blank') {
+            const el = document.createElement('span');
+            el.className = 'pill ' + p.cls;
+            el.textContent = p.label;
+            zone.appendChild(el);
+          }
+        }
+        rowEl.appendChild(zone);
+      } else {
+        const zone = makeDropZone(wi, row, di, false);
+        const el = pillEl(s[row] ? s[row][di] : null, wi, row, di);
+        if (el) {
+          if (row === 'runs') {
+            const targetKm = runTargets[`${wi}-${di}`];
+            if (targetKm != null) {
+              el.classList.add('has-strava');
+              const tSub = document.createElement('span');
+              tSub.className = 'run-target-sub';
+              tSub.textContent = `🎯 ${targetKm} km`;
+              el.appendChild(tSub);
+            }
+            const acts = getStravaForDay(wi, di, 'runs');
+            if (acts) { el.classList.add('has-strava'); acts.forEach(a => { const sub=document.createElement('span'); sub.className='strava-sub'; sub.textContent=`⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}`; el.appendChild(sub); }); }
+            el.style.cursor='pointer';
+            el.addEventListener('click', e => { e.stopPropagation(); const p=parse(s.runs[di]); openRunPanel(p?p.label:'',wi,di); });
+          } else if (row === 'str') {
+            el.style.cursor='pointer';
+            el.addEventListener('click', e => { e.stopPropagation(); const p=parse(s.str[di]); openStrPanel(p?p.label:'',wi,di); });
+          }
+          zone.appendChild(el);
+        }
+        rowEl.appendChild(zone);
+      }
+    });
+    container.appendChild(rowEl);
+  });
+}
+
 // ── VIEWS ──────────────────────────────────────────────────────────────────
 let currentView = 'calendar';
 let weekViewIndex = 0; // which week is shown in week view
@@ -3341,11 +3610,14 @@ let dayViewDate = new Date(); // which day is shown in day view
 
 function setView(view) {
   currentView = view;
-  document.getElementById('cal').style.display        = view === 'calendar' ? '' : 'none';
+  document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
+  document.getElementById('month-cal').style.display  = calMode === 'month' ? '' : 'none';
   document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
   document.getElementById('day-view').style.display   = view === 'day'      ? '' : 'none';
-  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('view-btn-' + view).classList.add('active');
+  ['calendar','week','day'].forEach(v => {
+    const b = document.getElementById('view-btn-' + v);
+    if (b) b.classList.toggle('active', v === view && calMode !== 'month');
+  });
 
   if (view === 'week') {
     // Jump to current week
