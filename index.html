@@ -204,6 +204,44 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .dv-weather-slot .icon { font-size:20px; }
 .dv-weather-slot .temp { font-size:14px; font-weight:700; color:var(--text); }
 .dv-weather-slot .wind { font-size:10px; color:var(--muted); }
+
+/* PLAN DROPDOWN */
+#plan-dropdown { display:none; position:fixed; z-index:9999; background:var(--surface); border:0.5px solid var(--border-mid); border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.15); min-width:220px; padding:6px 0; font-size:13px; }
+#plan-dropdown.open { display:block; }
+.plan-drop-item { padding:9px 16px; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.plan-drop-item:hover { background:var(--bg); }
+.plan-drop-item.active-plan { font-weight:700; }
+.plan-drop-item.archived { color:var(--muted); font-style:italic; }
+.plan-drop-item .plan-drop-date { font-size:10px; color:var(--muted); flex-shrink:0; }
+.plan-dropdown-divider { border-top:0.5px solid var(--border); margin:4px 0; }
+.plan-drop-label { padding:4px 16px; font-size:10px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); }
+
+/* IMPORT MODAL */
+#import-overlay { display:none; position:fixed; inset:0; z-index:12000; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; }
+#import-overlay.open { display:flex; }
+#import-modal { background:var(--surface); border-radius:14px; width:100%; max-width:500px; max-height:88vh; overflow-y:auto; padding:20px; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
+#import-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+#import-title { font-size:15px; font-weight:700; color:var(--text); }
+#import-close { background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:0; }
+#import-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px; }
+.import-tab-btn { background:none; border:none; padding:8px 18px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; font-family:inherit; transition:color 0.2s,border-color 0.2s; }
+.import-tab-btn.active { color:var(--text); border-bottom-color:var(--text); }
+.import-tab-panel { display:none; }
+.import-tab-panel.active { display:block; }
+.import-section-title { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.import-hint { font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.5; }
+.import-action-btn { background:var(--text); color:var(--bg); border:none; border-radius:7px; padding:9px 16px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; width:100%; text-align:left; margin-bottom:4px; }
+.import-action-btn:hover { opacity:0.85; }
+.import-upload-area { border:1.5px dashed var(--border-mid); border-radius:10px; padding:20px; text-align:center; cursor:pointer; transition:border-color 0.15s; margin-top:6px; }
+.import-upload-area:hover { border-color:var(--text); }
+.upload-icon { font-size:28px; margin-bottom:6px; }
+.upload-label { font-size:13px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.upload-sub { font-size:11px; color:var(--muted); }
+.import-preview-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:6px; }
+.import-preview-table th { text-align:left; padding:4px 8px; font-size:10px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:0.05em; }
+.import-preview-table td { padding:5px 8px; border-bottom:0.5px solid var(--border); color:var(--text); }
+.import-preview-table tr:last-child td { border-bottom:none; }
+
 .plan-banner {
   padding: 18px 0 8px;
   border-top: 2px solid var(--border-mid);
@@ -667,13 +705,90 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   <a class="export-btn btn-nav" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
   <button class="strava-connect-btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
   <button class="export-btn btn-nav" onclick="openLibModal().catch(console.error)">📚 Library</button>
+  <button class="export-btn btn-nav" onclick="openImportModal()">⬆ Import</button>
   <div class="view-switcher">
     <button class="view-btn" id="view-btn-month" onclick="setCalMode('month')">📅 Month</button>
-    <button class="view-btn active" id="view-btn-race" onclick="setCalMode('race')">🏃 Race</button>
+    <button class="view-btn active" id="view-btn-race" id="race-mode-btn"
+      onclick="setCalMode('race')"
+      oncontextmenu="showPlanDropdown(event)"
+      ontouchstart="startPlanLongPress(event)">🏃 Race</button>
     <span class="view-divider"></span>
     <button class="view-btn" id="view-btn-calendar" onclick="setView('calendar')">☰ All</button>
     <button class="view-btn" id="view-btn-week" onclick="setView('week')">📆 Week</button>
     <button class="view-btn" id="view-btn-day" onclick="setView('day')">📋 Day</button>
+  </div>
+</div>
+
+<!-- PLAN DROPDOWN -->
+<div id="plan-dropdown">
+  <div id="plan-dropdown-active"></div>
+  <div class="plan-dropdown-divider" id="plan-dropdown-divider" style="display:none;"></div>
+  <div id="plan-dropdown-archived"></div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div id="import-overlay">
+  <div id="import-modal">
+    <div id="import-header">
+      <div id="import-title">Import</div>
+      <button id="import-close">✕</button>
+    </div>
+    <div id="import-tabs">
+      <button class="import-tab-btn active" data-tab="plan">📋 Plan</button>
+      <button class="import-tab-btn" data-tab="shifts">📅 Shifts</button>
+    </div>
+
+    <!-- PLAN TAB -->
+    <div id="import-tab-plan" class="import-tab-panel active">
+      <div class="import-section-title">Step 1 — Download template</div>
+      <p class="import-hint">Download the JSON template, fill in your race details and weekly sessions, then upload it below.</p>
+      <button id="plan-template-btn" class="import-action-btn">⬇ Download plan template</button>
+
+      <div class="import-section-title" style="margin-top:16px;">Step 2 — Fill in race info</div>
+      <div class="lib-form-row"><label>Race name</label><input id="pi-race-name" type="text" placeholder="e.g. Bergen Marathon 2027"/></div>
+      <div class="lib-form-row"><label>Race date</label><input id="pi-race-date" type="date"/></div>
+      <div class="lib-form-row"><label>Goal time</label><input id="pi-goal" type="text" placeholder="e.g. 3:20"/></div>
+      <div class="lib-form-row"><label>Plan start date</label><input id="pi-start-date" type="date"/></div>
+
+      <div class="import-section-title" style="margin-top:16px;">Step 3 — Upload filled template</div>
+      <div id="plan-upload-area" class="import-upload-area">
+        <input type="file" id="plan-file-input" accept=".json" style="display:none;"/>
+        <div class="upload-icon">📂</div>
+        <div class="upload-label">Click to select JSON file</div>
+        <div class="upload-sub" id="plan-file-name">No file selected</div>
+      </div>
+      <div id="plan-preview" style="display:none;">
+        <div class="import-section-title" style="margin-top:12px;">Preview</div>
+        <div id="plan-preview-content"></div>
+      </div>
+      <div id="plan-import-btns" style="display:none;margin-top:12px;">
+        <button id="plan-import-save" class="import-action-btn">✓ Save plan to Supabase</button>
+      </div>
+    </div>
+
+    <!-- SHIFTS TAB -->
+    <div id="import-tab-shifts" class="import-tab-panel">
+      <div class="import-section-title">Step 1 — Download template</div>
+      <p class="import-hint">Downloads a CSV with all current weeks pre-filled. Edit the shift codes and re-upload.</p>
+      <div class="lib-form-row"><label>Start date</label><input id="si-start" type="date"/></div>
+      <div class="lib-form-row"><label>End date</label><input id="si-end" type="date"/></div>
+      <button id="shifts-template-btn" class="import-action-btn">⬇ Download shifts template</button>
+
+      <div class="import-section-title" style="margin-top:16px;">Step 2 — Upload edited CSV</div>
+      <div id="shifts-upload-area" class="import-upload-area">
+        <input type="file" id="shifts-file-input" accept=".csv" style="display:none;"/>
+        <div class="upload-icon">📂</div>
+        <div class="upload-label">Click to select CSV file</div>
+        <div class="upload-sub" id="shifts-file-name">No file selected</div>
+      </div>
+      <div id="shifts-preview" style="display:none;">
+        <div class="import-section-title" style="margin-top:12px;">Preview</div>
+        <div id="shifts-preview-content"></div>
+      </div>
+      <div id="shifts-import-btns" style="display:none;margin-top:12px;">
+        <button id="shifts-import-save" class="import-action-btn">✓ Save shifts to Supabase</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1876,6 +1991,7 @@ if (_local) applyState(JSON.parse(_local));
   showLoading();
 
   // 1. Load the week plan from Supabase (wife shifts + base schedule)
+  await loadAllPlans();
   const plan = await loadWeekPlan();
   if (plan) {
     applyWeekPlan(plan);
@@ -2844,6 +2960,289 @@ const MARATHON_WEEKS = [
     {d:'Sat',s:'Rest — prepare kit, eat well, sleep early',t:'rest'},
     {d:'Sun',s:'RACE DAY — Stavanger Marathon. Goal: 3:25 🏃',t:'race'}]}
 ];
+
+// ── PLAN MANAGEMENT ────────────────────────────────────────────────────────
+let allPlans = [];
+let activePlanId = null;
+
+async function loadAllPlans() {
+  try {
+    const res = await fetch(SUPA_BASE + 'plans?select=*&order=race_date', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error();
+    allPlans = await res.json();
+    console.log('Plans loaded:', allPlans.length);
+
+    // Auto-archive plans whose last week has passed
+    const today = new Date(); today.setHours(0,0,0,0);
+    for (const plan of allPlans) {
+      if (plan.archived) continue;
+      const weeks = plan.weeks || [];
+      if (!weeks.length) continue;
+      const startDate = new Date(plan.start_date);
+      const lastMonday = new Date(startDate);
+      lastMonday.setDate(startDate.getDate() + (weeks.length-1)*7);
+      const dayAfter = new Date(lastMonday); dayAfter.setDate(lastMonday.getDate()+13); // day after last Sunday
+      if (today >= dayAfter) {
+        await fetch(SUPA_BASE+'plans?id=eq.'+plan.id, {
+          method:'PATCH', headers:SUPA_HDR,
+          body:JSON.stringify({archived:true, archived_at:new Date().toISOString()})
+        });
+        plan.archived = true;
+      }
+    }
+
+    // Set active plan to nearest upcoming race
+    const active = allPlans.filter(p=>!p.archived).sort((a,b)=>new Date(a.race_date)-new Date(b.race_date));
+    if (active.length) { activePlanId = active[0].id; updateCountdownForPlan(active[0]); }
+  } catch(e) { console.warn('Failed to load plans:', e); }
+}
+
+function getActivePlan() { return allPlans.find(p=>p.id===activePlanId)||allPlans[0]; }
+
+function updateCountdownForPlan(plan) {
+  if (!plan) return;
+  const subtitle = document.querySelector('.subtitle');
+  if (subtitle) subtitle.textContent = `${plan.race_name||plan.name} · ${new Date(plan.race_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}${plan.goal?' · Goal: '+plan.goal:''}`;
+  if (typeof raceDate !== 'undefined') raceDate = new Date(plan.race_date+'T08:45:00+02:00');
+}
+
+// Plan dropdown
+const planDropdown = document.getElementById('plan-dropdown');
+let planLongPressTimer = null;
+
+function showPlanDropdown(e) {
+  e.preventDefault();
+  renderPlanDropdown();
+  const btn = document.getElementById('view-btn-race');
+  const rect = btn.getBoundingClientRect();
+  planDropdown.style.left = rect.left+'px';
+  planDropdown.style.top  = (rect.bottom+6)+'px';
+  planDropdown.classList.add('open');
+}
+
+function startPlanLongPress(e) {
+  planLongPressTimer = setTimeout(() => { planLongPressTimer=null; showPlanDropdown(e); }, 500);
+  const cancel = () => clearTimeout(planLongPressTimer);
+  document.addEventListener('touchend',    cancel, {once:true});
+  document.addEventListener('touchcancel', cancel, {once:true});
+  document.addEventListener('touchmove',   cancel, {once:true});
+}
+
+document.addEventListener('click', e => {
+  if (!planDropdown.contains(e.target) && e.target.id!=='view-btn-race') planDropdown.classList.remove('open');
+});
+
+function renderPlanDropdown() {
+  const activeEl   = document.getElementById('plan-dropdown-active');
+  const archivedEl = document.getElementById('plan-dropdown-archived');
+  const divider    = document.getElementById('plan-dropdown-divider');
+  const activePlans   = allPlans.filter(p=>!p.archived);
+  const archivedPlans = allPlans.filter(p=> p.archived);
+
+  activeEl.innerHTML='';
+  if (activePlans.length) {
+    const lbl=document.createElement('div'); lbl.className='plan-drop-label'; lbl.textContent='Active plans'; activeEl.appendChild(lbl);
+    activePlans.forEach(p => {
+      const item=document.createElement('div');
+      item.className='plan-drop-item'+(p.id===activePlanId?' active-plan':'');
+      item.innerHTML=`<span>${p.name}</span><span class="plan-drop-date">${new Date(p.race_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>`;
+      item.addEventListener('click', ()=>{ selectPlan(p.id); planDropdown.classList.remove('open'); });
+      activeEl.appendChild(item);
+    });
+  }
+  archivedEl.innerHTML='';
+  if (archivedPlans.length) {
+    divider.style.display='';
+    const lbl=document.createElement('div'); lbl.className='plan-drop-label'; lbl.textContent='Archived'; archivedEl.appendChild(lbl);
+    archivedPlans.forEach(p => {
+      const item=document.createElement('div');
+      item.className='plan-drop-item archived'+(p.id===activePlanId?' active-plan':'');
+      item.innerHTML=`<span>${p.name}</span><span class="plan-drop-date">${new Date(p.race_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>`;
+      item.addEventListener('click', ()=>{ selectPlan(p.id); planDropdown.classList.remove('open'); });
+      archivedEl.appendChild(item);
+    });
+  } else { divider.style.display='none'; }
+}
+
+async function selectPlan(planId) {
+  activePlanId = planId;
+  const plan = getActivePlan(); if (!plan) return;
+  applyWeekPlan({source:'plans', plans:[plan]});
+  const saved = await loadCloudState();
+  if (saved) applyCloudState(saved);
+  build();
+  updateCountdownForPlan(plan);
+}
+
+// Import modal
+const importOverlay = document.getElementById('import-overlay');
+document.getElementById('import-close').addEventListener('click', ()=>importOverlay.classList.remove('open'));
+importOverlay.addEventListener('click', e=>{ if(e.target===importOverlay) importOverlay.classList.remove('open'); });
+
+document.querySelectorAll('.import-tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.import-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.import-tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('import-tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+function openImportModal() {
+  importOverlay.classList.add('open');
+  const plan = getActivePlan();
+  if (plan) {
+    const start = new Date(plan.start_date);
+    const end   = new Date(start); end.setDate(start.getDate()+(plan.weeks||[]).length*7-1);
+    document.getElementById('si-start').value = plan.start_date;
+    document.getElementById('si-end').value   = end.toISOString().slice(0,10);
+  }
+}
+
+// Plan template download
+document.getElementById('plan-template-btn').addEventListener('click', ()=>{
+  const template = {
+    _instructions:"Fill in each week. phase: null=continuation, or 'Pre-plan','Build','Peak','Taper'. runs/str: 7-element Mon-Sun array, null=rest. Pill format: 'easy:Easy','quality:Sub-threshold','long:Long run','upper:Upper 1','lower:Lower 1','race:Race day'",
+    weeks: Array.from({length:20},(_,i)=>({
+      num:  i<5?`Pre ${i+1}`:`Week ${i-4}`,
+      phase:i===0?'Pre-plan':i===5?'Build':i===11?'Peak':i===17?'Taper':null,
+      dates:'', km:0, moved:false,
+      runs: [null,null,null,null,null,null,null],
+      str:  [null,null,null,null,null,null,null],
+      wife: ['','','','','','',''],
+    }))
+  };
+  const blob=new Blob([JSON.stringify(template,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='plan-template.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+// Plan file upload
+let parsedPlanData=null;
+document.getElementById('plan-upload-area').addEventListener('click',()=>document.getElementById('plan-file-input').click());
+document.getElementById('plan-file-input').addEventListener('change', e=>{
+  const file=e.target.files[0]; if(!file) return;
+  document.getElementById('plan-file-name').textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try {
+      parsedPlanData=JSON.parse(ev.target.result);
+      const weeks=parsedPlanData.weeks||[];
+      document.getElementById('plan-preview').style.display='block';
+      document.getElementById('plan-import-btns').style.display='block';
+      document.getElementById('plan-preview-content').innerHTML=`
+        <table class="import-preview-table">
+          <thead><tr><th>Week</th><th>Phase</th><th>KM</th><th>Runs</th></tr></thead>
+          <tbody>${weeks.slice(0,5).map(w=>`<tr><td>${w.num||''}</td><td>${w.phase||'—'}</td><td>${w.km||0}</td><td>${(w.runs||[]).filter(Boolean).length} sessions</td></tr>`).join('')}
+          ${weeks.length>5?`<tr><td colspan="4" style="color:var(--muted)">…and ${weeks.length-5} more weeks</td></tr>`:''}
+          </tbody></table>`;
+    } catch(err) { alert('Invalid JSON. Check the format.'); parsedPlanData=null; }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('plan-import-save').addEventListener('click', async()=>{
+  if(!parsedPlanData) return;
+  const name=document.getElementById('pi-race-name').value.trim();
+  const rd  =document.getElementById('pi-race-date').value;
+  const goal=document.getElementById('pi-goal').value.trim();
+  const sd  =document.getElementById('pi-start-date').value;
+  if(!name||!rd||!sd){alert('Fill in race name, race date and start date.'); return;}
+  if(allPlans.filter(p=>!p.archived).length>=3){alert('Max 3 active plans. Archive one first.'); return;}
+  const btn=document.getElementById('plan-import-save'); btn.textContent='Saving…'; btn.disabled=true;
+  try {
+    const res=await fetch(SUPA_BASE+'plans',{method:'POST',headers:{...SUPA_HDR,'Prefer':'return=representation'},body:JSON.stringify({name,race_name:name,race_date:rd,goal,start_date:sd,weeks:parsedPlanData.weeks})});
+    if(!res.ok) throw new Error(await res.text());
+    await loadAllPlans();
+    importOverlay.classList.remove('open');
+    alert(`Plan "${name}" imported!`);
+  } catch(err){console.error(err);alert('Import failed: '+err.message);}
+  btn.textContent='✓ Save plan to Supabase'; btn.disabled=false;
+});
+
+// Shifts template & upload
+document.getElementById('shifts-template-btn').addEventListener('click',()=>{
+  const sv=document.getElementById('si-start').value, ev=document.getElementById('si-end').value;
+  if(!sv||!ev){alert('Set start and end dates.'); return;}
+  const start=new Date(sv), end=new Date(ev);
+  const rows=['date,shift_code,translated'];
+  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+    const ds=d.toISOString().slice(0,10); let code='';
+    WEEK_MONDAYS.forEach(([y,m,day],wi)=>{
+      DAYS.forEach((_,di)=>{
+        const dt=new Date(y,m-1,day+di);
+        if(dt.toISOString().slice(0,10)===ds&&wifeState[wi]){
+          const raw=wifeState[wi][di]; if(raw){const p=parse(raw); code=p?p.label:'';}
+        }
+      });
+    });
+    rows.push(`${ds},${code},${translateShift(code)}`);
+  }
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='shifts-template.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+let parsedShiftsData=null;
+document.getElementById('shifts-upload-area').addEventListener('click',()=>document.getElementById('shifts-file-input').click());
+document.getElementById('shifts-file-input').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file) return;
+  document.getElementById('shifts-file-name').textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const lines=ev.target.result.trim().split('\n').slice(1);
+    parsedShiftsData=lines.map(l=>{const[date,code]=l.split(','); return{date:date?.trim(),code:code?.trim()||''};}).filter(r=>r.date);
+    document.getElementById('shifts-preview').style.display='block';
+    document.getElementById('shifts-import-btns').style.display='block';
+    document.getElementById('shifts-preview-content').innerHTML=`
+      <table class="import-preview-table">
+        <thead><tr><th>Date</th><th>Code</th><th>Translated</th></tr></thead>
+        <tbody>${parsedShiftsData.slice(0,8).map(r=>`<tr><td>${r.date}</td><td>${r.code||'—'}</td><td>${translateShift(r.code)||'—'}</td></tr>`).join('')}
+        ${parsedShiftsData.length>8?`<tr><td colspan="3" style="color:var(--muted)">…and ${parsedShiftsData.length-8} more</td></tr>`:''}
+        </tbody></table>`;
+  };
+  reader.readAsText(file);
+});
+
+function getShiftType(code){
+  if(!code) return '';
+  const c=code.toLowerCase();
+  if(['od4','odr4','d2','fagd','od4l','d2l','morning shift','morning shift (long)'].some(x=>c===x||c.startsWith(x))) return 'early';
+  if(['ok4','okr4','k2','ok4l','evening shift','evening shift (long)'].some(x=>c===x)) return 'eve';
+  if(['f1','f3','f1 (off)','f3 (?)','day off'].some(x=>c===x)) return 'off';
+  if(['n2','n2 (night)','night shift'].some(x=>c===x)) return 'other';
+  if(['vacation'].some(x=>c===x)) return 'vac';
+  return 'other';
+}
+
+document.getElementById('shifts-import-save').addEventListener('click', async()=>{
+  if(!parsedShiftsData) return;
+  const btn=document.getElementById('shifts-import-save'); btn.textContent='Saving…'; btn.disabled=true;
+  try {
+    const cr=await fetch(SUPA_BASE+'calendar_state?id=eq.1&select=state',{headers:SUPA_HDR});
+    const rows=await cr.json();
+    let cs=(rows.length&&rows[0].state)?rows[0].state:state.map(s=>({...s}));
+    parsedShiftsData.forEach(({date,code})=>{
+      if(!date) return;
+      WEEK_MONDAYS.forEach(([y,m,d],wi)=>{
+        DAYS.forEach((_,di)=>{
+          const dt=new Date(y,m-1,d+di);
+          if(dt.toISOString().slice(0,10)===date){
+            const type=code?getShiftType(code):'';
+            const pillVal=type&&code?`${type}:${code}`:'';
+            if(!cs[wi]) cs[wi]={};
+            if(!cs[wi].wife) cs[wi].wife=Array(7).fill('');
+            cs[wi].wife[di]=pillVal;
+            if(wifeState[wi]) wifeState[wi][di]=pillVal;
+          }
+        });
+      });
+    });
+    await fetch(SUPA_BASE+'calendar_state?on_conflict=id',{method:'POST',headers:{...SUPA_HDR,'Prefer':'resolution=merge-duplicates'},body:JSON.stringify({id:1,state:cs})});
+    WEEKS.forEach((_,wi)=>renderWeek(wi));
+    importOverlay.classList.remove('open');
+    alert('Shifts imported!');
+  } catch(err){console.error(err);alert('Import failed: '+err.message);}
+  btn.textContent='✓ Save shifts to Supabase'; btn.disabled=false;
+});
 
 // ── WEEK PLAN PANEL ────────────────────────────────────────────────────────
 const weekPlanOverlay = document.getElementById('week-plan-overlay');
@@ -4041,14 +4440,14 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── COUNTDOWN ──────────────────────────────────────────────────────────────
+let raceDate = new Date('2026-08-29T08:45:00+02:00'); // updated dynamically by selectPlan
 (function() {
-  const RACE = new Date('2026-08-29T08:45:00+02:00');
   function update() {
-    const diff = RACE - new Date();
+    const diff = raceDate - new Date();
     if (diff <= 0) {
       document.getElementById('countdown-banner').classList.add('done');
-      document.querySelector('.cd-label').textContent = '🏃 Race day! Good luck, Marius!';
-      document.querySelector('.cd-timer').style.display = 'none'; return;
+      const lbl = document.querySelector('.cd-label'); if(lbl) lbl.textContent = '🏃 Race day! Good luck, Marius!';
+      const tmr = document.querySelector('.cd-timer'); if(tmr) tmr.style.display = 'none'; return;
     }
     const totalMins=Math.floor(diff/60000), totalHours=Math.floor(diff/3600000), totalDays=Math.floor(diff/86400000);
     document.getElementById('cd-weeks').textContent = String(Math.floor(totalDays/7));
