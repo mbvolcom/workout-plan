@@ -1377,30 +1377,31 @@ function makeDropZone(weekIdx, row, dayIdx, isWife) {
 
 function weekSummary(wi) {
   const s = state[wi];
-  // Count planned sessions (runs, str, cross — non-null values)
   let plannedRuns = 0, plannedStr = 0, plannedCross = 0;
   let doneRuns = 0, doneStr = 0, doneCross = 0;
-  let totalKm = 0, totalSecs = 0;
+  let totalKm = 0, totalSecs = 0, targetKm = 0;
 
   DAYS.forEach((_, di) => {
     if (s.runs[di])  plannedRuns++;
     if (s.str[di])   plannedStr++;
     if (s.cross[di]) plannedCross++;
 
-    // Check Strava for this day
+    // Target km for this day
+    const t = runTargets[`${wi}-${di}`];
+    if (t != null) targetKm += parseFloat(t);
+
     const acts = getStravaForDay(wi, di, 'runs');
     const strActs = getStravaForDay(wi, di, 'str');
     const crossActs = getStravaForDay(wi, di, 'cross');
 
-    if (acts)      { doneRuns++;   acts.forEach(a => { totalKm += (a.distance||0)/1000; totalSecs += a.moving_time||0; }); }
-    if (strActs)   { doneStr++;    strActs.forEach(a => { totalSecs += a.moving_time||0; }); }
-    if (crossActs) { doneCross++;  crossActs.forEach(a => { totalSecs += a.moving_time||0; }); } // cross: time only, no km
+    if (acts)      { doneRuns++;  acts.forEach(a => { totalKm += (a.distance||0)/1000; totalSecs += a.moving_time||0; }); }
+    if (strActs)   { doneStr++;   strActs.forEach(a => { totalSecs += a.moving_time||0; }); }
+    if (crossActs) { doneCross++; crossActs.forEach(a => { totalSecs += a.moving_time||0; }); }
   });
 
   const planned = plannedRuns + plannedStr + plannedCross;
   const done    = doneRuns + doneStr + doneCross;
-
-  return { planned, done, totalKm, totalSecs };
+  return { planned, done, totalKm, totalSecs, targetKm };
 }
 
 // ── RENDER ─────────────────────────────────────────────────────────────────
@@ -1588,11 +1589,29 @@ function renderWeek(wi) {
   const sumEl = document.createElement('div'); sumEl.className = 'week-summary';
   const s1 = document.createElement('div'); s1.className='week-summary-row';
   s1.innerHTML = `<span class="icon">📋</span>`+(sum.done>0?`<span class="sum-val">${sum.done}</span><span class="sum-planned">/${sum.planned} sessions</span>`:`<span class="sum-planned">0/${sum.planned} sessions</span>`);
+
+  // Distance row — with progress bar if targets are set
   const s2 = document.createElement('div'); s2.className='week-summary-row';
-  s2.innerHTML = `<span class="icon">📍</span>`+(sum.totalKm>0?`<span class="sum-val">${sum.totalKm.toFixed(1)} km</span>`:`<span class="sum-dash">— km</span>`);
-  const s3 = document.createElement('div'); s3.className='week-summary-row';
-  s3.innerHTML = `<span class="icon">⏱</span>`+(sum.totalSecs>0?`<span class="sum-val">${formatDuration(sum.totalSecs)}</span>`:`<span class="sum-dash">—</span>`);
-  sumEl.appendChild(s1); sumEl.appendChild(s2); sumEl.appendChild(s3);
+  if (sum.targetKm > 0) {
+    const pct = Math.min(100, Math.round((sum.totalKm / sum.targetKm) * 100));
+    const filled = Math.round(pct / 12.5); // 0-8 blocks
+    const bar = '█'.repeat(filled) + '░'.repeat(8 - filled);
+    s2.innerHTML = `<span class="icon">📍</span>`
+      + (sum.totalKm > 0
+        ? `<span class="sum-val">${sum.totalKm.toFixed(1)}</span><span class="sum-planned">/${sum.targetKm % 1 === 0 ? sum.targetKm : sum.targetKm.toFixed(1)} km</span>`
+        : `<span class="sum-dash">0</span><span class="sum-planned">/${sum.targetKm % 1 === 0 ? sum.targetKm : sum.targetKm.toFixed(1)} km</span>`);
+    const s2bar = document.createElement('div'); s2bar.className='week-summary-row';
+    s2bar.style.cssText = 'font-size:8px;letter-spacing:-0.5px;padding-left:14px;';
+    s2bar.innerHTML = `<span style="color:${sum.totalKm>0?'#FC4C02':'var(--border-mid)'};font-family:monospace;">${bar}</span><span class="sum-planned" style="margin-left:3px;">${pct}%</span>`;
+    const s3 = document.createElement('div'); s3.className='week-summary-row';
+    s3.innerHTML = `<span class="icon">⏱</span>`+(sum.totalSecs>0?`<span class="sum-val">${formatDuration(sum.totalSecs)}</span>`:`<span class="sum-dash">—</span>`);
+    sumEl.appendChild(s1); sumEl.appendChild(s2); sumEl.appendChild(s2bar); sumEl.appendChild(s3);
+  } else {
+    s2.innerHTML = `<span class="icon">📍</span>`+(sum.totalKm>0?`<span class="sum-val">${sum.totalKm.toFixed(1)} km</span>`:`<span class="sum-dash">— km</span>`);
+    const s3 = document.createElement('div'); s3.className='week-summary-row';
+    s3.innerHTML = `<span class="icon">⏱</span>`+(sum.totalSecs>0?`<span class="sum-val">${formatDuration(sum.totalSecs)}</span>`:`<span class="sum-dash">—</span>`);
+    sumEl.appendChild(s1); sumEl.appendChild(s2); sumEl.appendChild(s3);
+  }
   sumWrap.appendChild(sumEl);
   // Insert summary as absolutely positioned element — doesn't affect layout flow
   sumWrap.style.top = '60px'; // below toggle + dates + km
