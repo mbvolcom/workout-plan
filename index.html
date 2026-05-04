@@ -114,7 +114,71 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .gcal-event-time { font-size:11px; font-weight:600; color:#1a73e8; min-width:72px; flex-shrink:0; padding-top:1px; }
 .gcal-event-name { font-size:13px; color:var(--text); line-height:1.4; }
 
-/* PLAN BANNER */
+/* VIEW SWITCHER */
+.view-switcher { display:flex; gap:2px; background:var(--bg); border:1px solid var(--border-mid); border-radius:8px; padding:2px; margin-left:auto; }
+.view-btn { background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500; color:var(--muted); cursor:pointer; border-radius:6px; font-family:inherit; transition:background 0.15s,color 0.15s; white-space:nowrap; }
+.view-btn.active { background:var(--text); color:var(--bg); }
+.view-btn:hover:not(.active) { background:var(--border); color:var(--text); }
+
+/* WEEK VIEW */
+#week-view { max-width:900px; }
+.wv-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.wv-nav-btn { background:none; border:1px solid var(--border-mid); border-radius:8px; padding:6px 14px; font-size:14px; color:var(--text); cursor:pointer; font-family:inherit; }
+.wv-nav-btn:hover { background:var(--bg); }
+.wv-title { font-size:15px; font-weight:700; color:var(--text); text-align:center; }
+.wv-subtitle { font-size:11px; color:var(--muted); text-align:center; margin-top:2px; }
+.wv-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+.wv-day { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; cursor:pointer; transition:border-color 0.15s; }
+.wv-day:hover { border-color:var(--border-mid); }
+.wv-day.wv-today { border-color:var(--text); border-width:2px; }
+.wv-day-header { padding:10px 10px 6px; border-bottom:1px solid var(--border); }
+.wv-day-name { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+.wv-day-num { font-size:20px; font-weight:700; color:var(--text); line-height:1.1; }
+.wv-day-num.wv-today-num { color:#FC4C02; }
+.wv-day-body { padding:8px; display:flex; flex-direction:column; gap:4px; }
+.wv-pill { border-radius:5px; padding:4px 7px; font-size:11px; font-weight:500; line-height:1.4; }
+.wv-pill.wv-run   { background:var(--easy-bg); color:var(--easy-c); border:0.5px solid var(--easy-b); }
+.wv-pill.wv-quality { background:var(--qual-bg); color:var(--qual-c); border:0.5px solid var(--qual-b); }
+.wv-pill.wv-long  { background:var(--long-bg); color:var(--long-c); border:0.5px solid var(--long-b); }
+.wv-pill.wv-str   { background:var(--upp-bg); color:var(--upp-c); border:0.5px solid var(--upp-b); }
+.wv-pill.wv-lower { background:var(--low-bg); color:var(--low-c); border:0.5px solid var(--low-b); }
+.wv-pill.wv-wife  { background:var(--wearly-bg); color:var(--wearly-c); border:0.5px solid var(--wearly-b); font-size:10px; }
+.wv-pill.wv-kinder{ background:var(--kind-bg); color:var(--kind-c); border:0.5px solid var(--kind-b); font-size:10px; }
+.wv-pill.wv-gcal  { background:#fff; color:#1a73e8; border:0.5px solid #93c5fd; font-size:10px; }
+.wv-pill.wv-gcal.has-events { background:#1a73e8; color:#fff; }
+.wv-pill.wv-race  { background:var(--race-bg); color:var(--race-c); border:0.5px solid var(--race-b); font-weight:700; }
+.wv-pill.wv-strava { background:#FEF0EB; color:#FC4C02; border:0.5px solid #FC4C02; font-size:10px; }
+.wv-rest { font-size:11px; color:var(--border-mid); font-style:italic; padding:4px 0; }
+
+/* DAY VIEW */
+#day-view { max-width:480px; }
+.dv-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.dv-nav-btn { background:none; border:1px solid var(--border-mid); border-radius:8px; padding:6px 14px; font-size:14px; color:var(--text); cursor:pointer; font-family:inherit; }
+.dv-nav-btn:hover { background:var(--bg); }
+.dv-title { text-align:center; }
+.dv-day-name { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+.dv-day-date { font-size:22px; font-weight:700; color:var(--text); line-height:1.2; }
+.dv-section { margin-bottom:16px; }
+.dv-section-title { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; padding-bottom:4px; border-bottom:0.5px solid var(--border); }
+.dv-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:6px; }
+.dv-card-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.dv-card-detail { font-size:12px; color:var(--muted); line-height:1.6; }
+.dv-card-pace { display:inline-block; background:var(--qual-bg); color:var(--qual-c); border:0.5px solid var(--qual-b); border-radius:4px; padding:2px 7px; font-size:11px; font-weight:600; margin-top:4px; }
+.dv-card.dv-run   { border-left:3px solid var(--easy-b); }
+.dv-card.dv-quality { border-left:3px solid var(--qual-b); }
+.dv-card.dv-long  { border-left:3px solid var(--long-b); }
+.dv-card.dv-str   { border-left:3px solid var(--upp-b); }
+.dv-card.dv-gcal  { border-left:3px solid #1a73e8; }
+.dv-card.dv-weather { border-left:3px solid #60a8e0; }
+.dv-card.dv-strava { border-left:3px solid #FC4C02; }
+.dv-gcal-time { font-size:11px; font-weight:600; color:#1a73e8; margin-bottom:2px; }
+.dv-empty { font-size:13px; color:var(--border-mid); font-style:italic; padding:8px 0; }
+.dv-weather-row { display:flex; gap:12px; }
+.dv-weather-slot { flex:1; text-align:center; }
+.dv-weather-slot .time { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px; }
+.dv-weather-slot .icon { font-size:20px; }
+.dv-weather-slot .temp { font-size:14px; font-weight:700; color:var(--text); }
+.dv-weather-slot .wind { font-size:10px; color:var(--muted); }
 .plan-banner {
   padding: 18px 0 8px;
   border-top: 2px solid var(--border-mid);
@@ -571,7 +635,12 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   <a class="export-btn btn-nav" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
   <a class="export-btn btn-nav" href="https://mbvolcom.github.io/Strength/" target="_blank">💪 Strength</a>
   <button class="strava-connect-btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
-  <button class="export-btn btn-nav" onclick="openLibModal().catch(console.error)">📚 Run Library</button>
+  <button class="export-btn btn-nav" onclick="openLibModal().catch(console.error)">📚 Library</button>
+  <div class="view-switcher">
+    <button class="view-btn active" id="view-btn-calendar" onclick="setView('calendar')">☰ Calendar</button>
+    <button class="view-btn" id="view-btn-week" onclick="setView('week')">📆 Week</button>
+    <button class="view-btn" id="view-btn-day" onclick="setView('day')">📋 Day</button>
+  </div>
 </div>
 
 <div class="legend">
@@ -776,6 +845,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 </div>
 
 <div id="cal"></div>
+<div id="week-view" style="display:none;"></div>
+<div id="day-view" style="display:none;"></div>
 
 <script>
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -3128,6 +3199,319 @@ function openGCal(dateStr) {
       </div>`).join('');
   }
   gcalOverlay.classList.add('open');
+}
+
+// ── VIEWS ──────────────────────────────────────────────────────────────────
+let currentView = 'calendar';
+let weekViewIndex = 0; // which week is shown in week view
+let dayViewDate = new Date(); // which day is shown in day view
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('cal').style.display        = view === 'calendar' ? '' : 'none';
+  document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
+  document.getElementById('day-view').style.display   = view === 'day'      ? '' : 'none';
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-btn-' + view).classList.add('active');
+
+  if (view === 'week') {
+    // Jump to current week
+    const today = new Date(); today.setHours(0,0,0,0);
+    weekViewIndex = 0;
+    WEEK_MONDAYS.forEach(([y,m,d], wi) => {
+      const mon = new Date(y,m-1,d);
+      const sun = new Date(y,m-1,d+6);
+      if (today >= mon && today <= sun) weekViewIndex = wi;
+    });
+    renderWeekView();
+  } else if (view === 'day') {
+    dayViewDate = new Date();
+    renderDayView();
+  }
+}
+
+// ── WEEK VIEW ──────────────────────────────────────────────────────────────
+function pillClass(val) {
+  if (!val) return null;
+  const prefix = val.split(':')[0];
+  if (prefix === 'long') return 'wv-long';
+  if (prefix === 'quality') return 'wv-quality';
+  if (prefix === 'easy' || prefix === 'easy-pm' || prefix === 'kinder') return 'wv-run';
+  if (prefix === 'race') return 'wv-race';
+  if (prefix === 'upper') return 'wv-str';
+  if (prefix === 'lower') return 'wv-lower';
+  return 'wv-run';
+}
+
+function renderWeekView() {
+  const container = document.getElementById('week-view');
+  const wi = weekViewIndex;
+  const w = WEEKS[wi];
+  const s = state[wi];
+  const [y,m,d] = WEEK_MONDAYS[wi];
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  container.innerHTML = `
+    <div class="wv-nav">
+      <button class="wv-nav-btn" onclick="weekViewIndex=Math.max(0,weekViewIndex-1);renderWeekView()">‹ Prev</button>
+      <div>
+        <div class="wv-title">${w.num} — ${w.focus||''}</div>
+        <div class="wv-subtitle">${w.dates} · ${w.km} km planned</div>
+      </div>
+      <button class="wv-nav-btn" onclick="weekViewIndex=Math.min(WEEKS.length-1,weekViewIndex+1);renderWeekView()">Next ›</button>
+    </div>
+    <div class="wv-grid" id="wv-grid"></div>`;
+
+  const grid = container.querySelector('#wv-grid');
+
+  DAYS.forEach((dayName, di) => {
+    const dt = new Date(y,m-1,d+di);
+    const isToday = dt.getTime() === today.getTime();
+    const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+
+    const col = document.createElement('div');
+    col.className = 'wv-day' + (isToday ? ' wv-today' : '');
+    col.addEventListener('click', () => { dayViewDate = dt; setView('day'); });
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'wv-day-header';
+    hdr.innerHTML = `<div class="wv-day-name">${dayName}</div><div class="wv-day-num ${isToday?'wv-today-num':''}">${dt.getDate()}</div>`;
+    col.appendChild(hdr);
+
+    const body = document.createElement('div');
+    body.className = 'wv-day-body';
+
+    // GCal
+    const gcalEvts = gcalEvents[dateStr] || [];
+    if (gcalEvts.length) {
+      const p = document.createElement('div');
+      p.className = 'wv-pill wv-gcal has-events';
+      p.textContent = `📅 ${gcalEvts.length} event${gcalEvts.length>1?'s':''}`;
+      body.appendChild(p);
+    }
+
+    // Wife
+    const wife = wifeState[wi][di];
+    if (wife) {
+      const wp = parse(wife);
+      if (wp) {
+        const p = document.createElement('div');
+        p.className = 'wv-pill wv-wife';
+        p.textContent = wp.label;
+        body.appendChild(p);
+      }
+    }
+
+    // Kinder
+    const kinder = getKinder(wi, di);
+    if (kinder && di < 5) {
+      const kp = parse(kinder);
+      if (kp && kp.cls !== 'kinder-blank') {
+        const p = document.createElement('div');
+        p.className = 'wv-pill wv-kinder';
+        p.textContent = kp.label;
+        body.appendChild(p);
+      }
+    }
+
+    // Run
+    const run = s.runs[di];
+    if (run) {
+      const rp = parse(run);
+      if (rp) {
+        const p = document.createElement('div');
+        p.className = 'wv-pill ' + pillClass(run);
+        p.textContent = rp.label;
+        body.appendChild(p);
+      }
+    }
+
+    // Strava run
+    const stravaRun = getStravaForDay(wi, di, 'runs');
+    if (stravaRun) {
+      stravaRun.forEach(a => {
+        const p = document.createElement('div');
+        p.className = 'wv-pill wv-strava';
+        const km = a.distance ? (a.distance/1000).toFixed(1)+' km' : '';
+        const pace = formatPace(a.distance, a.moving_time);
+        p.textContent = `⚡ ${km}${pace?' · '+pace:''}`;
+        body.appendChild(p);
+      });
+    }
+
+    // Strength
+    const str = s.str[di];
+    if (str) {
+      const sp = parse(str);
+      if (sp) {
+        const p = document.createElement('div');
+        p.className = 'wv-pill ' + (str.startsWith('upper') ? 'wv-str' : 'wv-lower');
+        p.textContent = sp.label;
+        body.appendChild(p);
+      }
+    }
+
+    if (!body.children.length) {
+      const rest = document.createElement('div');
+      rest.className = 'wv-rest';
+      rest.textContent = 'Rest';
+      body.appendChild(rest);
+    }
+
+    col.appendChild(body);
+    grid.appendChild(col);
+  });
+}
+
+// ── DAY VIEW ───────────────────────────────────────────────────────────────
+function renderDayView() {
+  const container = document.getElementById('day-view');
+  const dt = dayViewDate;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  const dayName = dt.toLocaleDateString('en-GB', { weekday:'long' });
+  const dateLabel = dt.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+
+  // Find which week/day this date falls in
+  let wi = -1, di = -1;
+  WEEK_MONDAYS.forEach(([y,m,d], i) => {
+    const mon = new Date(y,m-1,d);
+    DAYS.forEach((_, j) => {
+      const day = new Date(y,m-1,d+j);
+      if (day.toDateString() === dt.toDateString()) { wi=i; di=j; }
+    });
+  });
+
+  const prevDay = new Date(dt); prevDay.setDate(dt.getDate()-1);
+  const nextDay = new Date(dt); nextDay.setDate(dt.getDate()+1);
+
+  let html = `
+    <div class="dv-nav">
+      <button class="dv-nav-btn" onclick="dayViewDate=new Date('${prevDay.toISOString().slice(0,10)}');dayViewDate.setHours(12);renderDayView()">‹</button>
+      <div class="dv-title">
+        <div class="dv-day-name">${dayName}</div>
+        <div class="dv-day-date">${dateLabel}</div>
+      </div>
+      <button class="dv-nav-btn" onclick="dayViewDate=new Date('${nextDay.toISOString().slice(0,10)}');dayViewDate.setHours(12);renderDayView()">›</button>
+    </div>`;
+
+  // Weather
+  const dayWeather = weatherData[dateStr];
+  if (dayWeather) {
+    html += `<div class="dv-section"><div class="dv-section-title">Weather</div><div class="dv-card dv-weather"><div class="dv-weather-row">`;
+    [
+      {label:'07–12', start:7, end:12},
+      {label:'12–16', start:12, end:16},
+      {label:'16–21', start:16, end:21},
+    ].forEach(({label, start, end}) => {
+      const entries = dayWeather.filter(e => e.hour >= start && e.hour < end);
+      const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+      const temp = avg(entries.map(e=>e.temp).filter(v=>v!=null));
+      const wind = avg(entries.map(e=>e.wind).filter(v=>v!=null));
+      const symbol = entries.find(e=>e.symbol)?.symbol;
+      html += `<div class="dv-weather-slot">
+        <div class="time">${label}</div>
+        <div class="icon">${yrSymbol(symbol)}</div>
+        <div class="temp">${temp!=null?Math.round(temp)+'°':'—'}</div>
+        <div class="wind">${wind!=null?wind+'m/s':'—'}</div>
+      </div>`;
+    });
+    html += `</div></div></div>`;
+  }
+
+  // GCal events
+  const gcalEvts = gcalEvents[dateStr] || [];
+  html += `<div class="dv-section"><div class="dv-section-title">Calendar</div>`;
+  if (gcalEvts.length) {
+    gcalEvts.forEach(e => {
+      html += `<div class="dv-card dv-gcal">
+        <div class="dv-gcal-time">${e.isAllDay ? 'All day' : e.startTime+(e.endTime?'–'+e.endTime:'')}</div>
+        <div class="dv-card-title">${e.summary}</div>
+      </div>`;
+    });
+  } else {
+    html += `<div class="dv-empty">No calendar events</div>`;
+  }
+  html += `</div>`;
+
+  // Run
+  html += `<div class="dv-section"><div class="dv-section-title">Run</div>`;
+  if (wi >= 0 && di >= 0 && state[wi].runs[di]) {
+    const rp = parse(state[wi].runs[di]);
+    if (rp) {
+      const entry = getLibraryEntry(rp.label);
+      const prefix = state[wi].runs[di].split(':')[0];
+      const cls = prefix==='long'?'dv-long':prefix==='quality'?'dv-quality':'dv-run';
+      html += `<div class="dv-card ${cls}">
+        <div class="dv-card-title">${rp.label}</div>`;
+      if (entry) {
+        if (entry.structure) html += `<div class="dv-card-detail">${entry.structure}</div>`;
+        if (entry.pace_target) html += `<span class="dv-card-pace">${entry.pace_target}</span>`;
+      }
+      html += `</div>`;
+      // Strava
+      if (wi >= 0) {
+        const acts = getStravaForDay(wi, di, 'runs');
+        if (acts) acts.forEach(a => {
+          const km = a.distance ? (a.distance/1000).toFixed(2)+' km' : '';
+          const pace = formatPace(a.distance, a.moving_time);
+          const dur = formatDuration(a.moving_time);
+          html += `<div class="dv-card dv-strava">
+            <div class="dv-card-title">⚡ ${a.name}</div>
+            <div class="dv-card-detail">${[km,pace,dur].filter(Boolean).join(' · ')}</div>
+          </div>`;
+        });
+      }
+    }
+  } else {
+    html += `<div class="dv-empty">Rest day</div>`;
+  }
+  html += `</div>`;
+
+  // Strength
+  html += `<div class="dv-section"><div class="dv-section-title">Strength</div>`;
+  if (wi >= 0 && di >= 0 && state[wi].str[di]) {
+    const sp = parse(state[wi].str[di]);
+    if (sp) {
+      const entry = getStrengthEntry(sp.label);
+      const isUpper = sp.label.toLowerCase().includes('upper');
+      html += `<div class="dv-card dv-str">
+        <div class="dv-card-title">${sp.label}</div>`;
+      if (entry && entry.exercises && entry.exercises.length) {
+        html += `<div class="dv-card-detail">${entry.exercises.map(ex=>`${ex.name} ${ex.sets}×${ex.reps}`).join(' · ')}</div>`;
+      }
+      html += `</div>`;
+      // Strava strength
+      if (wi >= 0) {
+        const acts = getStravaForDay(wi, di, 'str');
+        if (acts) acts.forEach(a => {
+          const dur = formatDuration(a.moving_time);
+          html += `<div class="dv-card dv-strava">
+            <div class="dv-card-title">⚡ ${a.name}</div>
+            <div class="dv-card-detail">${dur}</div>
+          </div>`;
+        });
+      }
+    }
+  } else {
+    html += `<div class="dv-empty">No strength session</div>`;
+  }
+  html += `</div>`;
+
+  // Wife shifts
+  if (wi >= 0 && di >= 0 && wifeState[wi][di]) {
+    const wp = parse(wifeState[wi][di]);
+    if (wp) {
+      html += `<div class="dv-section"><div class="dv-section-title">Work schedule</div>
+        <div class="dv-card"><div class="dv-card-title">${wp.label}</div></div>
+      </div>`;
+    }
+  }
+
+  container.innerHTML = html;
 }
 
 // ── COUNTDOWN ──────────────────────────────────────────────────────────────
