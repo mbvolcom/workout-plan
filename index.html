@@ -381,7 +381,14 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   box-shadow: 0 0 0 1px #1a6bbf;
 }
 
-/* RUN DETAIL PANEL */
+/* RUN TARGET */
+.run-target-row { display:flex; align-items:center; gap:6px; margin-top:6px; }
+.run-target-input { width:70px; border:0.5px solid var(--border-mid); border-radius:6px; padding:6px 8px; font-size:13px; font-family:inherit; color:var(--text); background:var(--bg); outline:none; }
+.run-target-input:focus { border-color:var(--text); }
+.run-target-unit { font-size:12px; color:var(--muted); }
+.run-target-btn { background:var(--text); color:var(--bg); border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+.run-target-clear { background:var(--border); color:var(--muted); }
+.run-target-sub { font-size:9px; color:var(--easy-c); opacity:0.85; margin-top:1px; display:block; }
 #run-panel-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,0.4); align-items:flex-end; justify-content:center; }
 @media(min-width:600px){#run-panel-overlay{align-items:center;}}
 #run-panel-overlay.open { display:flex; }
@@ -1521,6 +1528,15 @@ function renderWeek(wi) {
               }
               // Run pills → run panel; str pills → strength panel; cross → Strava
               if (row === 'runs') {
+                // Show target km on pill if set
+                const targetKm = runTargets[`${wi}-${di}`];
+                if (targetKm != null) {
+                  el.classList.add('has-strava'); // reuse white-space:normal
+                  const tSub = document.createElement('span');
+                  tSub.className = 'run-target-sub';
+                  tSub.textContent = `🎯 ${targetKm} km`;
+                  el.appendChild(tSub);
+                }
                 el.style.cursor = 'pointer';
                 el.addEventListener('click', e => {
                   e.stopPropagation();
@@ -1833,8 +1849,8 @@ if (_local) applyState(JSON.parse(_local));
     }
   }
 
-  // 2. Load run and strength libraries
-  await Promise.all([loadRunLibrary(), loadStrengthLibrary()]);
+  // 2. Load run and strength libraries + run targets
+  await Promise.all([loadRunLibrary(), loadStrengthLibrary(), loadRunTargets()]);
 
   // 3. Load user state from Supabase (drag/drop edits etc)
   const cloud = await loadCloudState();
@@ -2843,26 +2859,89 @@ document.querySelectorAll('.run-tab-btn').forEach(btn => {
   });
 });
 
+// ── RUN TARGETS ────────────────────────────────────────────────────────────
+let runTargets = {}; // keyed by "wi-di" → target_km
+
+async function loadRunTargets() {
+  try {
+    const res = await fetch(SUPA_BASE + 'run_targets?select=*', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error();
+    const rows = await res.json();
+    runTargets = {};
+    rows.forEach(r => { runTargets[`${r.week_index}-${r.day_index}`] = r.target_km; });
+    console.log('Run targets loaded:', Object.keys(runTargets).length);
+  } catch(e) { console.warn('Failed to load run targets:', e); }
+}
+
+async function saveRunTarget(wi, di, km) {
+  const key = `${wi}-${di}`;
+  const val = km === '' || km === null ? null : parseFloat(km);
+  runTargets[key] = val;
+  try {
+    if (val === null) {
+      // Delete if cleared
+      await fetch(SUPA_BASE + `run_targets?week_index=eq.${wi}&day_index=eq.${di}`, {
+        method: 'DELETE', headers: SUPA_HDR
+      });
+    } else {
+      await fetch(SUPA_BASE + 'run_targets?on_conflict=week_index,day_index', {
+        method: 'POST',
+        headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ week_index: wi, day_index: di, target_km: val })
+      });
+    }
+    // Re-render the pill to show/hide target km
+    renderWeek(wi);
+    if (Object.keys(weatherData).length) addWeatherDots();
+    if (Object.keys(gcalEvents).length) addGCalPills();
+  } catch(e) { console.error('Failed to save run target:', e); }
+}
+
 function openRunPanel(label, wi, di) {
   const entry = getLibraryEntry(label);
   const stravaActs = getStravaForDay(wi, di, 'runs');
+  const targetKey = `${wi}-${di}`;
+  const currentTarget = runTargets[targetKey] ?? '';
 
   document.getElementById('run-panel-name').textContent = label;
   document.getElementById('run-panel-type').textContent = entry ? entry.type + ' run' : 'Run';
 
   // Workout tab
   const workoutBody = document.getElementById('run-workout-body');
-  if (entry) {
-    workoutBody.innerHTML = `
-      ${entry.description ? `<div class="run-workout-section"><div class="run-workout-label">About</div><div class="run-workout-value">${entry.description}</div></div>` : ''}
-      ${entry.structure   ? `<div class="run-workout-section"><div class="run-workout-label">Structure</div><div class="run-workout-value">${entry.structure}</div></div>` : ''}
-      ${entry.pace_target ? `<div class="run-workout-section"><div class="run-workout-label">Target pace</div><div class="run-workout-value"><span class="run-workout-pace">${entry.pace_target}</span></div></div>` : ''}
-      ${entry.notes       ? `<div class="run-workout-section"><div class="run-workout-label">Notes</div><div class="run-workout-value">${entry.notes}</div></div>` : ''}`;
-  } else {
-    workoutBody.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No library entry found for this session.<br>Add it via 📚 Library.</div>`;
+  const libraryHtml = entry ? `
+    ${entry.description ? `<div class="run-workout-section"><div class="run-workout-label">About</div><div class="run-workout-value">${entry.description}</div></div>` : ''}
+    ${entry.structure   ? `<div class="run-workout-section"><div class="run-workout-label">Structure</div><div class="run-workout-value">${entry.structure}</div></div>` : ''}
+    ${entry.pace_target ? `<div class="run-workout-section"><div class="run-workout-label">Target pace</div><div class="run-workout-value"><span class="run-workout-pace">${entry.pace_target}</span></div></div>` : ''}
+    ${entry.notes       ? `<div class="run-workout-section"><div class="run-workout-label">Notes</div><div class="run-workout-value">${entry.notes}</div></div>` : ''}
+  ` : `<div style="color:var(--muted);font-size:13px;padding:8px 0 12px;">No library entry found for this session.<br>Add it via 📚 Library.</div>`;
+
+  workoutBody.innerHTML = libraryHtml + `
+    <div class="run-workout-section" style="margin-top:4px;">
+      <div class="run-workout-label">Target distance</div>
+      <div class="run-target-row">
+        <input id="run-target-input" type="number" min="0" max="99" step="0.1"
+          placeholder="e.g. 12" value="${currentTarget}"
+          class="run-target-input"/>
+        <span class="run-target-unit">km</span>
+        <button id="run-target-save" class="run-target-btn">Save</button>
+        ${currentTarget !== '' ? `<button id="run-target-clear" class="run-target-btn run-target-clear">Clear</button>` : ''}
+      </div>
+    </div>`;
+
+  document.getElementById('run-target-save').addEventListener('click', () => {
+    const val = document.getElementById('run-target-input').value;
+    saveRunTarget(wi, di, val);
+    runPanelOverlay.classList.remove('open');
+  });
+  const clearBtn = document.getElementById('run-target-clear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      saveRunTarget(wi, di, null);
+      runPanelOverlay.classList.remove('open');
+    });
   }
 
-  // Strava tab — shows a button that opens the full Strava detail panel (with map + splits)
+  // Strava tab
   const stravaBody = document.getElementById('run-strava-body');
   if (stravaActs && stravaActs.length) {
     const a = stravaActs[0];
