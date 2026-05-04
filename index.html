@@ -3391,6 +3391,51 @@ function buildMonthView() {
   container.innerHTML = '';
   const today = new Date(); today.setHours(0,0,0,0);
 
+  // Month/year picker
+  const pickerRow = document.createElement('div');
+  pickerRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:16px;';
+
+  const curYear = today.getFullYear();
+  const endYear = curYear + 2;
+
+  const yearSel = document.createElement('select');
+  yearSel.style.cssText = 'border:0.5px solid var(--border-mid);border-radius:6px;padding:6px 10px;font-size:13px;font-family:inherit;color:var(--text);background:var(--surface);outline:none;';
+  for (let y = (showPastWeeks ? curYear - 1 : curYear); y <= endYear; y++) {
+    const o = document.createElement('option'); o.value = y; o.textContent = y;
+    if (y === curYear) o.selected = true;
+    yearSel.appendChild(o);
+  }
+
+  const monthSel = document.createElement('select');
+  monthSel.style.cssText = yearSel.style.cssText;
+  const MONTH_NAMES_SHORT = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  MONTH_NAMES_SHORT.forEach((mn, i) => {
+    const o = document.createElement('option'); o.value = i+1; o.textContent = mn;
+    if (i === today.getMonth()) o.selected = true;
+    monthSel.appendChild(o);
+  });
+
+  const goBtn = document.createElement('button');
+  goBtn.textContent = 'Go →';
+  goBtn.style.cssText = 'background:var(--text);color:var(--bg);border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;';
+  goBtn.addEventListener('click', () => {
+    const mk = `${yearSel.value}-${String(monthSel.value).padStart(2,'0')}`;
+    const target = document.querySelector(`.mv-month-block`);
+    // Find the block with matching month header
+    document.querySelectorAll('.mv-month-block').forEach(block => {
+      const hdr = block.querySelector('.mv-month-header span');
+      if (hdr && hdr.textContent === `${MONTH_NAMES_SHORT[+monthSel.value-1]} ${yearSel.value}`) {
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  pickerRow.appendChild(yearSel);
+  pickerRow.appendChild(monthSel);
+  pickerRow.appendChild(goBtn);
+  container.appendChild(pickerRow);
+
+  // Show past button
   const pastBtn = document.createElement('button');
   pastBtn.className = 'mv-show-past';
   pastBtn.innerHTML = showPastWeeks ? '⬆ Hide past weeks' : '📜 Show past weeks';
@@ -3594,20 +3639,50 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
       } else if (row === 'wife') {
         const zone = makeDropZone(wi, 'wife', di, true);
         const el = wifePillEl(wifeState[wi][di], wi, di);
-        if (el) zone.appendChild(el);
+        if (el) {
+          el.addEventListener('contextmenu', e => openCtxMenu(e, wi, 'wife', di));
+          el.addEventListener('touchstart', e => {
+            let lp = setTimeout(() => { lp=null; openCtxMenuAt(e.touches[0].clientX, e.touches[0].clientY, wi, 'wife', di); }, 500);
+            el.addEventListener('touchend',    () => clearTimeout(lp), {once:true});
+            el.addEventListener('touchcancel', () => clearTimeout(lp), {once:true});
+            el.addEventListener('touchmove',   () => clearTimeout(lp), {once:true});
+          }, {passive:true});
+          zone.appendChild(el);
+        }
+        // Allow adding via click on empty zone
+        zone.addEventListener('click', e => {
+          if (e.target === zone && wifeEditMode) openAddModal(wi, 'wife', di);
+        });
+        zone.addEventListener('contextmenu', e => { if (e.target === zone) { e.preventDefault(); openCtxMenuAt(e.clientX, e.clientY, wi, 'wife', di); } });
         rowEl.appendChild(zone);
       } else if (row === 'kinder') {
         const zone = document.createElement('div');
-        zone.className = 'drop-zone';
-        const val = getKinder(wi, di);
-        if (val && di < 5) {
-          const p = parse(val);
-          if (p && p.cls !== 'kinder-blank') {
-            const el = document.createElement('span');
-            el.className = 'pill ' + p.cls;
-            el.textContent = p.label;
-            zone.appendChild(el);
+        zone.className = 'drop-zone' + (di < 5 ? ' droppable' : '');
+        zone.dataset.week = wi; zone.dataset.row = 'kinder'; zone.dataset.day = di;
+        if (di < 5) {
+          const val = getKinder(wi, di);
+          if (val) {
+            const p = parse(val);
+            if (p && p.cls !== 'kinder-blank') {
+              const el = document.createElement('span');
+              el.className = 'pill ' + p.cls + ' draggable';
+              el.textContent = p.label;
+              makeDraggablePill(el, wi, 'kinder', di);
+              el.addEventListener('contextmenu', e => openCtxMenu(e, wi, 'kinder', di));
+              el.addEventListener('touchstart', e => {
+                let lp = setTimeout(() => { lp=null; openCtxMenuAt(e.touches[0].clientX, e.touches[0].clientY, wi, 'kinder', di); }, 500);
+                el.addEventListener('touchend',    () => clearTimeout(lp), {once:true});
+                el.addEventListener('touchcancel', () => clearTimeout(lp), {once:true});
+                el.addEventListener('touchmove',   () => clearTimeout(lp), {once:true});
+              }, {passive:true});
+              zone.appendChild(el);
+            }
           }
+          zone.addEventListener('contextmenu', e => { if(e.target===zone) { e.preventDefault(); openCtxMenuAt(e.clientX, e.clientY, wi, 'kinder', di); } });
+          zone.addEventListener('dragover', onDragOver);
+          zone.addEventListener('dragleave', onDragLeave);
+          zone.addEventListener('drop', onDrop);
+          addEmptyZoneListeners(zone, wi, 'kinder');
         }
         rowEl.appendChild(zone);
       } else {
