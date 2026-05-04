@@ -1281,11 +1281,41 @@ function pillEl(s, weekIdx, row, dayIdx) {
   return el;
 }
 
+const SHIFT_NAMES = {
+  'OD4':      'Morning shift',
+  'ODR4':     'Morning shift',
+  'D2':       'Morning shift',
+  'FAGD':     'Morning shift',
+  'OD4L':     'Morning shift (long)',
+  'D2L':      'Morning shift (long)',
+  'OK4':      'Evening shift',
+  'OKR4':     'Evening shift',
+  'K2':       'Evening shift',
+  'OK4L':     'Evening shift (long)',
+  'M2L':      'Long shift',
+  'N2':       'Night shift',
+  'N2 (night)': 'Night shift',
+  'F1':       'Day off',
+  'F1 (off)': 'Day off',
+  'F3 (?)':   'Day off',
+  'F3':       'Day off',
+  'Vacation': 'Vacation',
+};
+
+function translateShift(label) {
+  if (!label) return label;
+  // Try exact match first, then try the code part before any space
+  return SHIFT_NAMES[label] || SHIFT_NAMES[label.split(' ')[0]] || label;
+}
+
 function wifePillEl(s, weekIdx, dayIdx) {
   if (!s) return null;
   const p = parse(s); if (!p) return null;
   const el = document.createElement('span');
-  el.className = 'pill ' + p.cls; el.textContent = p.label; el.title = p.label;
+  const displayLabel = translateShift(p.label);
+  el.className = 'pill ' + p.cls;
+  el.textContent = displayLabel;
+  el.title = p.label; // keep original code as tooltip
   if (wifeEditMode) makeDraggablePill(el, weekIdx, 'wife', dayIdx);
   return el;
 }
@@ -3299,7 +3329,7 @@ function renderWeekView() {
       if (wp) {
         const p = document.createElement('div');
         p.className = 'wv-pill wv-wife';
-        p.textContent = wp.label;
+        p.textContent = translateShift(wp.label);
         body.appendChild(p);
       }
     }
@@ -3506,7 +3536,7 @@ function renderDayView() {
     const wp = parse(wifeState[wi][di]);
     if (wp) {
       html += `<div class="dv-section"><div class="dv-section-title">Work schedule</div>
-        <div class="dv-card"><div class="dv-card-title">${wp.label}</div></div>
+        <div class="dv-card"><div class="dv-card-title">${translateShift(wp.label)}</div></div>
       </div>`;
     }
   }
