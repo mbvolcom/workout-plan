@@ -83,6 +83,37 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .btn-edit-wife.active { background:#FAEEDA; color:#633806; border-color:#EF9F27; }
 .btn-nav       { background:var(--surface); color:var(--text); border:1px solid var(--border-mid); }
 
+/* GCAL PILL */
+.pill.gcal-pill {
+  background: #fff;
+  color: #1a73e8;
+  border: 0.5px solid #93c5fd;
+  font-size: 9px;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+.pill.gcal-pill.has-events {
+  background: #1a73e8;
+  color: #fff;
+  border-color: #1a73e8;
+}
+.pill.gcal-pill:hover { opacity: 0.85; }
+
+/* GCAL POPUP */
+#gcal-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,0.4); align-items:flex-end; justify-content:center; }
+@media(min-width:600px){ #gcal-overlay { align-items:center; } }
+#gcal-overlay.open { display:flex; }
+#gcal-panel { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:380px; max-height:80vh; overflow-y:auto; padding:20px; box-shadow:0 -4px 32px rgba(0,0,0,0.15); }
+@media(min-width:600px){ #gcal-panel { border-radius:16px; } }
+#gcal-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; gap:10px; }
+#gcal-date { font-size:15px; font-weight:700; color:var(--text); margin-bottom:2px; }
+#gcal-sub { font-size:11px; color:var(--muted); }
+#gcal-close { background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:0; flex-shrink:0; }
+.gcal-event { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:0.5px solid var(--border); }
+.gcal-event:last-child { border-bottom:none; }
+.gcal-event-time { font-size:11px; font-weight:600; color:#1a73e8; min-width:72px; flex-shrink:0; padding-top:1px; }
+.gcal-event-name { font-size:13px; color:var(--text); line-height:1.4; }
+
 /* PLAN BANNER */
 .plan-banner {
   padding: 18px 0 8px;
@@ -160,6 +191,7 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .row-lbl.s { color:#72243E; }
 .row-lbl.k { color:#7A4100; }
 .row-lbl.x { color:#1B6B3A; }
+.row-lbl.g { color:#1a73e8; }
 .row-lbl.w { color:#888780; }
 body.wife-edit-mode .row-lbl.w { color:#633806; font-weight:700; }
 
@@ -690,6 +722,20 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <div id="str-tab-strava" class="str-tab-panel">
       <div id="str-strava-body"></div>
     </div>
+  </div>
+</div>
+
+<!-- GCAL POPUP -->
+<div id="gcal-overlay">
+  <div id="gcal-panel">
+    <div id="gcal-header">
+      <div>
+        <div id="gcal-date"></div>
+        <div id="gcal-sub">Google Calendar</div>
+      </div>
+      <button id="gcal-close">✕</button>
+    </div>
+    <div id="gcal-events"></div>
   </div>
 </div>
 
@@ -1252,7 +1298,7 @@ function renderWeek(wi) {
   container.innerHTML = '';
   const isCollapsed = collapsedWeeks.has(wi);
 
-  ['date','wife','kinder','runs','str','cross'].forEach((row, ri) => {
+  ['date','wife','kinder','runs','str','cross','gcal'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + ((ri > 0 && isCollapsed) ? ' collapsed-row' : '');
 
@@ -1285,9 +1331,22 @@ function renderWeek(wi) {
     } else {
       rowEl.appendChild(document.createElement('div')); // meta spacer
       const lbl = document.createElement('div');
-      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':'x');
-      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':'Cross';
+      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
+      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':'Cross';
       rowEl.appendChild(lbl);
+
+      if (row === 'gcal') {
+        rowEl.className = 'week-row gcal-row' + (isCollapsed ? ' collapsed-row' : '');
+        DAYS.forEach((_, di) => {
+          const cell = document.createElement('div');
+          cell.className = 'drop-zone gcal-cell';
+          // Pills added later by addGCalPills()
+          rowEl.appendChild(cell);
+        });
+        container.appendChild(rowEl);
+        return; // skip normal day rendering below
+      }
+
       DAYS.forEach((_, di) => {
         if (row === 'wife') {
           const zone = makeDropZone(wi, 'wife', di, true);
@@ -1699,6 +1758,9 @@ if (_local) applyState(JSON.parse(_local));
 
   // 6. Fetch weather for current + next week
   fetchWeather();
+
+  // 7. Fetch Google Calendar events
+  fetchGCal();
 })();
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -1764,8 +1826,9 @@ async function fetchStravaActivities() {
     // Re-render all weeks to show overlays
     WEEKS.forEach((_, wi) => renderWeek(wi));
 
-    // Re-add weather dots after re-render
+    // Re-add weather dots and GCal pills after re-render
     if (Object.keys(weatherData).length) addWeatherDots();
+    if (Object.keys(gcalEvents).length) addGCalPills();
 
     // Update button to show connected
     const btn = document.getElementById('strava-btn');
@@ -2993,6 +3056,85 @@ document.getElementById('lf-save').addEventListener('click', async () => {
   } catch(e) { console.error(e); alert('Save failed: ' + e.message); }
   btn.textContent = 'Save'; btn.disabled = false;
 });
+
+// ── GOOGLE CALENDAR ────────────────────────────────────────────────────────
+const GCAL_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/gcal-proxy';
+let gcalEvents = {}; // keyed by YYYY-MM-DD → array of events
+
+async function fetchGCal() {
+  try {
+    const res = await fetch(GCAL_FN);
+    if (!res.ok) throw new Error('GCal fetch failed: ' + res.status);
+    const events = await res.json();
+    gcalEvents = {};
+    events.forEach(e => {
+      if (!gcalEvents[e.date]) gcalEvents[e.date] = [];
+      gcalEvents[e.date].push(e);
+    });
+    // Sort events within each day by time (all-day first)
+    Object.values(gcalEvents).forEach(arr => {
+      arr.sort((a,b) => {
+        if (a.isAllDay && !b.isAllDay) return -1;
+        if (!a.isAllDay && b.isAllDay) return 1;
+        return (a.startTime||'').localeCompare(b.startTime||'');
+      });
+    });
+    console.log('GCal loaded:', Object.keys(gcalEvents).length, 'days with events');
+    addGCalPills();
+  } catch(e) { console.warn('GCal fetch failed:', e); }
+}
+
+function getDateStr(wi, di) {
+  const [y,m,d] = WEEK_MONDAYS[wi];
+  const dt = new Date(y, m-1, d+di);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+function addGCalPills() {
+  WEEK_MONDAYS.forEach(([y,m,d], wi) => {
+    const wrap = document.getElementById('week-' + wi);
+    if (!wrap) return;
+    // Find the gcal row in this week
+    const gcalRow = wrap.querySelector('.gcal-row');
+    if (!gcalRow) return;
+    const cells = gcalRow.querySelectorAll('.gcal-cell');
+    cells.forEach((cell, di) => {
+      const dateStr = getDateStr(wi, di);
+      const events = gcalEvents[dateStr] || [];
+      cell.innerHTML = '';
+      const pill = document.createElement('span');
+      pill.className = 'pill gcal-pill' + (events.length ? ' has-events' : '');
+      pill.textContent = events.length ? `📅 ${events.length} event${events.length>1?'s':''}` : '📅';
+      pill.addEventListener('click', e => { e.stopPropagation(); openGCal(dateStr); });
+      cell.appendChild(pill);
+    });
+  });
+}
+
+// GCal popup
+const gcalOverlay = document.getElementById('gcal-overlay');
+document.getElementById('gcal-close').addEventListener('click', () => gcalOverlay.classList.remove('open'));
+gcalOverlay.addEventListener('click', e => { if (e.target === gcalOverlay) gcalOverlay.classList.remove('open'); });
+
+function openGCal(dateStr) {
+  const dt = new Date(dateStr + 'T12:00:00');
+  document.getElementById('gcal-date').textContent =
+    dt.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+
+  const events = gcalEvents[dateStr] || [];
+  const eventsEl = document.getElementById('gcal-events');
+
+  if (!events.length) {
+    eventsEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No events this day.</div>';
+  } else {
+    eventsEl.innerHTML = events.map(e => `
+      <div class="gcal-event">
+        <span class="gcal-event-time">${e.isAllDay ? 'All day' : e.startTime + (e.endTime ? '–'+e.endTime : '')}</span>
+        <span class="gcal-event-name">${e.summary}</span>
+      </div>`).join('');
+  }
+  gcalOverlay.classList.add('open');
+}
 
 // ── COUNTDOWN ──────────────────────────────────────────────────────────────
 (function() {
