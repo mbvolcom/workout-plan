@@ -1042,9 +1042,14 @@ const STR_TYPES = [
   {key:'lower:Lower 1',cls:'lower'},{key:'lower:Lower 2',cls:'lower'},
 ];
 const WIFE_TYPES = [
-  {key:'early:Early shift',cls:'wife-early'},{key:'eve:Evening shift',cls:'wife-eve'},
-  {key:'off:F1 (off)',cls:'wife-off'},{key:'other:Other',cls:'wife-other'},
-  {key:'vac:Vacation',cls:'vacation'},
+  {key:'early:Morning shift',         cls:'wife-early'},
+  {key:'early:Morning shift (long)',  cls:'wife-early'},
+  {key:'eve:Evening shift',           cls:'wife-eve'},
+  {key:'eve:Evening shift (long)',    cls:'wife-eve'},
+  {key:'other:Long shift',            cls:'wife-other'},
+  {key:'other:Night shift',           cls:'wife-other'},
+  {key:'off:Day off',                 cls:'wife-off'},
+  {key:'vac:Vacation',                cls:'vacation'},
 ];
 const CROSS_TYPES = [
   {key:'cross:Bike',cls:'cross'},
@@ -1317,6 +1322,14 @@ const SHIFT_NAMES = {
   'F3 (?)':   'Day off',
   'F3':       'Day off',
   'Vacation': 'Vacation',
+  // New readable keys (from WIFE_TYPES)
+  'Morning shift':        'Morning shift',
+  'Morning shift (long)': 'Morning shift (long)',
+  'Evening shift':        'Evening shift',
+  'Evening shift (long)': 'Evening shift (long)',
+  'Long shift':           'Long shift',
+  'Night shift':          'Night shift',
+  'Day off':              'Day off',
 };
 
 function translateShift(label) {
@@ -3376,88 +3389,112 @@ function getISOWeekNumber(date) {
 function buildMonthView() {
   const container = document.getElementById('month-cal');
   container.innerHTML = '';
-
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Show past button
   const pastBtn = document.createElement('button');
   pastBtn.className = 'mv-show-past';
   pastBtn.innerHTML = showPastWeeks ? '⬆ Hide past weeks' : '📜 Show past weeks';
   pastBtn.addEventListener('click', () => { showPastWeeks = !showPastWeeks; buildMonthView(); });
   container.appendChild(pastBtn);
 
-  // Build a map: monthKey → array of { wi, days: [{di, date}] }
-  // Each week can appear in multiple months (split weeks)
-  const monthMap = {}; // "YYYY-MM" → [{wi, weekNum, days:[{di,date}]}]
+  const twoYearsAhead = new Date(today);
+  twoYearsAhead.setFullYear(twoYearsAhead.getFullYear() + 2);
 
+  const monthMap = {};
+
+  // Plan weeks
   WEEK_MONDAYS.forEach(([y,m,d], wi) => {
     DAYS.forEach((_, di) => {
       const dt = new Date(y, m-1, d+di);
-      const isPast = dt < today;
-      if (isPast && !showPastWeeks) return;
-
+      if (dt < today && !showPastWeeks) return;
       const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
       if (!monthMap[mk]) monthMap[mk] = [];
-
-      // Find or create entry for this wi in this month
       let entry = monthMap[mk].find(e => e.wi === wi);
-      if (!entry) {
-        entry = { wi, weekNum: getISOWeekNumber(new Date(y,m-1,d)), days: Array(7).fill(null) };
-        monthMap[mk].push(entry);
-      }
+      if (!entry) { entry = { wi, weekNum: getISOWeekNumber(new Date(y,m-1,d)), days: Array(7).fill(null), isExtra: false }; monthMap[mk].push(entry); }
       entry.days[di] = dt;
     });
   });
 
-  // Sort month keys
-  const monthKeys = Object.keys(monthMap).sort();
-  if (!monthKeys.length) {
-    container.innerHTML += '<div style="color:var(--muted);font-size:13px;padding:20px 0;">No upcoming weeks found.</div>';
-    return;
+  // Extra weeks beyond the plan
+  const lastMon = WEEK_MONDAYS.length ? WEEK_MONDAYS[WEEK_MONDAYS.length-1] : [today.getFullYear(),today.getMonth()+1,today.getDate()];
+  let cursor = new Date(lastMon[0], lastMon[1]-1, lastMon[2]+7);
+  let ei = 0;
+  while (cursor <= twoYearsAhead) {
+    const wi = -(++ei);
+    const monday = new Date(cursor);
+    DAYS.forEach((_, di) => {
+      const dt = new Date(monday); dt.setDate(monday.getDate()+di);
+      if (dt < today && !showPastWeeks) return;
+      const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+      if (!monthMap[mk]) monthMap[mk] = [];
+      let entry = monthMap[mk].find(e => e.wi === wi);
+      if (!entry) { entry = { wi, weekNum: getISOWeekNumber(monday), days: Array(7).fill(null), isExtra: true, monday }; monthMap[mk].push(entry); }
+      entry.days[di] = dt;
+    });
+    cursor.setDate(cursor.getDate()+7);
   }
+
+  const monthKeys = Object.keys(monthMap).sort();
+  if (!monthKeys.length) { container.innerHTML += '<div style="color:var(--muted);font-size:13px;padding:20px 0;">No upcoming weeks found.</div>'; return; }
 
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   monthKeys.forEach(mk => {
     const [yr, mo] = mk.split('-').map(Number);
     const entries = monthMap[mk];
-
-    const block = document.createElement('div');
-    block.className = 'mv-month-block';
-
-    // Month header
-    const hdr = document.createElement('div');
-    hdr.className = 'mv-month-header';
+    const block = document.createElement('div'); block.className = 'mv-month-block';
+    const hdr = document.createElement('div'); hdr.className = 'mv-month-header';
     hdr.innerHTML = `<span>${MONTH_NAMES[mo-1]} ${yr}</span><span>${entries.length} week${entries.length!==1?'s':''}</span>`;
     block.appendChild(hdr);
-
-    // Column headers: Wk | Mon Tue Wed Thu Fri Sat Sun
-    const colHdr = document.createElement('div');
-    colHdr.className = 'grid-header';
-    colHdr.style.cssText = 'grid-template-columns:88px 46px repeat(7,minmax(76px,1fr));';
-    ['','Wk',...DAYS].forEach((d,i) => {
-      const h = document.createElement('div');
-      h.className = 'col-head';
-      h.textContent = d;
-      colHdr.appendChild(h);
-    });
+    const colHdr = document.createElement('div'); colHdr.className = 'grid-header'; colHdr.style.cssText = 'grid-template-columns:88px 46px repeat(7,minmax(76px,1fr));';
+    ['','Wk',...DAYS].forEach(d => { const h=document.createElement('div'); h.className='col-head'; h.textContent=d; colHdr.appendChild(h); });
     block.appendChild(colHdr);
-
-    // Each week row
     entries.forEach(entry => {
-      // Create a temporary override: for this week, only render days that fall in this month
-      // We do this by temporarily patching WEEK_MONDAYS and re-rendering with blanks for out-of-month days
-      const wrapId = `mv-week-${mk}-${entry.wi}`;
-      const wrap = document.createElement('div');
-      wrap.id = wrapId;
-      wrap.className = 'week-wrap mv-week-row';
-      block.appendChild(wrap);
-
-      renderWeekForMonth(entry.wi, entry.days, entry.weekNum, mk, wrap);
+      const wrap = document.createElement('div'); wrap.className = 'week-wrap mv-week-row'; block.appendChild(wrap);
+      if (entry.isExtra) renderExtraWeekForMonth(entry.days, entry.weekNum, wrap);
+      else renderWeekForMonth(entry.wi, entry.days, entry.weekNum, mk, wrap);
     });
-
     container.appendChild(block);
   });
+}
+
+function renderExtraWeekForMonth(days, weekNum, container) {
+  // Weeks beyond the plan — just show date numbers and GCal events
+  container.innerHTML = '';
+  const dateRow = document.createElement('div');
+  dateRow.className = 'week-row date-num-row';
+  const meta = document.createElement('div'); meta.className = 'week-meta';
+  const btn = document.createElement('button'); btn.className = 'week-toggle';
+  btn.textContent = '－ Wk ' + weekNum;
+  meta.appendChild(btn);
+  dateRow.appendChild(meta);
+  dateRow.appendChild(document.createElement('div'));
+  days.forEach(dt => {
+    const c = document.createElement('div'); c.className = 'date-num-cell';
+    c.textContent = dt ? dt.getDate() : ''; dateRow.appendChild(c);
+  });
+  container.appendChild(dateRow);
+
+  // GCal row only — no plan data beyond the plan
+  const gcalRow = document.createElement('div');
+  gcalRow.className = 'week-row';
+  gcalRow.appendChild(document.createElement('div'));
+  const lbl = document.createElement('div'); lbl.className = 'row-lbl g'; lbl.textContent = 'GCal';
+  gcalRow.appendChild(lbl);
+  days.forEach(dt => {
+    const cell = document.createElement('div'); cell.className = 'drop-zone';
+    if (dt) {
+      const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      const events = gcalEvents[dateStr] || [];
+      const pill = document.createElement('span');
+      pill.className = 'pill gcal-pill' + (events.length ? ' has-events' : '');
+      pill.textContent = events.length ? `📅 ${events.length}` : '📅';
+      pill.addEventListener('click', e => { e.stopPropagation(); openGCal(dateStr); });
+      cell.appendChild(pill);
+    }
+    gcalRow.appendChild(cell);
+  });
+  container.appendChild(gcalRow);
 }
 
 function renderWeekForMonth(wi, days, weekNum, mk, container) {
