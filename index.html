@@ -42,7 +42,6 @@ body {
   padding-left:max(16px,env(safe-area-inset-left));
   padding-right:max(16px,env(safe-area-inset-right));
   padding-bottom:max(60px,calc(env(safe-area-inset-bottom) + 20px));
-  min-width:700px;
 }
 
 /* INSTALL BANNER */
@@ -785,12 +784,12 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   .view-switcher { display: none !important; }
   .drag-hint { display: none !important; }
   #mobile-cal { display: block !important; }
-  #countdown-banner { display: none; }
-  #now-weather { display: none; }
-  .btn-row { gap:5px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
-  .btn-row::-webkit-scrollbar { display:none; }
-  .export-btn, .strava-connect-btn { font-size:11px; padding:6px 10px; flex-shrink:0; }
-  body { overflow-x: hidden; max-width: 100vw; }
+  #countdown-banner { display: none !important; }
+  #now-weather { display: none !important; }
+  body { padding: 12px 12px 60px; overflow-x: hidden; }
+  .btn-row { gap:4px; flex-wrap:wrap; }
+  .export-btn, .strava-connect-btn { font-size:11px; padding:5px 9px; flex-shrink:0; white-space:nowrap; }
+  h1 { font-size:18px; }
 }
 @media not ((max-width: 600px) and (orientation: portrait)) {
   #mobile-cal { display: none !important; }
@@ -863,6 +862,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-pill-upper { background:var(--upp-bg); color:var(--upp-c); border:0.5px solid var(--upp-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-lower { background:var(--low-bg); color:var(--low-c); border:0.5px solid var(--low-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-cross { background:var(--woff-bg); color:var(--woff-c); border:0.5px solid var(--woff-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-empty { background:var(--bg); border:1px dashed var(--border-mid); border-radius:8px; padding:8px 12px; cursor:pointer; }
+.mob-add-btn { font-size:12px; color:var(--muted); font-style:italic; }
 </style>
 </head>
 <body>
@@ -4456,90 +4457,81 @@ function renderMobileRaceWeek() {
     card.appendChild(hdr);
 
     const pills=document.createElement('div'); pills.className='mob-day-pills';
-    let hasContent=false;
 
     // GCal
     const gcalEvts = gcalEvents[dateStr]||[];
+    const gcalP = document.createElement('div');
+    gcalP.className='mob-pill mob-pill-gcal';
     if (gcalEvts.length) {
-      const p=document.createElement('div'); p.className='mob-pill mob-pill-gcal';
-      p.style.cursor='pointer';
-      p.innerHTML=`<span class="mob-pill-label">📅 ${gcalEvts.length} event${gcalEvts.length>1?'s':''}</span><span class="mob-pill-sub">${gcalEvts.slice(0,2).map(e=>`${e.isAllDay?'All day':e.startTime} ${e.summary}`).join(' · ')}</span>`;
-      p.addEventListener('click',()=>openGCal(dateStr));
-      pills.appendChild(p); hasContent=true;
+      gcalP.style.cursor='pointer';
+      gcalP.innerHTML=`<span class="mob-pill-label">📅 ${gcalEvts.length} event${gcalEvts.length>1?'s':''}</span><span class="mob-pill-sub">${gcalEvts.slice(0,2).map(e=>`${e.isAllDay?'All day':e.startTime} ${e.summary}`).join(' · ')}</span>`;
+      gcalP.addEventListener('click',()=>openGCal(dateStr));
+    } else {
+      gcalP.innerHTML=`<span class="mob-pill-label" style="color:var(--border-mid);">📅 No events</span>`;
     }
+    pills.appendChild(gcalP);
 
     // Wife
     const wife=wifeState[wi]&&wifeState[wi][di];
-    if (wife) {
-      const wp=parse(wife);
-      if (wp) {
-        const p=document.createElement('div'); p.className='mob-pill mob-pill-wife';
-        p.textContent=translateShift(wp.label);
-        pills.appendChild(p); hasContent=true;
-      }
-    }
+    const wifeP = document.createElement('div'); wifeP.className='mob-pill mob-pill-wife';
+    if (wife) { const wp=parse(wife); if(wp) wifeP.textContent=translateShift(wp.label); else wifeP.innerHTML=`<span style="color:var(--border-mid);">—</span>`; }
+    else wifeP.innerHTML=`<span style="color:var(--border-mid);">—</span>`;
+    pills.appendChild(wifeP);
 
-    // Kinder
-    const kinder=getKinder(wi,di);
-    if (kinder&&di<5) {
-      const kp=parse(kinder);
-      if (kp&&kp.cls!=='kinder-blank') {
-        const p=document.createElement('div'); p.className='mob-pill mob-pill-kinder';
-        p.textContent=kp.label;
-        pills.appendChild(p); hasContent=true;
-      }
+    // Kinder (only weekdays)
+    if (di < 5) {
+      const kinder=getKinder(wi,di);
+      const kinderP = document.createElement('div'); kinderP.className='mob-pill mob-pill-kinder';
+      if (kinder) { const kp=parse(kinder); if(kp&&kp.cls!=='kinder-blank') kinderP.textContent=kp.label; else kinderP.innerHTML=`<span style="color:var(--border-mid);">—</span>`; }
+      else kinderP.innerHTML=`<span style="color:var(--border-mid);">—</span>`;
+      pills.appendChild(kinderP);
     }
 
     // Run
     const run=s.runs[di];
+    const runP = document.createElement('div');
     if (run) {
-      const rp=parse(run);
-      if (rp) {
-        const prefix=run.split(':')[0];
-        const cls=prefix==='quality'?'mob-pill-quality':prefix==='long'?'mob-pill-long':prefix==='race'?'mob-pill-race':'mob-pill-easy';
-        const p=document.createElement('div'); p.className=`mob-pill ${cls}`; p.style.cursor='pointer';
-        let html=`<span class="mob-pill-label">${rp.label}</span>`;
-        const tkm=runTargets[`${wi}-${di}`];
-        if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
-        const acts=getStravaForDay(wi,di,'runs');
-        if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
-        p.innerHTML=html;
-        p.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
-        pills.appendChild(p); hasContent=true;
-      }
+      const rp=parse(run); const prefix=run.split(':')[0];
+      const cls=prefix==='quality'?'mob-pill-quality':prefix==='long'?'mob-pill-long':prefix==='race'?'mob-pill-race':'mob-pill-easy';
+      runP.className=`mob-pill ${cls}`; runP.style.cursor='pointer';
+      let html=`<span class="mob-pill-label">${rp.label}</span>`;
+      const tkm=runTargets[`${wi}-${di}`];
+      if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
+      const acts=getStravaForDay(wi,di,'runs');
+      if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
+      runP.innerHTML=html;
+      runP.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
+    } else {
+      runP.className='mob-pill mob-pill-empty';
+      runP.innerHTML=`<span class="mob-add-btn">+ Add run</span>`;
+      runP.addEventListener('click',()=>openAddModal(wi,'runs',di));
     }
+    pills.appendChild(runP);
 
     // Strength
     const str=s.str[di];
+    const strP = document.createElement('div');
     if (str) {
-      const sp=parse(str);
-      if (sp) {
-        const isUpper=str.startsWith('upper');
-        const p=document.createElement('div'); p.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}`; p.style.cursor='pointer';
-        let html=`<span class="mob-pill-label">${sp.label}</span>`;
-        const acts=getStravaForDay(wi,di,'str');
-        if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
-        p.innerHTML=html;
-        p.addEventListener('click',()=>openStrPanel(sp.label,wi,di));
-        pills.appendChild(p); hasContent=true;
-      }
+      const sp=parse(str); const isUpper=str.startsWith('upper');
+      strP.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}`; strP.style.cursor='pointer';
+      let html=`<span class="mob-pill-label">${sp.label}</span>`;
+      const acts=getStravaForDay(wi,di,'str');
+      if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
+      strP.innerHTML=html;
+      strP.addEventListener('click',()=>openStrPanel(sp.label,wi,di));
+    } else {
+      strP.className='mob-pill mob-pill-empty';
+      strP.innerHTML=`<span class="mob-add-btn">+ Add strength</span>`;
+      strP.addEventListener('click',()=>openAddModal(wi,'str',di));
     }
+    pills.appendChild(strP);
 
     // Cross
     const cross=s.cross&&s.cross[di];
-    if (cross) {
-      const cp=parse(cross);
-      if (cp) {
-        const p=document.createElement('div'); p.className='mob-pill mob-pill-cross';
-        p.textContent=cp.label;
-        pills.appendChild(p); hasContent=true;
-      }
-    }
-
-    if (!hasContent) {
-      const rest=document.createElement('div'); rest.className='mob-rest'; rest.textContent='Rest day';
-      pills.appendChild(rest);
-    }
+    const crossP = document.createElement('div'); crossP.className= cross ? 'mob-pill mob-pill-cross' : 'mob-pill mob-pill-empty';
+    if (cross) { const cp=parse(cross); if(cp) crossP.textContent=cp.label; else crossP.innerHTML=`<span class="mob-add-btn">+ Add cross</span>`; }
+    else { crossP.innerHTML=`<span class="mob-add-btn">+ Add cross</span>`; crossP.addEventListener('click',()=>openAddModal(wi,'cross',di)); }
+    pills.appendChild(crossP);
 
     card.appendChild(pills);
     daysEl.appendChild(card);
