@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -439,7 +439,117 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   box-shadow: 0 0 0 1px #1a6bbf;
 }
 
-/* RUN TARGET */
+/* CLAUDE BUTTON */
+.btn-claude {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #e8d5b7; border: 1px solid #3d3d5c;
+  font-weight: 600;
+}
+.btn-claude:hover { opacity: 0.9; }
+
+/* CLAUDE PANEL */
+#claude-overlay {
+  display:none; position:fixed; inset:0; z-index:13000;
+  background:rgba(0,0,0,0.5); align-items:flex-end; justify-content:center;
+}
+@media(min-width:600px){ #claude-overlay { align-items:flex-end; justify-content:flex-end; padding:20px; } }
+#claude-overlay.open { display:flex; }
+#claude-panel {
+  background:#111318; border-radius:20px 20px 0 0;
+  width:100%; max-width:520px; height:80vh; max-height:700px;
+  display:flex; flex-direction:column;
+  box-shadow:0 -8px 40px rgba(0,0,0,0.4);
+  border:1px solid rgba(255,255,255,0.08);
+}
+@media(min-width:600px){
+  #claude-panel { border-radius:20px; height:70vh; }
+}
+#claude-panel-header {
+  padding:18px 20px 14px; border-bottom:1px solid rgba(255,255,255,0.07);
+  display:grid; grid-template-columns:1fr auto; gap:2px; align-items:start;
+}
+#claude-panel-title { font-size:16px; font-weight:700; color:#f0ede8; letter-spacing:0.02em; }
+#claude-panel-subtitle { font-size:11px; color:#6b7280; }
+#claude-panel-close { background:none; border:none; color:#6b7280; font-size:18px; cursor:pointer; padding:0; grid-row:1/3; align-self:center; }
+#claude-panel-close:hover { color:#f0ede8; }
+
+#claude-messages {
+  flex:1; overflow-y:auto; padding:16px 20px;
+  display:flex; flex-direction:column; gap:12px;
+  scrollbar-width:thin; scrollbar-color:#2a2a3e transparent;
+}
+.claude-msg { display:flex; gap:10px; align-items:flex-start; }
+.claude-msg.user { flex-direction:row-reverse; }
+.claude-msg-bubble {
+  max-width:85%; padding:10px 14px; border-radius:14px;
+  font-size:13px; line-height:1.6; color:#f0ede8;
+}
+.claude-msg.user .claude-msg-bubble {
+  background:#2563eb; border-radius:14px 14px 4px 14px;
+}
+.claude-msg.assistant .claude-msg-bubble {
+  background:#1e2028; border:1px solid rgba(255,255,255,0.07);
+  border-radius:14px 14px 14px 4px;
+}
+.claude-msg-avatar {
+  width:28px; height:28px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700;
+}
+.claude-msg.user .claude-msg-avatar { background:#2563eb; color:#fff; }
+.claude-msg.assistant .claude-msg-avatar { background:#2a2a3e; color:#e8d5b7; }
+.claude-typing { display:flex; gap:4px; padding:4px 0; }
+.claude-typing span { width:6px; height:6px; background:#6b7280; border-radius:50%; animation:claudeBounce 1.2s infinite; }
+.claude-typing span:nth-child(2) { animation-delay:0.2s; }
+.claude-typing span:nth-child(3) { animation-delay:0.4s; }
+@keyframes claudeBounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+/* Claude action cards */
+.claude-action-card {
+  background:#1a1f2e; border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px; padding:12px 14px; margin-top:8px;
+}
+.claude-action-title { font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:8px; }
+.claude-action-item { font-size:12px; color:#d1d5db; padding:3px 0; display:flex; align-items:center; gap:6px; }
+.claude-action-item::before { content:'•'; color:#2563eb; }
+.claude-action-btns { display:flex; gap:8px; margin-top:10px; }
+.claude-action-apply { background:#2563eb; color:#fff; border:none; border-radius:7px; padding:7px 14px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+.claude-action-dismiss { background:#2a2a3e; color:#9ca3af; border:none; border-radius:7px; padding:7px 14px; font-size:12px; cursor:pointer; font-family:inherit; }
+
+#claude-input-area {
+  padding:12px 16px 16px; border-top:1px solid rgba(255,255,255,0.07);
+}
+#claude-file-preview {
+  display:flex; align-items:center; gap:8px;
+  background:#1e2028; border-radius:8px; padding:6px 10px;
+  margin-bottom:8px; font-size:12px; color:#9ca3af;
+}
+#claude-file-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#claude-file-remove { background:none; border:none; color:#6b7280; cursor:pointer; font-size:14px; padding:0; flex-shrink:0; }
+#claude-input-row {
+  display:flex; gap:8px; align-items:flex-end;
+  background:#1e2028; border:1px solid rgba(255,255,255,0.08);
+  border-radius:14px; padding:8px 8px 8px 12px;
+}
+#claude-attach-btn {
+  background:none; border:none; color:#6b7280; cursor:pointer;
+  font-size:18px; padding:2px; flex-shrink:0; line-height:1;
+}
+#claude-attach-btn:hover { color:#9ca3af; }
+#claude-text-input {
+  flex:1; background:none; border:none; outline:none;
+  color:#f0ede8; font-size:13px; font-family:inherit;
+  resize:none; line-height:1.5; max-height:120px; overflow-y:auto;
+}
+#claude-text-input::placeholder { color:#4b5563; }
+#claude-send-btn {
+  background:#2563eb; color:#fff; border:none;
+  border-radius:10px; width:32px; height:32px;
+  font-size:16px; cursor:pointer; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+#claude-send-btn:hover { background:#1d4ed8; }
+#claude-send-btn:disabled { background:#2a2a3e; color:#6b7280; cursor:not-allowed; }
 .run-target-row { display:flex; align-items:center; gap:6px; margin-top:6px; }
 .run-target-input { width:70px; border:0.5px solid var(--border-mid); border-radius:6px; padding:6px 8px; font-size:13px; font-family:inherit; color:var(--text); background:var(--bg); outline:none; }
 .run-target-input:focus { border-color:var(--text); }
@@ -788,7 +898,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   <a class="export-btn btn-nav" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
   <button class="strava-connect-btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
   <button class="export-btn btn-nav" onclick="openLibModal().catch(console.error)">📚 Library</button>
-  <button class="export-btn btn-nav" onclick="openImportModal()">⬆ Import</button>
+  <button class="export-btn btn-claude" onclick="openClaudePanel()">✦ Claude</button>
   <div class="view-switcher">
     <button class="view-btn" id="view-btn-month" onclick="setCalMode('month')">📅 Month</button>
     <button class="view-btn active" id="view-btn-race" id="race-mode-btn"
@@ -908,6 +1018,30 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <div id="weather-slots"></div>
   </div>
 </div>
+<!-- CLAUDE PANEL -->
+<div id="claude-overlay">
+  <div id="claude-panel">
+    <div id="claude-panel-header">
+      <div id="claude-panel-title">✦ Claude</div>
+      <div id="claude-panel-subtitle">Ask anything about your training</div>
+      <button id="claude-panel-close">✕</button>
+    </div>
+    <div id="claude-messages"></div>
+    <div id="claude-input-area">
+      <div id="claude-file-preview" style="display:none;">
+        <span id="claude-file-name"></span>
+        <button id="claude-file-remove">✕</button>
+      </div>
+      <div id="claude-input-row">
+        <button id="claude-attach-btn" title="Attach file">📎</button>
+        <input type="file" id="claude-file-input" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv,.txt" style="display:none;"/>
+        <textarea id="claude-text-input" placeholder="Ask Claude anything about your training, or upload a plan/schedule…" rows="1"></textarea>
+        <button id="claude-send-btn">↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- RUN DETAIL PANEL -->
 <div id="run-panel-overlay">
   <div id="run-panel">
@@ -1630,7 +1764,7 @@ function renderWeek(wi) {
   container.innerHTML = '';
   const isCollapsed = collapsedWeeks.has(wi);
 
-  ['date','gcal','wife','kinder','runs','str','str2','cross'].forEach((row, ri) => {
+  ['date','gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + ((ri > 0 && isCollapsed) ? ' collapsed-row' : '');
 
@@ -1663,8 +1797,8 @@ function renderWeek(wi) {
     } else {
       rowEl.appendChild(document.createElement('div')); // meta spacer
       const lbl = document.createElement('div');
-      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':(row==='str'||row==='str2')?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
-      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='str2'?'Strength 2':row==='gcal'?'GCal':'Cross';
+      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
+      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':'Cross';
       rowEl.appendChild(lbl);
 
       if (row === 'gcal') {
@@ -3050,7 +3184,355 @@ const MARATHON_WEEKS = [
     {d:'Sun',s:'RACE DAY — Stavanger Marathon. Goal: 3:25 🏃',t:'race'}]}
 ];
 
-// ── PLAN MANAGEMENT ────────────────────────────────────────────────────────
+// ── CLAUDE PANEL ───────────────────────────────────────────────────────────
+const claudeOverlay = document.getElementById('claude-overlay');
+const claudeMessages = document.getElementById('claude-messages');
+let claudeHistory = []; // {role, content} for multi-turn
+let claudeAttachedFile = null; // {name, type, base64, text}
+
+document.getElementById('claude-panel-close').addEventListener('click', () => claudeOverlay.classList.remove('open'));
+claudeOverlay.addEventListener('click', e => { if (e.target === claudeOverlay) claudeOverlay.classList.remove('open'); });
+
+function openClaudePanel() {
+  claudeOverlay.classList.add('open');
+  if (!claudeHistory.length) {
+    addClaudeMessage('assistant', `Hi Marius! I can help you with your training calendar. You can ask me to:\n\n• Move or adjust sessions\n• Analyse your training load\n• Import a new plan or work schedule — just attach a file 📎\n• Answer questions about your plan`);
+  }
+  setTimeout(() => document.getElementById('claude-text-input').focus(), 100);
+}
+
+// File attachment
+document.getElementById('claude-attach-btn').addEventListener('click', () => document.getElementById('claude-file-input').click());
+document.getElementById('claude-file-remove').addEventListener('click', () => {
+  claudeAttachedFile = null;
+  document.getElementById('claude-file-preview').style.display = 'none';
+  document.getElementById('claude-file-input').value = '';
+});
+
+document.getElementById('claude-file-input').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  document.getElementById('claude-file-name').textContent = `📎 ${file.name}`;
+  document.getElementById('claude-file-preview').style.display = 'flex';
+
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
+    // Image — convert to base64
+    const base64 = await fileToBase64(file);
+    claudeAttachedFile = { name: file.name, type: file.type, base64, isImage: true };
+  } else if (ext === 'pdf') {
+    const base64 = await fileToBase64(file);
+    claudeAttachedFile = { name: file.name, type: 'application/pdf', base64, isImage: false };
+  } else if (['xlsx','xls'].includes(ext)) {
+    // Excel — convert to CSV text using SheetJS
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, {type:'array'});
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const csv = XLSX.utils.sheet_to_csv(sheet);
+    claudeAttachedFile = { name: file.name, type: 'text/csv', text: csv, isImage: false, isText: true };
+  } else if (['csv','txt'].includes(ext)) {
+    const text = await file.text();
+    claudeAttachedFile = { name: file.name, type: 'text/plain', text, isImage: false, isText: true };
+  }
+});
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// Auto-resize textarea
+document.getElementById('claude-text-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Send on Enter (Shift+Enter for newline)
+document.getElementById('claude-text-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendClaudeMessage(); }
+});
+document.getElementById('claude-send-btn').addEventListener('click', sendClaudeMessage);
+
+function addClaudeMessage(role, text, extra) {
+  const wrap = document.createElement('div');
+  wrap.className = `claude-msg ${role}`;
+  const avatar = document.createElement('div');
+  avatar.className = 'claude-msg-avatar';
+  avatar.textContent = role === 'user' ? 'M' : '✦';
+  const bubble = document.createElement('div');
+  bubble.className = 'claude-msg-bubble';
+  bubble.style.whiteSpace = 'pre-wrap';
+  bubble.textContent = text;
+  if (extra) bubble.appendChild(extra);
+  wrap.appendChild(avatar); wrap.appendChild(bubble);
+  claudeMessages.appendChild(wrap);
+  claudeMessages.scrollTop = claudeMessages.scrollHeight;
+  return bubble;
+}
+
+function addTypingIndicator() {
+  const wrap = document.createElement('div'); wrap.className = 'claude-msg assistant'; wrap.id = 'claude-typing';
+  const avatar = document.createElement('div'); avatar.className = 'claude-msg-avatar'; avatar.textContent = '✦';
+  const bubble = document.createElement('div'); bubble.className = 'claude-msg-bubble';
+  bubble.innerHTML = '<div class="claude-typing"><span></span><span></span><span></span></div>';
+  wrap.appendChild(avatar); wrap.appendChild(bubble);
+  claudeMessages.appendChild(wrap);
+  claudeMessages.scrollTop = claudeMessages.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('claude-typing'); if (el) el.remove();
+}
+
+function buildCalendarContext() {
+  // Build a concise summary of the current calendar state for Claude
+  const today = new Date().toISOString().slice(0,10);
+  const activePlan = getActivePlan();
+  const weekSummaries = WEEKS.slice(0,20).map((w,wi) => {
+    const s = state[wi];
+    const mon = WEEK_MONDAYS[wi];
+    const monDate = mon ? `${mon[0]}-${String(mon[1]).padStart(2,'0')}-${String(mon[2]).padStart(2,'0')}` : '';
+    return {
+      week: w.num, phase: w.phase, dates: w.dates, km: w.km,
+      monday: monDate,
+      runs: s.runs.map((r,di) => r ? {day:DAYS[di], session:r} : null).filter(Boolean),
+      str: s.str.map((r,di) => r ? {day:DAYS[di], session:r} : null).filter(Boolean),
+      str2: (s.str2||[]).map((r,di) => r ? {day:DAYS[di], session:r} : null).filter(Boolean),
+      wife: wifeState[wi].map((r,di) => r ? {day:DAYS[di], shift:r} : null).filter(Boolean),
+    };
+  });
+
+  return `TODAY: ${today}
+ACTIVE PLAN: ${activePlan?.name || 'Stavanger Marathon 2026'} | Race: ${activePlan?.race_date || '2026-08-29'} | Goal: ${activePlan?.goal || '3:25'}
+
+CALENDAR WEEKS (current plan):
+${JSON.stringify(weekSummaries, null, 1)}
+
+SHIFT CODES: OD4/ODR4/D2/FAGD=Morning, OK4/OKR4/K2=Evening, OD4L/D2L=Morning(long), OK4L=Evening(long), M2L=Long shift, N2=Night, F1/F3=Day off
+
+PILL FORMAT for runs: 'easy:Easy', 'quality:Sub-threshold', 'quality:Near-threshold', 'long:Long run', 'kinder:Kindergarten run', 'race:Race day'
+PILL FORMAT for strength: 'upper:Upper 1', 'upper:Upper 2', 'lower:Lower 1', 'lower:Lower 2'
+PILL FORMAT for wife shifts: 'early:OD4', 'eve:OK4', 'off:F1 (off)', 'other:N2 (night)', 'vac:Vacation'`;
+}
+
+async function sendClaudeMessage() {
+  const input = document.getElementById('claude-text-input');
+  const text = input.value.trim();
+  if (!text && !claudeAttachedFile) return;
+
+  const displayText = text || `📎 ${claudeAttachedFile?.name}`;
+  addClaudeMessage('user', displayText);
+  input.value = ''; input.style.height = 'auto';
+  document.getElementById('claude-send-btn').disabled = true;
+  addTypingIndicator();
+
+  // Build message content for API
+  const userContent = [];
+
+  if (claudeAttachedFile) {
+    if (claudeAttachedFile.isImage) {
+      userContent.push({ type:'image', source:{ type:'base64', media_type:claudeAttachedFile.type, data:claudeAttachedFile.base64 } });
+    } else if (claudeAttachedFile.base64) {
+      // PDF
+      userContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:claudeAttachedFile.base64 } });
+    } else if (claudeAttachedFile.isText) {
+      userContent.push({ type:'text', text:`FILE: ${claudeAttachedFile.name}\n\n${claudeAttachedFile.text}` });
+    }
+    claudeAttachedFile = null;
+    document.getElementById('claude-file-preview').style.display = 'none';
+    document.getElementById('claude-file-input').value = '';
+  }
+
+  if (text) userContent.push({ type:'text', text });
+
+  // Add to history
+  claudeHistory.push({ role:'user', content: userContent.length === 1 && userContent[0].type === 'text' ? text : userContent });
+
+  const systemPrompt = `You are a personal training assistant integrated into Marius Bjørnson's training calendar app. You have full access to his current calendar state.
+
+${buildCalendarContext()}
+
+CAPABILITIES:
+1. Answer questions about the training plan, schedule, wife's shifts
+2. Suggest adjustments and advice
+3. Extract and structure data from uploaded files (training plans, work schedules)
+4. Propose calendar changes — output structured JSON when making changes
+
+WHEN MAKING CALENDAR CHANGES, output a JSON block like this after your explanation:
+\`\`\`json
+{
+  "type": "calendar_changes",
+  "changes": [
+    {"wi": 2, "di": 1, "row": "runs", "value": "easy:Easy"},
+    {"wi": 2, "di": 3, "row": "str", "value": "upper:Upper 1"}
+  ]
+}
+\`\`\`
+
+WHEN EXTRACTING A TRAINING PLAN from a file, output:
+\`\`\`json
+{
+  "type": "plan_import",
+  "race_name": "Bergen Marathon 2027",
+  "race_date": "2027-09-19",
+  "goal": "3:20",
+  "start_date": "2027-04-01",
+  "weeks": [ ... ]
+}
+\`\`\`
+
+WHEN EXTRACTING WIFE'S SHIFTS from a file, output:
+\`\`\`json
+{
+  "type": "shifts_import",
+  "shifts": [
+    {"date": "2026-09-01", "code": "OD4"},
+    {"date": "2026-09-02", "code": "OK4"}
+  ]
+}
+\`\`\`
+
+Be concise and friendly. Marius is training for a marathon. Always confirm before applying changes.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: claudeHistory,
+      })
+    });
+
+    const data = await res.json();
+    const responseText = data.content?.map(c => c.text || '').join('') || 'Sorry, I could not process that.';
+    claudeHistory.push({ role: 'assistant', content: responseText });
+
+    removeTypingIndicator();
+
+    // Parse for structured actions
+    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)```/);
+    const plainText = responseText.replace(/```json[\s\S]*?```/g, '').trim();
+
+    if (jsonMatch) {
+      try {
+        const action = JSON.parse(jsonMatch[1]);
+        const extra = buildActionCard(action);
+        addClaudeMessage('assistant', plainText, extra);
+      } catch(e) {
+        addClaudeMessage('assistant', responseText);
+      }
+    } else {
+      addClaudeMessage('assistant', responseText);
+    }
+  } catch(e) {
+    removeTypingIndicator();
+    addClaudeMessage('assistant', 'Sorry, something went wrong. Please try again.');
+    console.error('Claude API error:', e);
+  }
+
+  document.getElementById('claude-send-btn').disabled = false;
+}
+
+function buildActionCard(action) {
+  const card = document.createElement('div');
+  card.className = 'claude-action-card';
+
+  if (action.type === 'calendar_changes') {
+    const title = document.createElement('div'); title.className='claude-action-title'; title.textContent='Proposed changes';
+    card.appendChild(title);
+    (action.changes||[]).slice(0,8).forEach(c => {
+      const item=document.createElement('div'); item.className='claude-action-item';
+      const w = WEEKS[c.wi]; const dayName = DAYS[c.di]||'';
+      item.textContent = `${w?.num||'Wk'+(c.wi+1)} ${dayName} ${c.row}: ${c.value||'(remove)'}`;
+      card.appendChild(item);
+    });
+    const btns=document.createElement('div'); btns.className='claude-action-btns';
+    const apply=document.createElement('button'); apply.className='claude-action-apply'; apply.textContent='✓ Apply changes';
+    apply.addEventListener('click', () => {
+      applyCalendarChanges(action.changes);
+      apply.textContent='✓ Applied!'; apply.disabled=true;
+    });
+    const dismiss=document.createElement('button'); dismiss.className='claude-action-dismiss'; dismiss.textContent='Dismiss';
+    dismiss.addEventListener('click', () => card.remove());
+    btns.appendChild(apply); btns.appendChild(dismiss); card.appendChild(btns);
+
+  } else if (action.type === 'plan_import') {
+    const title=document.createElement('div'); title.className='claude-action-title'; title.textContent='Plan extracted';
+    card.appendChild(title);
+    const info=document.createElement('div'); info.className='claude-action-item';
+    info.textContent=`${action.race_name} · ${action.race_date} · Goal: ${action.goal||'—'} · ${(action.weeks||[]).length} weeks`;
+    card.appendChild(info);
+    const btns=document.createElement('div'); btns.className='claude-action-btns';
+    const apply=document.createElement('button'); apply.className='claude-action-apply'; apply.textContent='⬆ Save to Supabase';
+    apply.addEventListener('click', async () => {
+      apply.textContent='Saving…'; apply.disabled=true;
+      try {
+        const r=await fetch(SUPA_BASE+'plans',{method:'POST',headers:{...SUPA_HDR,'Prefer':'return=representation'},body:JSON.stringify({name:action.race_name,race_name:action.race_name,race_date:action.race_date,goal:action.goal,start_date:action.start_date,weeks:action.weeks})});
+        if(!r.ok) throw new Error(await r.text());
+        await loadAllPlans();
+        apply.textContent='✓ Saved!';
+        addClaudeMessage('assistant',`Plan "${action.race_name}" has been saved to Supabase. You can switch to it via the 🏃 Race button.`);
+      } catch(e){apply.textContent='Failed'; console.error(e);}
+    });
+    const dismiss=document.createElement('button'); dismiss.className='claude-action-dismiss'; dismiss.textContent='Dismiss';
+    dismiss.addEventListener('click',()=>card.remove());
+    btns.appendChild(apply); btns.appendChild(dismiss); card.appendChild(btns);
+
+  } else if (action.type === 'shifts_import') {
+    const title=document.createElement('div'); title.className='claude-action-title'; title.textContent='Shifts extracted';
+    card.appendChild(title);
+    const info=document.createElement('div'); info.className='claude-action-item';
+    info.textContent=`${(action.shifts||[]).length} days of shifts found`;
+    card.appendChild(info);
+    // Preview first 5
+    (action.shifts||[]).slice(0,5).forEach(s=>{
+      const item=document.createElement('div'); item.className='claude-action-item';
+      item.textContent=`${s.date}: ${s.code} (${translateShift(s.code)})`;
+      card.appendChild(item);
+    });
+    const btns=document.createElement('div'); btns.className='claude-action-btns';
+    const apply=document.createElement('button'); apply.className='claude-action-apply'; apply.textContent='⬆ Save shifts';
+    apply.addEventListener('click', async () => {
+      apply.textContent='Saving…'; apply.disabled=true;
+      // Map shifts to calendar state
+      parsedShiftsData = action.shifts.map(s=>({date:s.date, code:s.code}));
+      document.getElementById('shifts-import-save').click();
+      apply.textContent='✓ Saved!';
+    });
+    const dismiss=document.createElement('button'); dismiss.className='claude-action-dismiss'; dismiss.textContent='Dismiss';
+    dismiss.addEventListener('click',()=>card.remove());
+    btns.appendChild(apply); btns.appendChild(dismiss); card.appendChild(btns);
+  }
+
+  return card;
+}
+
+function applyCalendarChanges(changes) {
+  (changes||[]).forEach(({wi, di, row, value}) => {
+    if (wi < 0 || wi >= state.length) return;
+    if (di < 0 || di > 6) return;
+    if (row === 'runs' || row === 'str' || row === 'str2' || row === 'cross') {
+      if (!state[wi][row]) state[wi][row] = Array(7).fill(null);
+      state[wi][row][di] = value || null;
+    } else if (row === 'wife') {
+      if (!wifeState[wi]) wifeState[wi] = Array(7).fill('');
+      wifeState[wi][di] = value || '';
+    }
+  });
+  // Re-render affected weeks
+  const affectedWeeks = [...new Set((changes||[]).map(c=>c.wi))];
+  affectedWeeks.forEach(wi => { if(wi>=0&&wi<WEEKS.length) renderWeek(wi); });
+  if (Object.keys(weatherData).length) addWeatherDots();
+  if (Object.keys(gcalEvents).length) addGCalPills();
+  addClaudeMessage('assistant', `✓ ${changes.length} change${changes.length>1?'s':''} applied. Don't forget to hit 💾 Save changes to persist them.`);
+}
 let allPlans = [];
 let activePlanId = null;
 
@@ -3841,9 +4323,9 @@ function openGCal(dateStr) {
 }
 
 // ── MOBILE PORTRAIT VIEW ───────────────────────────────────────────────────
-let mobMode = 'race'; // 'race' or 'month'
+let mobMode = 'race';
 let mobWeekIndex = 0;
-let mobMonthOffset = 0; // months from today
+let mobMonthOffset = 0;
 let touchStartX = 0, touchStartY = 0;
 
 function isMobilePortrait() {
@@ -3859,10 +4341,7 @@ function initMobileView() {
   WEEK_MONDAYS.forEach(([y,m,d], wi) => {
     const mon = new Date(y,m-1,d);
     const sun = new Date(y,m-1,d+6);
-    if (today >= mon && today <= sun) {
-      mobWeekIndex = wi;
-      mobDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1; // Mon=0...Sun=6
-    }
+    if (today >= mon && today <= sun) mobWeekIndex = wi;
   });
 
   renderMobileView();
@@ -3876,17 +4355,11 @@ function initMobileView() {
   mc.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
       if (mobMode === 'race') {
-        if (dx < 0) {
-          // Swipe left — next day, or next week
-          if (mobDayIndex < 6) { mobDayIndex++; renderMobileDay(mobWeekIndex, mobDayIndex); }
-          else { mobWeekIndex=Math.min(WEEKS.length-1,mobWeekIndex+1); mobDayIndex=0; renderMobileRaceWeek(); }
-        } else {
-          // Swipe right — prev day, or prev week
-          if (mobDayIndex > 0) { mobDayIndex--; renderMobileDay(mobWeekIndex, mobDayIndex); }
-          else { mobWeekIndex=Math.max(0,mobWeekIndex-1); mobDayIndex=6; renderMobileRaceWeek(); }
-        }
+        if (dx < 0) mobWeekIndex = Math.min(WEEKS.length-1, mobWeekIndex+1);
+        else        mobWeekIndex = Math.max(0, mobWeekIndex-1);
+        renderMobileRaceWeek();
       } else {
         if (dx < 0) mobMonthOffset++;
         else        mobMonthOffset = Math.max(0, mobMonthOffset-1);
@@ -3915,8 +4388,6 @@ function renderMobileView() {
   else renderMobileMonth();
 }
 
-let mobDayIndex = 0; // which day (0=Mon...6=Sun) within the week
-
 function renderMobileRaceWeek() {
   const mc = document.getElementById('mobile-cal');
   while (mc.children.length > 1) mc.removeChild(mc.lastChild);
@@ -3940,159 +4411,139 @@ function renderMobileRaceWeek() {
   nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
   mc.appendChild(nav);
 
-  // Day tab bar
-  const dayBar = document.createElement('div'); dayBar.className='mob-day-bar';
+  // Week summary strip
+  const sum = weekSummary(wi);
+  const sumRow = document.createElement('div'); sumRow.className='mob-summary';
+  const sessVal = `${sum.done}/${sum.planned}`;
+  const kmVal = sum.totalKm > 0 ? sum.totalKm.toFixed(1)+'km' : '—';
+  const durVal = sum.totalSecs > 0 ? formatDuration(sum.totalSecs) : '—';
+  [
+    {val:sessVal, lbl:'Sessions', strava:sum.done>0},
+    {val:kmVal,   lbl:'Distance', strava:sum.totalKm>0},
+    {val:durVal,  lbl:'Duration', strava:sum.totalSecs>0},
+  ].forEach(({val,lbl,strava})=>{
+    const card=document.createElement('div'); card.className='mob-summary-card';
+    card.innerHTML=`<span class="mob-summary-val${strava?' strava':''}">${val}</span><span class="mob-summary-lbl">${lbl}</span>`;
+    sumRow.appendChild(card);
+  });
+  // Progress bar if targets set
+  if (sum.targetKm > 0) {
+    const pct = Math.min(100, Math.round((sum.totalKm/sum.targetKm)*100));
+    const targetCard = document.createElement('div'); targetCard.className='mob-summary-card';
+    targetCard.innerHTML=`<span class="mob-summary-val${sum.totalKm>0?' strava':''}">${pct}%</span><span class="mob-summary-lbl">${sum.totalKm.toFixed(1)}/${sum.targetKm}km</span>`;
+    sumRow.appendChild(targetCard);
+  }
+  mc.appendChild(sumRow);
+
+  // Day cards — one per day
+  const daysEl = document.createElement('div'); daysEl.className='mob-days';
+
   DAYS.forEach((dayName, di) => {
     const dt = new Date(y,m-1,d+di);
     const isToday = dt.getTime()===today.getTime();
-    const btn = document.createElement('button');
-    btn.className='mob-day-tab'+(mobDayIndex===di?' active':'')+(isToday?' today':'');
-    btn.innerHTML=`<span class="mob-day-tab-name">${dayName.slice(0,2)}</span><span class="mob-day-tab-num">${dt.getDate()}</span>`;
-    btn.addEventListener('click', ()=>{ mobDayIndex=di; renderMobileDay(wi,di); });
-    dayBar.appendChild(btn);
-  });
-  mc.appendChild(dayBar);
+    const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 
-  // Render the selected day
-  renderMobileDay(wi, mobDayIndex);
+    const card = document.createElement('div');
+    card.className='mob-day-card'+(isToday?' mob-today':'');
 
-  const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe days or weeks →';
-  mc.appendChild(hint);
-}
+    // Day header
+    const hdr=document.createElement('div'); hdr.className='mob-day-header';
+    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>`;
+    card.appendChild(hdr);
 
-function renderMobileDay(wi, di) {
-  // Remove day content (everything after week-nav + day-bar + anything before hint)
-  const mc = document.getElementById('mobile-cal');
-  // Remove old day content (keep mode-bar=0, week-nav=1, day-bar=2)
-  while (mc.children.length > 3) mc.removeChild(mc.lastChild);
+    const pills=document.createElement('div'); pills.className='mob-day-pills';
+    let hasContent=false;
 
-  mobDayIndex = di;
-  const w = WEEKS[wi];
-  const s = state[wi];
-  const [y,m,d] = WEEK_MONDAYS[wi];
-  const dt = new Date(y,m-1,d+di);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const isToday = dt.getTime()===today.getTime();
-  const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-
-  // Update tab active state
-  mc.querySelectorAll('.mob-day-tab').forEach((btn, i) => btn.classList.toggle('active', i===di));
-
-  const content = document.createElement('div'); content.className='mob-day-content';
-
-  // Date header
-  const datehdr = document.createElement('div'); datehdr.className='mob-day-date-hdr';
-  datehdr.innerHTML=`<span class="mob-day-full-name${isToday?' mob-today-txt':''}">${dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</span>`;
-  content.appendChild(datehdr);
-
-  // Rows
-  const rows = [
-    { key:'gcal',   label:'📅 Calendar' },
-    { key:'wife',   label:'👤 Work' },
-    { key:'kinder', label:'🧒 Kinder' },
-    { key:'runs',   label:'🏃 Run' },
-    { key:'str',    label:'💪 Strength' },
-    { key:'cross',  label:'🚴 Cross' },
-  ];
-
-  rows.forEach(({key, label}) => {
-    let content2 = null;
-
-    if (key === 'gcal') {
-      const evts = gcalEvents[dateStr]||[];
-      if (!evts.length) return;
-      const wrap = document.createElement('div'); wrap.className='mob-row-wrap';
-      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
-      const pils = document.createElement('div'); pils.className='mob-row-pills';
-      evts.forEach(e => {
-        const p=document.createElement('div'); p.className='mob-pill mob-pill-gcal';
-        p.innerHTML=`<span class="mob-pill-label">${e.summary}</span><span class="mob-pill-sub">${e.isAllDay?'All day':e.startTime+(e.endTime?'–'+e.endTime:'')}</span>`;
-        pils.appendChild(p);
-      });
-      wrap.appendChild(pils); content.appendChild(wrap); return;
-    }
-
-    if (key === 'wife') {
-      const wife=wifeState[wi]&&wifeState[wi][di];
-      if (!wife) return;
-      const wp=parse(wife); if(!wp) return;
-      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
-      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
-      const p=document.createElement('div'); p.className='mob-pill mob-pill-wife';
-      p.textContent=translateShift(wp.label);
-      wrap.appendChild(p); content.appendChild(wrap); return;
-    }
-
-    if (key === 'kinder') {
-      if (di >= 5) return;
-      const kinder=getKinder(wi,di);
-      if (!kinder) return;
-      const kp=parse(kinder); if(!kp||kp.cls==='kinder-blank') return;
-      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
-      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
-      const p=document.createElement('div'); p.className='mob-pill mob-pill-kinder';
-      p.textContent=kp.label;
-      wrap.appendChild(p); content.appendChild(wrap); return;
-    }
-
-    if (key === 'runs') {
-      const run=s.runs[di]; if(!run) return;
-      const rp=parse(run); if(!rp) return;
-      const prefix=run.split(':')[0];
-      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
-      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
-      const p=document.createElement('div');
-      p.className=`mob-pill mob-pill-run mob-pill-${prefix}`;
+    // GCal
+    const gcalEvts = gcalEvents[dateStr]||[];
+    if (gcalEvts.length) {
+      const p=document.createElement('div'); p.className='mob-pill mob-pill-gcal';
       p.style.cursor='pointer';
-      let html=`<span class="mob-pill-label">${rp.label}</span>`;
-      const tkm=runTargets[`${wi}-${di}`];
-      if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
-      const acts=getStravaForDay(wi,di,'runs');
-      if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
-      p.innerHTML=html;
-      p.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
-      wrap.appendChild(p); content.appendChild(wrap); return;
+      p.innerHTML=`<span class="mob-pill-label">📅 ${gcalEvts.length} event${gcalEvts.length>1?'s':''}</span><span class="mob-pill-sub">${gcalEvts.slice(0,2).map(e=>`${e.isAllDay?'All day':e.startTime} ${e.summary}`).join(' · ')}</span>`;
+      p.addEventListener('click',()=>openGCal(dateStr));
+      pills.appendChild(p); hasContent=true;
     }
 
-    if (key === 'str') {
-      const str=s.str[di]; const str2=s.str2?s.str2[di]:null;
-      if (!str && !str2) return;
-      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
-      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
-      [str, str2].filter(Boolean).forEach(sv => {
-        const sp=parse(sv); if(!sp) return;
-        const isUpper=sv.startsWith('upper');
-        const p=document.createElement('div');
-        p.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}`;
-        p.style.cursor='pointer';
+    // Wife
+    const wife=wifeState[wi]&&wifeState[wi][di];
+    if (wife) {
+      const wp=parse(wife);
+      if (wp) {
+        const p=document.createElement('div'); p.className='mob-pill mob-pill-wife';
+        p.textContent=translateShift(wp.label);
+        pills.appendChild(p); hasContent=true;
+      }
+    }
+
+    // Kinder
+    const kinder=getKinder(wi,di);
+    if (kinder&&di<5) {
+      const kp=parse(kinder);
+      if (kp&&kp.cls!=='kinder-blank') {
+        const p=document.createElement('div'); p.className='mob-pill mob-pill-kinder';
+        p.textContent=kp.label;
+        pills.appendChild(p); hasContent=true;
+      }
+    }
+
+    // Run
+    const run=s.runs[di];
+    if (run) {
+      const rp=parse(run);
+      if (rp) {
+        const prefix=run.split(':')[0];
+        const cls=prefix==='quality'?'mob-pill-quality':prefix==='long'?'mob-pill-long':prefix==='race'?'mob-pill-race':'mob-pill-easy';
+        const p=document.createElement('div'); p.className=`mob-pill ${cls}`; p.style.cursor='pointer';
+        let html=`<span class="mob-pill-label">${rp.label}</span>`;
+        const tkm=runTargets[`${wi}-${di}`];
+        if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
+        const acts=getStravaForDay(wi,di,'runs');
+        if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
+        p.innerHTML=html;
+        p.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
+        pills.appendChild(p); hasContent=true;
+      }
+    }
+
+    // Strength
+    const str=s.str[di];
+    if (str) {
+      const sp=parse(str);
+      if (sp) {
+        const isUpper=str.startsWith('upper');
+        const p=document.createElement('div'); p.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}`; p.style.cursor='pointer';
         let html=`<span class="mob-pill-label">${sp.label}</span>`;
         const acts=getStravaForDay(wi,di,'str');
         if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
         p.innerHTML=html;
         p.addEventListener('click',()=>openStrPanel(sp.label,wi,di));
-        wrap.appendChild(p);
-      });
-      content.appendChild(wrap); return;
+        pills.appendChild(p); hasContent=true;
+      }
     }
 
-    if (key === 'cross') {
-      const cross=s.cross&&s.cross[di]; if(!cross) return;
-      const cp=parse(cross); if(!cp) return;
-      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
-      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
-      const p=document.createElement('div'); p.className='mob-pill mob-pill-cross';
-      p.textContent=cp.label;
-      wrap.appendChild(p); content.appendChild(wrap); return;
+    // Cross
+    const cross=s.cross&&s.cross[di];
+    if (cross) {
+      const cp=parse(cross);
+      if (cp) {
+        const p=document.createElement('div'); p.className='mob-pill mob-pill-cross';
+        p.textContent=cp.label;
+        pills.appendChild(p); hasContent=true;
+      }
     }
+
+    if (!hasContent) {
+      const rest=document.createElement('div'); rest.className='mob-rest'; rest.textContent='Rest day';
+      pills.appendChild(rest);
+    }
+
+    card.appendChild(pills);
+    daysEl.appendChild(card);
   });
 
-  // If nothing at all
-  if (!content.children.length) {
-    const rest=document.createElement('div'); rest.className='mob-rest'; rest.style.padding='20px 0'; rest.textContent='Rest day 💤';
-    content.appendChild(rest);
-  }
-
-  mc.insertBefore(content, mc.lastChild); // insert before hint if present, otherwise append
+  mc.appendChild(daysEl);
+  const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe to navigate weeks →';
+  mc.appendChild(hint);
 }
 
 function renderMobileMonth() {
@@ -4427,7 +4878,7 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
   container.appendChild(sumWrap);
 
   // All rows — blank out days not in this month
-  ['gcal','wife','kinder','runs','str','str2','cross'].forEach((row, ri) => {
+  ['gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + (isCollapsed ? ' collapsed-row' : '');
     rowEl.appendChild(document.createElement('div')); // meta spacer
