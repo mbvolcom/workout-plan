@@ -916,7 +916,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   </div>
   </div>
 </div>
-<p class="subtitle">Stavanger Marathon · 29 August · Bjørnson family schedule</p>
+<p class="subtitle" id="race-subtitle" style="display:none;"></p>
 
 <div class="drag-hint"><span>✦</span> Drag pills to reschedule. Click an empty cell to add a session. Long-press or right-click to edit or delete.</div>
 
@@ -3594,7 +3594,11 @@ async function loadAllPlans() {
 
     // Set active plan to nearest upcoming race
     const active = allPlans.filter(p=>!p.archived).sort((a,b)=>new Date(a.race_date)-new Date(b.race_date));
-    if (active.length) { activePlanId = active[0].id; updateCountdownForPlan(active[0]); }
+    if (active.length) {
+      activePlanId = active[0].id;
+      updateCountdownForPlan(active[0]);
+      document.getElementById('race-subtitle').style.display = '';
+    }
   } catch(e) { console.warn('Failed to load plans:', e); }
 }
 
@@ -3602,9 +3606,13 @@ function getActivePlan() { return allPlans.find(p=>p.id===activePlanId)||allPlan
 
 function updateCountdownForPlan(plan) {
   if (!plan) return;
-  const subtitle = document.querySelector('.subtitle');
-  if (subtitle) subtitle.textContent = `${plan.race_name||plan.name} · ${new Date(plan.race_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}${plan.goal?' · Goal: '+plan.goal:''}`;
-  if (typeof raceDate !== 'undefined') raceDate = new Date(plan.race_date+'T08:45:00+02:00');
+  const raceDate = new Date(plan.race_date);
+  const dateStr = raceDate.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+  const subtitle = document.getElementById('race-subtitle');
+  if (subtitle) {
+    subtitle.textContent = `${plan.race_name||plan.name} · ${dateStr}${plan.goal ? ' · Goal: '+plan.goal : ''}`;
+  }
+  if (typeof window.raceDate !== 'undefined') window.raceDate = new Date(plan.race_date+'T08:45:00+02:00');
 }
 
 // Plan dropdown
@@ -4654,6 +4662,7 @@ function setCalMode(mode) {
   calMode = mode;
   document.getElementById('view-btn-month').classList.toggle('active', mode === 'month');
   document.getElementById('view-btn-race').classList.toggle('active',  mode === 'race');
+  document.getElementById('race-subtitle').style.display = mode === 'race' ? '' : 'none';
 
   if (mode === 'month') {
     document.getElementById('cal').style.display       = 'none';
@@ -4743,9 +4752,11 @@ function buildMonthView() {
 
   // Plan weeks
   WEEK_MONDAYS.forEach(([y,m,d], wi) => {
+    const weekSunday = new Date(y, m-1, d+6);
+    // Skip weeks that ended entirely before today (unless showing past)
+    if (weekSunday < today && !showPastWeeks) return;
     DAYS.forEach((_, di) => {
       const dt = new Date(y, m-1, d+di);
-      if (dt < today && !showPastWeeks) return;
       const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
       if (!monthMap[mk]) monthMap[mk] = [];
       let entry = monthMap[mk].find(e => e.wi === wi);
@@ -4761,9 +4772,10 @@ function buildMonthView() {
   while (cursor <= twoYearsAhead) {
     const wi = -(++ei);
     const monday = new Date(cursor);
+    const weekSunday = new Date(monday); weekSunday.setDate(monday.getDate()+6);
+    if (weekSunday < today && !showPastWeeks) { cursor.setDate(cursor.getDate()+7); continue; }
     DAYS.forEach((_, di) => {
       const dt = new Date(monday); dt.setDate(monday.getDate()+di);
-      if (dt < today && !showPastWeeks) return;
       const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
       if (!monthMap[mk]) monthMap[mk] = [];
       let entry = monthMap[mk].find(e => e.wi === wi);
