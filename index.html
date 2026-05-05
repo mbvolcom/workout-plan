@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -724,7 +724,33 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-mini-day.has-quality .dp { background:var(--qual-b); }
 .mob-mini-day.has-long .dp { background:var(--long-b); }
 .mob-mini-day.mob-today-day .dn { color:#FC4C02; font-weight:800; }
-.mob-mini-day.blank .dn { color:var(--border-mid); }
+.mob-day-bar { display:flex; gap:3px; margin-bottom:12px; overflow-x:auto; scrollbar-width:none; }
+.mob-day-bar::-webkit-scrollbar { display:none; }
+.mob-day-tab { flex:1; min-width:40px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px 4px; text-align:center; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+.mob-day-tab.active { background:var(--text); border-color:var(--text); }
+.mob-day-tab.today { border-color:#FC4C02; }
+.mob-day-tab.active .mob-day-tab-name, .mob-day-tab.active .mob-day-tab-num { color:var(--bg); }
+.mob-day-tab-name { display:block; font-size:9px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+.mob-day-tab-num { display:block; font-size:15px; font-weight:700; color:var(--text); line-height:1.2; }
+.mob-day-tab.today .mob-day-tab-num { color:#FC4C02; }
+.mob-day-tab.active.today .mob-day-tab-num { color:var(--bg); }
+.mob-day-content { display:flex; flex-direction:column; gap:8px; }
+.mob-day-date-hdr { padding:2px 0 6px; }
+.mob-day-full-name { font-size:16px; font-weight:700; color:var(--text); }
+.mob-day-full-name.mob-today-txt { color:#FC4C02; }
+.mob-row-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; }
+.mob-row-lbl { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:2px; }
+.mob-row-pills { display:flex; flex-direction:column; gap:5px; }
+.mob-pill-gcal { background:#fff; color:#1a73e8; border:0.5px solid #93c5fd; border-radius:8px; padding:8px 12px; }
+.mob-pill-wife { background:var(--wearly-bg); color:var(--wearly-c); border:0.5px solid var(--wearly-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-kinder { background:var(--kind-bg); color:var(--kind-c); border:0.5px solid var(--kind-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-run, .mob-pill-easy { background:var(--easy-bg); color:var(--easy-c); border:0.5px solid var(--easy-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-quality { background:var(--qual-bg); color:var(--qual-c); border:0.5px solid var(--qual-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-long { background:var(--long-bg); color:var(--long-c); border:0.5px solid var(--long-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-race { background:var(--race-bg); color:var(--race-c); border:0.5px solid var(--race-b); border-radius:8px; padding:8px 12px; font-weight:700; }
+.mob-pill-upper { background:var(--upp-bg); color:var(--upp-c); border:0.5px solid var(--upp-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-lower { background:var(--low-bg); color:var(--low-c); border:0.5px solid var(--low-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-cross { background:var(--woff-bg); color:var(--woff-c); border:0.5px solid var(--woff-b); border-radius:8px; padding:8px 12px; }
 </style>
 </head>
 <body>
@@ -1143,7 +1169,7 @@ const WEEKS = [
 ];
 
 // ── STATE ──────────────────────────────────────────────────────────────────
-const state     = WEEKS.map(w => ({ runs:[...w.runs], str:[...w.str], cross:[null,null,null,null,null,null,null] }));
+const state     = WEEKS.map(w => ({ runs:[...w.runs], str:[...w.str], str2:Array(7).fill(null), cross:[null,null,null,null,null,null,null] }));
 const wifeState  = WEEKS.map(w => [...w.wife]);
 // kinderState: null = auto-derive from wife, otherwise manual override string
 const kinderState = WEEKS.map(() => [null,null,null,null,null,null,null]);
@@ -1338,7 +1364,7 @@ const ctxTypesEl = document.getElementById('ctx-types');
 function openCtxMenuAt(x, y, weekIdx, row, dayIdx) {
   ctxTarget = { weekIdx, row, dayIdx };
   ctxTypesEl.innerHTML = '';
-  const types = row === 'runs' ? getRunTypes() : row === 'str' ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
+  const types = row === 'runs' ? getRunTypes() : (row === 'str' || row === 'str2') ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
   types.forEach(({ key, cls }) => {
     const label = key.split(':')[1];
     const opt = document.createElement('div');
@@ -1381,7 +1407,7 @@ function openAddModal(weekIdx, row, dayIdx) {
   addLabelInput.value = ''; addLabelInput.dataset.auto = '0';
   addConfirmBtn.disabled = true;
   addTypeGrid.innerHTML = '';
-  const types = row === 'runs' ? getRunTypes() : row === 'str' ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
+  const types = row === 'runs' ? getRunTypes() : (row === 'str' || row === 'str2') ? STR_TYPES : row === 'cross' ? CROSS_TYPES : row === 'kinder' ? KINDER_TYPES : WIFE_TYPES;
   types.forEach(({ key, cls }) => {
     const label = key.split(':')[1];
     const opt = document.createElement('div');
@@ -1575,6 +1601,7 @@ function weekSummary(wi) {
   DAYS.forEach((_, di) => {
     if (s.runs[di])  plannedRuns++;
     if (s.str[di])   plannedStr++;
+    if (s.str2&&s.str2[di]) plannedStr++;
     if (s.cross[di]) plannedCross++;
 
     // Target km for this day
@@ -1603,7 +1630,7 @@ function renderWeek(wi) {
   container.innerHTML = '';
   const isCollapsed = collapsedWeeks.has(wi);
 
-  ['date','gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
+  ['date','gcal','wife','kinder','runs','str','str2','cross'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + ((ri > 0 && isCollapsed) ? ' collapsed-row' : '');
 
@@ -1636,8 +1663,8 @@ function renderWeek(wi) {
     } else {
       rowEl.appendChild(document.createElement('div')); // meta spacer
       const lbl = document.createElement('div');
-      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
-      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':'Cross';
+      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':(row==='str'||row==='str2')?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
+      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='str2'?'Strength 2':row==='gcal'?'GCal':'Cross';
       rowEl.appendChild(lbl);
 
       if (row === 'gcal') {
@@ -1877,7 +1904,7 @@ const SUPA_HDR  = { 'Content-Type':'application/json', 'apikey':SUPA_KEY, 'Autho
 async function saveState() {
   const btn = document.querySelector('.btn-save');
   btn.textContent = '⏳ Saving…'; btn.disabled = true;
-  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi] }));
+  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi] }));
   localStorage.setItem('training-cal-2026', JSON.stringify(data));
   try {
     const res = await fetch(SUPA_BASE+'calendar_state?on_conflict=id', {
@@ -1908,6 +1935,7 @@ function applyState(saved) {
     if (wi < state.length) {
       if (s.runs)   state[wi].runs  = s.runs;
       if (s.str)    state[wi].str   = s.str;
+      if (s.str2)   state[wi].str2  = s.str2;
       if (s.cross)  state[wi].cross = s.cross;
       if (s.wife)   wifeState[wi]   = s.wife;
       if (s.kinder) kinderState[wi] = s.kinder;
@@ -3831,7 +3859,10 @@ function initMobileView() {
   WEEK_MONDAYS.forEach(([y,m,d], wi) => {
     const mon = new Date(y,m-1,d);
     const sun = new Date(y,m-1,d+6);
-    if (today >= mon && today <= sun) mobWeekIndex = wi;
+    if (today >= mon && today <= sun) {
+      mobWeekIndex = wi;
+      mobDayIndex = today.getDay() === 0 ? 6 : today.getDay() - 1; // Mon=0...Sun=6
+    }
   });
 
   renderMobileView();
@@ -3847,9 +3878,15 @@ function initMobileView() {
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
       if (mobMode === 'race') {
-        if (dx < 0) mobWeekIndex = Math.min(WEEKS.length-1, mobWeekIndex+1);
-        else        mobWeekIndex = Math.max(0, mobWeekIndex-1);
-        renderMobileRaceWeek();
+        if (dx < 0) {
+          // Swipe left — next day, or next week
+          if (mobDayIndex < 6) { mobDayIndex++; renderMobileDay(mobWeekIndex, mobDayIndex); }
+          else { mobWeekIndex=Math.min(WEEKS.length-1,mobWeekIndex+1); mobDayIndex=0; renderMobileRaceWeek(); }
+        } else {
+          // Swipe right — prev day, or prev week
+          if (mobDayIndex > 0) { mobDayIndex--; renderMobileDay(mobWeekIndex, mobDayIndex); }
+          else { mobWeekIndex=Math.max(0,mobWeekIndex-1); mobDayIndex=6; renderMobileRaceWeek(); }
+        }
       } else {
         if (dx < 0) mobMonthOffset++;
         else        mobMonthOffset = Math.max(0, mobMonthOffset-1);
@@ -3878,9 +3915,10 @@ function renderMobileView() {
   else renderMobileMonth();
 }
 
+let mobDayIndex = 0; // which day (0=Mon...6=Sun) within the week
+
 function renderMobileRaceWeek() {
   const mc = document.getElementById('mobile-cal');
-  // Remove everything after mode bar
   while (mc.children.length > 1) mc.removeChild(mc.lastChild);
 
   const wi = mobWeekIndex;
@@ -3902,128 +3940,159 @@ function renderMobileRaceWeek() {
   nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
   mc.appendChild(nav);
 
-  // Summary
-  const sum = weekSummary(wi);
-  const sumRow = document.createElement('div'); sumRow.className='mob-summary';
-  [
-    {val: `${sum.done}/${sum.planned}`, lbl:'Sessions', strava: sum.done>0},
-    {val: sum.totalKm>0?sum.totalKm.toFixed(1)+'km':'—', lbl:'Distance', strava: sum.totalKm>0},
-    {val: sum.totalSecs>0?formatDuration(sum.totalSecs):'—', lbl:'Duration', strava: sum.totalSecs>0},
-  ].forEach(({val,lbl,strava})=>{
-    const card=document.createElement('div'); card.className='mob-summary-card';
-    card.innerHTML=`<span class="mob-summary-val${strava?' strava':''}">${val}</span><span class="mob-summary-lbl">${lbl}</span>`;
-    sumRow.appendChild(card);
-  });
-  mc.appendChild(sumRow);
-
-  // Day cards
-  const daysEl = document.createElement('div'); daysEl.className='mob-days';
-
+  // Day tab bar
+  const dayBar = document.createElement('div'); dayBar.className='mob-day-bar';
   DAYS.forEach((dayName, di) => {
     const dt = new Date(y,m-1,d+di);
     const isToday = dt.getTime()===today.getTime();
-    const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const btn = document.createElement('button');
+    btn.className='mob-day-tab'+(mobDayIndex===di?' active':'')+(isToday?' today':'');
+    btn.innerHTML=`<span class="mob-day-tab-name">${dayName.slice(0,2)}</span><span class="mob-day-tab-num">${dt.getDate()}</span>`;
+    btn.addEventListener('click', ()=>{ mobDayIndex=di; renderMobileDay(wi,di); });
+    dayBar.appendChild(btn);
+  });
+  mc.appendChild(dayBar);
 
-    const card = document.createElement('div');
-    card.className='mob-day-card'+(isToday?' mob-today':'');
+  // Render the selected day
+  renderMobileDay(wi, mobDayIndex);
 
-    // Header
-    const hdr=document.createElement('div'); hdr.className='mob-day-header';
-    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>`;
+  const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe days or weeks →';
+  mc.appendChild(hint);
+}
 
-    // GCal events
-    const gcalEvts = gcalEvents[dateStr]||[];
-    if (gcalEvts.length) {
-      const gcalSpan=document.createElement('span');
-      gcalSpan.style.cssText='font-size:11px;color:#1a73e8;font-weight:600;margin-left:auto;';
-      gcalSpan.textContent=`📅 ${gcalEvts.length}`;
-      gcalSpan.addEventListener('click',e=>{e.stopPropagation();openGCal(dateStr);});
-      hdr.appendChild(gcalSpan);
-    }
-    card.appendChild(hdr);
+function renderMobileDay(wi, di) {
+  // Remove day content (everything after week-nav + day-bar + anything before hint)
+  const mc = document.getElementById('mobile-cal');
+  // Remove old day content (keep mode-bar=0, week-nav=1, day-bar=2)
+  while (mc.children.length > 3) mc.removeChild(mc.lastChild);
 
-    const pills=document.createElement('div'); pills.className='mob-day-pills';
-    let hasContent=false;
+  mobDayIndex = di;
+  const w = WEEKS[wi];
+  const s = state[wi];
+  const [y,m,d] = WEEK_MONDAYS[wi];
+  const dt = new Date(y,m-1,d+di);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const isToday = dt.getTime()===today.getTime();
+  const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 
-    // Wife shift
-    const wife=wifeState[wi]&&wifeState[wi][di];
-    if (wife) {
-      const wp=parse(wife);
-      if (wp) {
-        const p=document.createElement('div');
-        p.className='mob-pill';
-        p.style.cssText='background:var(--wearly-bg);color:var(--wearly-c);border-color:var(--wearly-b);';
-        p.textContent=translateShift(wp.label);
-        pills.appendChild(p); hasContent=true;
-      }
-    }
+  // Update tab active state
+  mc.querySelectorAll('.mob-day-tab').forEach((btn, i) => btn.classList.toggle('active', i===di));
 
-    // Kinder
-    const kinder=getKinder(wi,di);
-    if (kinder&&di<5) {
-      const kp=parse(kinder);
-      if (kp&&kp.cls!=='kinder-blank') {
-        const p=document.createElement('div');
-        p.className='mob-pill';
-        p.style.cssText='background:var(--kind-bg);color:var(--kind-c);border-color:var(--kind-b);';
-        p.textContent=kp.label;
-        pills.appendChild(p); hasContent=true;
-      }
-    }
+  const content = document.createElement('div'); content.className='mob-day-content';
 
-    // Run
-    const run=s.runs[di];
-    if (run) {
-      const rp=parse(run);
-      if (rp) {
-        const prefix=run.split(':')[0];
-        let bg='var(--easy-bg)',co='var(--easy-c)',bo='var(--easy-b)';
-        if(prefix==='quality'){bg='var(--qual-bg)';co='var(--qual-c)';bo='var(--qual-b)';}
-        if(prefix==='long'){bg='var(--long-bg)';co='var(--long-c)';bo='var(--long-b)';}
-        if(prefix==='race'){bg='var(--race-bg)';co='var(--race-c)';bo='var(--race-b)';}
-        const p=document.createElement('div');
-        p.className='mob-pill';
-        p.style.cssText=`background:${bg};color:${co};border:0.5px solid ${bo};cursor:pointer;`;
-        p.innerHTML=`<span class="mob-pill-label">${rp.label}</span>`;
-        // Target km
-        const tkm=runTargets[`${wi}-${di}`];
-        if(tkm!=null){const ts=document.createElement('span');ts.className='mob-pill-target';ts.textContent=`🎯 ${tkm} km`;p.appendChild(ts);}
-        // Strava
-        const acts=getStravaForDay(wi,di,'runs');
-        if(acts){acts.forEach(a=>{const sub=document.createElement('span');sub.className='mob-pill-sub';sub.textContent=`⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}`;p.appendChild(sub);});}
-        p.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
-        pills.appendChild(p); hasContent=true;
-      }
+  // Date header
+  const datehdr = document.createElement('div'); datehdr.className='mob-day-date-hdr';
+  datehdr.innerHTML=`<span class="mob-day-full-name${isToday?' mob-today-txt':''}">${dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</span>`;
+  content.appendChild(datehdr);
+
+  // Rows
+  const rows = [
+    { key:'gcal',   label:'📅 Calendar' },
+    { key:'wife',   label:'👤 Work' },
+    { key:'kinder', label:'🧒 Kinder' },
+    { key:'runs',   label:'🏃 Run' },
+    { key:'str',    label:'💪 Strength' },
+    { key:'cross',  label:'🚴 Cross' },
+  ];
+
+  rows.forEach(({key, label}) => {
+    let content2 = null;
+
+    if (key === 'gcal') {
+      const evts = gcalEvents[dateStr]||[];
+      if (!evts.length) return;
+      const wrap = document.createElement('div'); wrap.className='mob-row-wrap';
+      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
+      const pils = document.createElement('div'); pils.className='mob-row-pills';
+      evts.forEach(e => {
+        const p=document.createElement('div'); p.className='mob-pill mob-pill-gcal';
+        p.innerHTML=`<span class="mob-pill-label">${e.summary}</span><span class="mob-pill-sub">${e.isAllDay?'All day':e.startTime+(e.endTime?'–'+e.endTime:'')}</span>`;
+        pils.appendChild(p);
+      });
+      wrap.appendChild(pils); content.appendChild(wrap); return;
     }
 
-    // Strength
-    const str=s.str[di];
-    if (str) {
-      const sp=parse(str);
-      if (sp) {
-        const isUpper=str.startsWith('upper');
+    if (key === 'wife') {
+      const wife=wifeState[wi]&&wifeState[wi][di];
+      if (!wife) return;
+      const wp=parse(wife); if(!wp) return;
+      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
+      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
+      const p=document.createElement('div'); p.className='mob-pill mob-pill-wife';
+      p.textContent=translateShift(wp.label);
+      wrap.appendChild(p); content.appendChild(wrap); return;
+    }
+
+    if (key === 'kinder') {
+      if (di >= 5) return;
+      const kinder=getKinder(wi,di);
+      if (!kinder) return;
+      const kp=parse(kinder); if(!kp||kp.cls==='kinder-blank') return;
+      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
+      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
+      const p=document.createElement('div'); p.className='mob-pill mob-pill-kinder';
+      p.textContent=kp.label;
+      wrap.appendChild(p); content.appendChild(wrap); return;
+    }
+
+    if (key === 'runs') {
+      const run=s.runs[di]; if(!run) return;
+      const rp=parse(run); if(!rp) return;
+      const prefix=run.split(':')[0];
+      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
+      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
+      const p=document.createElement('div');
+      p.className=`mob-pill mob-pill-run mob-pill-${prefix}`;
+      p.style.cursor='pointer';
+      let html=`<span class="mob-pill-label">${rp.label}</span>`;
+      const tkm=runTargets[`${wi}-${di}`];
+      if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
+      const acts=getStravaForDay(wi,di,'runs');
+      if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
+      p.innerHTML=html;
+      p.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
+      wrap.appendChild(p); content.appendChild(wrap); return;
+    }
+
+    if (key === 'str') {
+      const str=s.str[di]; const str2=s.str2?s.str2[di]:null;
+      if (!str && !str2) return;
+      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
+      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
+      [str, str2].filter(Boolean).forEach(sv => {
+        const sp=parse(sv); if(!sp) return;
+        const isUpper=sv.startsWith('upper');
         const p=document.createElement('div');
-        p.className='mob-pill';
-        p.style.cssText=`background:${isUpper?'var(--upp-bg)':'var(--low-bg)'};color:${isUpper?'var(--upp-c)':'var(--low-c)'};border:0.5px solid ${isUpper?'var(--upp-b)':'var(--low-b)'};cursor:pointer;`;
-        p.innerHTML=`<span class="mob-pill-label">${sp.label}</span>`;
+        p.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}`;
+        p.style.cursor='pointer';
+        let html=`<span class="mob-pill-label">${sp.label}</span>`;
         const acts=getStravaForDay(wi,di,'str');
-        if(acts){acts.forEach(a=>{const sub=document.createElement('span');sub.className='mob-pill-sub';sub.textContent=`⚡ ${formatDuration(a.moving_time)}`;p.appendChild(sub);});}
+        if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
+        p.innerHTML=html;
         p.addEventListener('click',()=>openStrPanel(sp.label,wi,di));
-        pills.appendChild(p); hasContent=true;
-      }
+        wrap.appendChild(p);
+      });
+      content.appendChild(wrap); return;
     }
 
-    if (!hasContent) {
-      const rest=document.createElement('div'); rest.className='mob-rest'; rest.textContent='Rest day';
-      pills.appendChild(rest);
+    if (key === 'cross') {
+      const cross=s.cross&&s.cross[di]; if(!cross) return;
+      const cp=parse(cross); if(!cp) return;
+      const wrap=document.createElement('div'); wrap.className='mob-row-wrap';
+      wrap.innerHTML=`<div class="mob-row-lbl">${label}</div>`;
+      const p=document.createElement('div'); p.className='mob-pill mob-pill-cross';
+      p.textContent=cp.label;
+      wrap.appendChild(p); content.appendChild(wrap); return;
     }
-    card.appendChild(pills);
-    daysEl.appendChild(card);
   });
 
-  mc.appendChild(daysEl);
-  const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe to navigate →';
-  mc.appendChild(hint);
+  // If nothing at all
+  if (!content.children.length) {
+    const rest=document.createElement('div'); rest.className='mob-rest'; rest.style.padding='20px 0'; rest.textContent='Rest day 💤';
+    content.appendChild(rest);
+  }
+
+  mc.insertBefore(content, mc.lastChild); // insert before hint if present, otherwise append
 }
 
 function renderMobileMonth() {
@@ -4358,7 +4427,7 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
   container.appendChild(sumWrap);
 
   // All rows — blank out days not in this month
-  ['gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
+  ['gcal','wife','kinder','runs','str','str2','cross'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + (isCollapsed ? ' collapsed-row' : '');
     rowEl.appendChild(document.createElement('div')); // meta spacer
