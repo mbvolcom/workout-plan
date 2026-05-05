@@ -789,6 +789,9 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   .btn-row { gap:5px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
   .btn-row::-webkit-scrollbar { display:none; }
   .export-btn, .strava-connect-btn { font-size:11px; padding:6px 10px; flex-shrink:0; }
+  /* Prevent any wide element from stretching the page */
+  body { overflow-x: hidden; }
+  .week-row, .grid-header, table { min-width: 0 !important; }
 }
 @media not ((max-width: 600px) and (orientation: portrait)) {
   #mobile-cal { display: none !important; }
