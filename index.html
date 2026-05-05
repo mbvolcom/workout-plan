@@ -668,6 +668,63 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   background: #FC4C02; color: #fff;
 }
 .strava-connect-btn:hover { opacity: 0.85; }
+
+/* ── MOBILE PORTRAIT ─────────────────────────────────────────────────────── */
+@media (max-width: 600px) and (orientation: portrait) {
+  #cal, #month-cal, #week-view, #day-view, .drag-hint { display: none !important; }
+  .view-switcher { display: none !important; }
+  #mobile-cal { display: block !important; }
+  #countdown-banner { display: none; }
+  #now-weather { display: none; }
+  .btn-row { gap:5px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+  .btn-row::-webkit-scrollbar { display:none; }
+  .export-btn, .strava-connect-btn { font-size:11px; padding:6px 10px; flex-shrink:0; }
+}
+@media not ((max-width: 600px) and (orientation: portrait)) {
+  #mobile-cal { display: none !important; }
+}
+#mobile-cal { display:none; padding-bottom:80px; }
+.mob-mode-bar { display:flex; background:var(--bg); border:1px solid var(--border-mid); border-radius:10px; padding:3px; margin-bottom:14px; gap:3px; }
+.mob-mode-btn { flex:1; background:none; border:none; padding:8px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:7px; font-family:inherit; transition:all 0.15s; }
+.mob-mode-btn.active { background:var(--text); color:var(--bg); }
+.mob-week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:8px; }
+.mob-week-nav-btn { background:var(--surface); border:1px solid var(--border-mid); border-radius:10px; width:40px; height:40px; font-size:18px; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; }
+.mob-week-info { text-align:center; flex:1; }
+.mob-week-num { font-size:15px; font-weight:700; color:var(--text); }
+.mob-week-dates { font-size:11px; color:var(--muted); margin-top:1px; }
+.mob-week-km { font-size:10px; color:var(--muted); }
+.mob-summary { display:flex; gap:8px; margin-bottom:14px; }
+.mob-summary-card { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 8px; text-align:center; }
+.mob-summary-val { font-size:16px; font-weight:700; color:var(--text); display:block; }
+.mob-summary-val.strava { color:#FC4C02; }
+.mob-summary-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+.mob-days { display:flex; flex-direction:column; gap:8px; }
+.mob-day-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.mob-day-card.mob-today { border-color:var(--text); border-width:2px; }
+.mob-day-header { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+.mob-day-name { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; min-width:28px; }
+.mob-day-num { font-size:22px; font-weight:700; color:var(--text); line-height:1; }
+.mob-day-num.mob-today-num { color:#FC4C02; }
+.mob-day-pills { padding:10px 14px; display:flex; flex-direction:column; gap:5px; }
+.mob-pill { border-radius:8px; padding:8px 12px; font-size:13px; font-weight:500; line-height:1.4; }
+.mob-pill-sub { font-size:11px; opacity:0.8; display:block; margin-top:2px; }
+.mob-pill-target { font-size:11px; color:#0C447C; display:block; margin-top:1px; }
+.mob-rest { font-size:13px; color:var(--border-mid); font-style:italic; padding:4px 0; }
+.mob-swipe-hint { text-align:center; font-size:11px; color:var(--border-mid); margin-top:12px; }
+.mob-month-hdr { font-size:13px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.06em; padding:14px 0 8px; border-top:0.5px solid var(--border-mid); margin-top:4px; }
+.mob-month-hdr:first-child { border-top:none; padding-top:0; }
+.mob-mini-week { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:6px; display:flex; align-items:center; gap:10px; cursor:pointer; }
+.mob-mini-week:active { background:var(--bg); }
+.mob-mini-wk { font-size:10px; color:var(--muted); min-width:34px; }
+.mob-mini-days { display:flex; gap:3px; flex:1; }
+.mob-mini-day { flex:1; text-align:center; padding:3px 1px; border-radius:6px; }
+.mob-mini-day .dn { font-size:12px; font-weight:600; color:var(--text); display:block; }
+.mob-mini-day .dp { display:block; width:5px; height:5px; border-radius:50%; margin:2px auto 0; background:transparent; }
+.mob-mini-day.has-run .dp { background:var(--easy-b); }
+.mob-mini-day.has-quality .dp { background:var(--qual-b); }
+.mob-mini-day.has-long .dp { background:var(--long-b); }
+.mob-mini-day.mob-today-day .dn { color:#FC4C02; font-weight:800; }
+.mob-mini-day.blank .dn { color:var(--border-mid); }
 </style>
 </head>
 <body>
@@ -979,6 +1036,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 <div id="month-cal" style="display:none;"></div>
 <div id="week-view" style="display:none;"></div>
 <div id="day-view" style="display:none;"></div>
+<div id="mobile-cal"></div>
 
 <script>
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -2044,6 +2102,9 @@ if (_local) applyState(JSON.parse(_local));
 
   // 7. Fetch Google Calendar events
   fetchGCal();
+
+  // 8. Init mobile portrait view
+  initMobileView();
 })();
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -3751,7 +3812,300 @@ function openGCal(dateStr) {
   gcalOverlay.classList.add('open');
 }
 
-// ── CALENDAR MODE (Month vs Race) ───────────────────────────────────────────
+// ── MOBILE PORTRAIT VIEW ───────────────────────────────────────────────────
+let mobMode = 'race'; // 'race' or 'month'
+let mobWeekIndex = 0;
+let mobMonthOffset = 0; // months from today
+let touchStartX = 0, touchStartY = 0;
+
+function isMobilePortrait() {
+  return window.innerWidth <= 600 && window.innerHeight > window.innerWidth;
+}
+
+function initMobileView() {
+  if (!isMobilePortrait()) return;
+
+  // Find current week
+  const today = new Date(); today.setHours(0,0,0,0);
+  mobWeekIndex = 0;
+  WEEK_MONDAYS.forEach(([y,m,d], wi) => {
+    const mon = new Date(y,m-1,d);
+    const sun = new Date(y,m-1,d+6);
+    if (today >= mon && today <= sun) mobWeekIndex = wi;
+  });
+
+  renderMobileView();
+
+  // Swipe detection
+  const mc = document.getElementById('mobile-cal');
+  mc.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, {passive:true});
+  mc.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (mobMode === 'race') {
+        if (dx < 0) mobWeekIndex = Math.min(WEEKS.length-1, mobWeekIndex+1);
+        else        mobWeekIndex = Math.max(0, mobWeekIndex-1);
+        renderMobileRaceWeek();
+      } else {
+        if (dx < 0) mobMonthOffset++;
+        else        mobMonthOffset = Math.max(0, mobMonthOffset-1);
+        renderMobileMonth();
+      }
+    }
+  }, {passive:true});
+}
+
+function renderMobileView() {
+  const mc = document.getElementById('mobile-cal');
+  mc.innerHTML = '';
+
+  // Mode toggle
+  const modeBar = document.createElement('div'); modeBar.className = 'mob-mode-bar';
+  ['month','race'].forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'mob-mode-btn' + (mobMode===m?' active':'');
+    btn.textContent = m==='race' ? '🏃 Race' : '📅 Month';
+    btn.addEventListener('click', () => { mobMode=m; renderMobileView(); });
+    modeBar.appendChild(btn);
+  });
+  mc.appendChild(modeBar);
+
+  if (mobMode === 'race') renderMobileRaceWeek();
+  else renderMobileMonth();
+}
+
+function renderMobileRaceWeek() {
+  const mc = document.getElementById('mobile-cal');
+  // Remove everything after mode bar
+  while (mc.children.length > 1) mc.removeChild(mc.lastChild);
+
+  const wi = mobWeekIndex;
+  const w  = WEEKS[wi];
+  const s  = state[wi];
+  if (!w) return;
+
+  const [y,m,d] = WEEK_MONDAYS[wi];
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Week navigator
+  const nav = document.createElement('div'); nav.className='mob-week-nav';
+  const prev = document.createElement('button'); prev.className='mob-week-nav-btn'; prev.textContent='‹';
+  prev.addEventListener('click', ()=>{ mobWeekIndex=Math.max(0,mobWeekIndex-1); renderMobileRaceWeek(); });
+  const info = document.createElement('div'); info.className='mob-week-info';
+  info.innerHTML=`<div class="mob-week-num">${w.num}</div><div class="mob-week-dates">${w.dates}</div><div class="mob-week-km">${w.km} km planned</div>`;
+  const next = document.createElement('button'); next.className='mob-week-nav-btn'; next.textContent='›';
+  next.addEventListener('click', ()=>{ mobWeekIndex=Math.min(WEEKS.length-1,mobWeekIndex+1); renderMobileRaceWeek(); });
+  nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
+  mc.appendChild(nav);
+
+  // Summary
+  const sum = weekSummary(wi);
+  const sumRow = document.createElement('div'); sumRow.className='mob-summary';
+  [
+    {val: `${sum.done}/${sum.planned}`, lbl:'Sessions', strava: sum.done>0},
+    {val: sum.totalKm>0?sum.totalKm.toFixed(1)+'km':'—', lbl:'Distance', strava: sum.totalKm>0},
+    {val: sum.totalSecs>0?formatDuration(sum.totalSecs):'—', lbl:'Duration', strava: sum.totalSecs>0},
+  ].forEach(({val,lbl,strava})=>{
+    const card=document.createElement('div'); card.className='mob-summary-card';
+    card.innerHTML=`<span class="mob-summary-val${strava?' strava':''}">${val}</span><span class="mob-summary-lbl">${lbl}</span>`;
+    sumRow.appendChild(card);
+  });
+  mc.appendChild(sumRow);
+
+  // Day cards
+  const daysEl = document.createElement('div'); daysEl.className='mob-days';
+
+  DAYS.forEach((dayName, di) => {
+    const dt = new Date(y,m-1,d+di);
+    const isToday = dt.getTime()===today.getTime();
+    const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+
+    const card = document.createElement('div');
+    card.className='mob-day-card'+(isToday?' mob-today':'');
+
+    // Header
+    const hdr=document.createElement('div'); hdr.className='mob-day-header';
+    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>`;
+
+    // GCal events
+    const gcalEvts = gcalEvents[dateStr]||[];
+    if (gcalEvts.length) {
+      const gcalSpan=document.createElement('span');
+      gcalSpan.style.cssText='font-size:11px;color:#1a73e8;font-weight:600;margin-left:auto;';
+      gcalSpan.textContent=`📅 ${gcalEvts.length}`;
+      gcalSpan.addEventListener('click',e=>{e.stopPropagation();openGCal(dateStr);});
+      hdr.appendChild(gcalSpan);
+    }
+    card.appendChild(hdr);
+
+    const pills=document.createElement('div'); pills.className='mob-day-pills';
+    let hasContent=false;
+
+    // Wife shift
+    const wife=wifeState[wi]&&wifeState[wi][di];
+    if (wife) {
+      const wp=parse(wife);
+      if (wp) {
+        const p=document.createElement('div');
+        p.className='mob-pill';
+        p.style.cssText='background:var(--wearly-bg);color:var(--wearly-c);border-color:var(--wearly-b);';
+        p.textContent=translateShift(wp.label);
+        pills.appendChild(p); hasContent=true;
+      }
+    }
+
+    // Kinder
+    const kinder=getKinder(wi,di);
+    if (kinder&&di<5) {
+      const kp=parse(kinder);
+      if (kp&&kp.cls!=='kinder-blank') {
+        const p=document.createElement('div');
+        p.className='mob-pill';
+        p.style.cssText='background:var(--kind-bg);color:var(--kind-c);border-color:var(--kind-b);';
+        p.textContent=kp.label;
+        pills.appendChild(p); hasContent=true;
+      }
+    }
+
+    // Run
+    const run=s.runs[di];
+    if (run) {
+      const rp=parse(run);
+      if (rp) {
+        const prefix=run.split(':')[0];
+        let bg='var(--easy-bg)',co='var(--easy-c)',bo='var(--easy-b)';
+        if(prefix==='quality'){bg='var(--qual-bg)';co='var(--qual-c)';bo='var(--qual-b)';}
+        if(prefix==='long'){bg='var(--long-bg)';co='var(--long-c)';bo='var(--long-b)';}
+        if(prefix==='race'){bg='var(--race-bg)';co='var(--race-c)';bo='var(--race-b)';}
+        const p=document.createElement('div');
+        p.className='mob-pill';
+        p.style.cssText=`background:${bg};color:${co};border:0.5px solid ${bo};cursor:pointer;`;
+        p.innerHTML=`<span class="mob-pill-label">${rp.label}</span>`;
+        // Target km
+        const tkm=runTargets[`${wi}-${di}`];
+        if(tkm!=null){const ts=document.createElement('span');ts.className='mob-pill-target';ts.textContent=`🎯 ${tkm} km`;p.appendChild(ts);}
+        // Strava
+        const acts=getStravaForDay(wi,di,'runs');
+        if(acts){acts.forEach(a=>{const sub=document.createElement('span');sub.className='mob-pill-sub';sub.textContent=`⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}`;p.appendChild(sub);});}
+        p.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
+        pills.appendChild(p); hasContent=true;
+      }
+    }
+
+    // Strength
+    const str=s.str[di];
+    if (str) {
+      const sp=parse(str);
+      if (sp) {
+        const isUpper=str.startsWith('upper');
+        const p=document.createElement('div');
+        p.className='mob-pill';
+        p.style.cssText=`background:${isUpper?'var(--upp-bg)':'var(--low-bg)'};color:${isUpper?'var(--upp-c)':'var(--low-c)'};border:0.5px solid ${isUpper?'var(--upp-b)':'var(--low-b)'};cursor:pointer;`;
+        p.innerHTML=`<span class="mob-pill-label">${sp.label}</span>`;
+        const acts=getStravaForDay(wi,di,'str');
+        if(acts){acts.forEach(a=>{const sub=document.createElement('span');sub.className='mob-pill-sub';sub.textContent=`⚡ ${formatDuration(a.moving_time)}`;p.appendChild(sub);});}
+        p.addEventListener('click',()=>openStrPanel(sp.label,wi,di));
+        pills.appendChild(p); hasContent=true;
+      }
+    }
+
+    if (!hasContent) {
+      const rest=document.createElement('div'); rest.className='mob-rest'; rest.textContent='Rest day';
+      pills.appendChild(rest);
+    }
+    card.appendChild(pills);
+    daysEl.appendChild(card);
+  });
+
+  mc.appendChild(daysEl);
+  const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe to navigate →';
+  mc.appendChild(hint);
+}
+
+function renderMobileMonth() {
+  const mc = document.getElementById('mobile-cal');
+  while (mc.children.length > 1) mc.removeChild(mc.lastChild);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const baseMonth = new Date(today.getFullYear(), today.getMonth() + mobMonthOffset, 1);
+
+  // Show 3 months at a time
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Month nav
+  const nav=document.createElement('div'); nav.className='mob-week-nav';
+  const prev=document.createElement('button'); prev.className='mob-week-nav-btn'; prev.textContent='‹';
+  prev.addEventListener('click',()=>{mobMonthOffset=Math.max(0,mobMonthOffset-1);renderMobileMonth();});
+  const title=document.createElement('div'); title.className='mob-week-info';
+  title.innerHTML=`<div class="mob-week-num">${MONTH_NAMES[baseMonth.getMonth()]} ${baseMonth.getFullYear()}</div>`;
+  const next=document.createElement('button'); next.className='mob-week-nav-btn'; next.textContent='›';
+  next.addEventListener('click',()=>{mobMonthOffset++;renderMobileMonth();});
+  nav.appendChild(prev); nav.appendChild(title); nav.appendChild(next);
+  mc.appendChild(nav);
+
+  // Find weeks in this month
+  const yr=baseMonth.getFullYear(), mo=baseMonth.getMonth();
+  const firstDay=new Date(yr,mo,1), lastDay=new Date(yr,mo+1,0);
+
+  // Build week list for this month from WEEK_MONDAYS
+  const weeksInMonth=[];
+  WEEK_MONDAYS.forEach(([y,m,d],wi)=>{
+    const mon=new Date(y,m-1,d), sun=new Date(y,m-1,d+6);
+    if(mon<=lastDay&&sun>=firstDay) weeksInMonth.push(wi);
+  });
+
+  if(!weeksInMonth.length){
+    const empty=document.createElement('div'); empty.style.cssText='color:var(--muted);font-size:13px;padding:20px 0;text-align:center;'; empty.textContent='No plan data for this month.';
+    mc.appendChild(empty); return;
+  }
+
+  // Render each week as a mini row
+  weeksInMonth.forEach(wi=>{
+    const w=WEEKS[wi]; if(!w) return;
+    const s=state[wi];
+    const [y2,m2,d2]=WEEK_MONDAYS[wi];
+
+    const row=document.createElement('div'); row.className='mob-mini-week';
+    row.addEventListener('click',()=>{mobMode='race';mobWeekIndex=wi;renderMobileView();});
+
+    const wkLbl=document.createElement('div'); wkLbl.className='mob-mini-wk';
+    wkLbl.innerHTML=`<span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Wk ${getISOWeekNumber(new Date(y2,m2-1,d2))}</span><br><span style="font-size:10px;font-weight:600;color:var(--text);">${w.num}</span>`;
+    row.appendChild(wkLbl);
+
+    const daysRow=document.createElement('div'); daysRow.className='mob-mini-days';
+    DAYS.forEach((_,di)=>{
+      const dt=new Date(y2,m2-1,d2+di);
+      const inMonth=dt.getMonth()===mo&&dt.getFullYear()===yr;
+      const isToday=dt.getTime()===today.getTime();
+      const div=document.createElement('div');
+      div.className='mob-mini-day'+(isToday?' mob-today-day':'')+(inMonth?'':' blank');
+      if(inMonth){
+        const run=s.runs[di];
+        if(run){
+          const prefix=run.split(':')[0];
+          if(prefix==='long') div.classList.add('has-long');
+          else if(prefix==='quality') div.classList.add('has-quality');
+          else div.classList.add('has-run');
+        }
+      }
+      div.innerHTML=`<span class="dn">${inMonth?dt.getDate():''}</span><span class="dp"></span>`;
+      daysRow.appendChild(div);
+    });
+    row.appendChild(daysRow);
+    mc.appendChild(row);
+  });
+
+  const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe to navigate · tap week to expand →';
+  mc.appendChild(hint);
+}
+
+// Init mobile view on load and on resize/orientation change
+window.addEventListener('resize', ()=>{ if(isMobilePortrait()) { initMobileView(); } });
+window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ if(isMobilePortrait()) initMobileView(); }, 100); });
 let calMode = 'race'; // 'race' or 'month'
 let showPastWeeks = false;
 
