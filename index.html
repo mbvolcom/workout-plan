@@ -781,17 +781,16 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 
 /* ── MOBILE PORTRAIT ─────────────────────────────────────────────────────── */
 @media (max-width: 600px) and (orientation: portrait) {
-  #cal, #month-cal, #week-view, #day-view, .drag-hint { display: none !important; }
+  #desktop-cal-wrap { display: none !important; }
   .view-switcher { display: none !important; }
+  .drag-hint { display: none !important; }
   #mobile-cal { display: block !important; }
   #countdown-banner { display: none; }
   #now-weather { display: none; }
   .btn-row { gap:5px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
   .btn-row::-webkit-scrollbar { display:none; }
   .export-btn, .strava-connect-btn { font-size:11px; padding:6px 10px; flex-shrink:0; }
-  /* Prevent any wide element from stretching the page */
-  body { overflow-x: hidden; }
-  .week-row, .grid-header, table { min-width: 0 !important; }
+  body { overflow-x: hidden; max-width: 100vw; }
 }
 @media not ((max-width: 600px) and (orientation: portrait)) {
   #mobile-cal { display: none !important; }
@@ -1195,10 +1194,12 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   </div>
 </div>
 
+<div id="desktop-cal-wrap">
 <div id="cal"></div>
 <div id="month-cal" style="display:none;"></div>
 <div id="week-view" style="display:none;"></div>
 <div id="day-view" style="display:none;"></div>
+</div>
 <div id="mobile-cal"></div>
 
 <script>
