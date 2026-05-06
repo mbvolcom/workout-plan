@@ -823,7 +823,10 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 }
 #stats-back:hover { color:#f0ede8; border-color:rgba(255,255,255,0.3); }
 #stats-title { font-size:16px; font-weight:700; color:#f0ede8; flex:1; }
-#stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; }
+#stats-tab-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; }
+.stats-tab-btn { background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500; color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s; white-space:nowrap; }
+.stats-tab-btn.active { background:#f0ede8; color:#0e0f11; }
+#stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; margin-bottom:4px; display:inline-flex; }
 .stats-scope-btn {
   background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500;
   color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s;
@@ -907,6 +910,30 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .stats-heat-both  { background:#388E3C; }
 .stats-heat-missed { background:#7B1D1D; }
 .stats-heatmap-wrap { background:#16181c; border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:16px; }
+
+/* Sterk Gutt stats */
+.sg-neon { color:#00b4ff; }
+.sg-green { color:#00ffcc; }
+.sg-orange { color:#ff9f43; }
+.sg-purple { color:#7c6aff; }
+.pr-row { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.04); }
+.pr-row:last-child { border-bottom:none; }
+.pr-name { font-size:13px; color:#d1d5db; }
+.pr-muscle { font-size:10px; color:#4b5563; margin-top:2px; }
+.pr-weight { font-size:18px; font-weight:800; color:#00ffcc; font-variant-numeric:tabular-nums; }
+.pr-reps { font-size:10px; color:#4b5563; }
+.muscle-vol-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.muscle-vol-name { font-size:11px; color:#9ca3af; min-width:110px; }
+.muscle-vol-bar { flex:1; height:5px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; }
+.muscle-vol-fill { height:100%; border-radius:3px; background:#00b4ff; }
+.muscle-vol-val { font-size:11px; color:#6b7280; min-width:28px; text-align:right; }
+.sg-session-row { display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; }
+.sg-session-row:last-child { border-bottom:none; }
+.sg-session-dot { width:7px; height:7px; border-radius:50%; background:#00b4ff; box-shadow:0 0 6px rgba(0,180,255,0.4); flex-shrink:0; }
+.sg-session-name { font-size:13px; color:#d1d5db; }
+.sg-session-meta { font-size:10px; color:#4b5563; margin-top:2px; }
+.sg-session-right { margin-left:auto; font-size:11px; color:#6b7280; text-align:right; }
+.sg-session-sets { font-size:16px; font-weight:700; color:#00b4ff; display:block; }
 @media (max-width: 600px) and (orientation: portrait) {
   #desktop-cal-wrap { display: none !important; }
   .view-switcher { display: none !important; }
@@ -1156,6 +1183,12 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <div id="stats-header">
       <button id="stats-back" onclick="closeStatsPage()">← Back to calendar</button>
       <div id="stats-title">Statistics</div>
+      <div id="stats-tab-toggle">
+        <button class="stats-tab-btn active" data-tab="running" onclick="setStatsTab('running')">🏃 Running</button>
+        <button class="stats-tab-btn" data-tab="strength" onclick="setStatsTab('strength')">💪 Sterk Gutt</button>
+      </div>
+    </div>
+    <div id="stats-running-header" style="padding:10px 20px 0;">
       <div id="stats-scope-toggle">
         <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
         <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
@@ -4479,8 +4512,24 @@ function openGCal(dateStr) {
   gcalOverlay.classList.add('open');
 }
 
-// ── STATS PAGE ──────────────────────────────────────────────────────────────
-let statsScope = 'plan'; // 'plan' or 'alltime'
+// ── STERK GUTT ─────────────────────────────────────────────────────────────
+const SG_BASE = 'https://fzbovpdnpvsfdnxyftqv.supabase.co/rest/v1/';
+const SG_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6Ym92cGRucHZzZmRueHlmdHF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMzM5NzcsImV4cCI6MjA5MzYwOTk3N30.LqtdpwtEfZweiQW3NJmtFkVZuCG7_ANLP8yLB8XfIn4';
+const SG_HDR  = { 'apikey': SG_KEY, 'Authorization': 'Bearer ' + SG_KEY };
+
+let sgSessions = null; // cached
+
+async function fetchSGSessions() {
+  if (sgSessions) return sgSessions;
+  try {
+    const res = await fetch(SG_BASE + 'sessions?select=*&order=started_at.desc', { headers: SG_HDR });
+    if (!res.ok) throw new Error('SG fetch failed: ' + res.status);
+    sgSessions = await res.json();
+    return sgSessions;
+  } catch(e) { console.warn('Sterk Gutt fetch failed:', e); return []; }
+}
+let statsScope = 'plan';
+let statsTab   = 'running';
 
 function openStatsPage() {
   document.getElementById('stats-overlay').classList.add('open');
@@ -4494,8 +4543,19 @@ function setStatsScope(scope) {
   document.querySelectorAll('.stats-scope-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === scope));
   renderStats();
 }
+function setStatsTab(tab) {
+  statsTab = tab;
+  document.querySelectorAll('.stats-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('stats-running-header').style.display = tab === 'running' ? '' : 'none';
+  renderStats();
+}
 
 function renderStats() {
+  if (statsTab === 'strength') { renderSGStats(); return; }
+  renderRunningStats();
+}
+
+function renderRunningStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
   const today = new Date(); today.setHours(0,0,0,0);
@@ -4650,6 +4710,115 @@ function renderStats() {
   heatWrap.appendChild(heatmap); heatWrap.appendChild(heatLegend);
   heatSection.appendChild(heatWrap);
   container.appendChild(heatSection);
+}
+
+// ── STERK GUTT STATS ────────────────────────────────────────────────────────
+async function renderSGStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = '<div style="color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;">Loading Sterk Gutt data…</div>';
+  const sessions = await fetchSGSessions();
+  container.innerHTML = '';
+  if (!sessions.length) {
+    container.innerHTML = '<div style="color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;">No sessions found.</div>';
+    return;
+  }
+
+  let totalSets=0, totalDuration=0;
+  const prMap={}, muscleMap={}, monthMap={};
+
+  sessions.forEach(s => {
+    const startedAt = s.started_at || s.startedAt;
+    totalDuration += s.duration||0;
+    const mk = startedAt ? startedAt.slice(0,7) : '?';
+    monthMap[mk] = (monthMap[mk]||0)+1;
+    (s.exercises||[]).forEach(ex => {
+      const loggedSets=(ex.sets||[]).filter(st=>st.logged);
+      totalSets+=loggedSets.length;
+      muscleMap[ex.muscle||'Other']=(muscleMap[ex.muscle||'Other']||0)+loggedSets.length;
+      loggedSets.forEach(st=>{
+        const w=parseFloat(st.weight)||0;
+        if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};
+      });
+    });
+  });
+
+  const avgSets = sessions.length ? Math.round(totalSets/sessions.length) : 0;
+  const avgDur  = sessions.length ? Math.round(totalDuration/sessions.length/60) : 0;
+
+  // KPIs
+  const kpiGrid=document.createElement('div'); kpiGrid.className='stats-kpi-grid';
+  [{val:sessions.length,lbl:'Total sessions',sub:'all time',cls:'sg-neon'},
+   {val:totalSets,lbl:'Total sets',sub:`avg ${avgSets}/session`,cls:'sg-green'},
+   {val:avgDur+'m',lbl:'Avg session',sub:'duration',cls:'sg-orange'},
+   {val:Object.keys(prMap).length,lbl:'Exercises',sub:'with PR data',cls:'sg-purple'},
+  ].forEach(({val,lbl,sub,cls})=>{
+    const c=document.createElement('div'); c.className='stats-kpi';
+    c.innerHTML=`<div class="stats-kpi-val ${cls}">${val}</div><div class="stats-kpi-lbl">${lbl}</div><div class="stats-kpi-sub">${sub}</div>`;
+    kpiGrid.appendChild(c);
+  });
+  container.appendChild(kpiGrid);
+
+  // Sessions per month bar chart
+  const MONTH_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const sortedMonths=Object.keys(monthMap).sort();
+  const maxSess=Math.max(...Object.values(monthMap),1);
+  const ms=document.createElement('div'); ms.className='stats-section';
+  ms.innerHTML=`<div class="stats-section-title">Sessions per month</div>`;
+  const bw=document.createElement('div'); bw.className='stats-bar-chart';
+  const be=document.createElement('div'); be.className='stats-bars';
+  sortedMonths.forEach(mk=>{
+    const count=monthMap[mk], h=Math.round((count/maxSess)*120);
+    const [,m]=mk.split('-');
+    const col=document.createElement('div'); col.className='stats-bar-col';
+    const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
+    const bar=document.createElement('div'); bar.className='stats-bar-actual';
+    bar.style.cssText=`height:${h}px;background:#00b4ff88;`; bar.title=`${mk}: ${count} sessions`;
+    wrap.appendChild(bar);
+    const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'; lbl.textContent=MONTH_SHORT[parseInt(m,10)-1];
+    col.appendChild(wrap); col.appendChild(lbl); be.appendChild(col);
+  });
+  bw.appendChild(be); ms.appendChild(bw); container.appendChild(ms);
+
+  // Muscle volume
+  const mvs=document.createElement('div'); mvs.className='stats-section';
+  mvs.innerHTML=`<div class="stats-section-title">Volume by muscle group</div>`;
+  const mvw=document.createElement('div'); mvw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+  const sortedMuscles=Object.entries(muscleMap).sort((a,b)=>b[1]-a[1]);
+  const maxM=sortedMuscles[0]?.[1]||1;
+  sortedMuscles.forEach(([muscle,sets])=>{
+    const row=document.createElement('div'); row.className='muscle-vol-row';
+    row.innerHTML=`<span class="muscle-vol-name">${muscle}</span><div class="muscle-vol-bar"><div class="muscle-vol-fill" style="width:${Math.round(sets/maxM*100)}%"></div></div><span class="muscle-vol-val">${sets}</span>`;
+    mvw.appendChild(row);
+  });
+  mvs.appendChild(mvw); container.appendChild(mvs);
+
+  // PRs
+  const prs=document.createElement('div'); prs.className='stats-section';
+  prs.innerHTML=`<div class="stats-section-title">Personal records</div>`;
+  const prw=document.createElement('div'); prw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+  Object.entries(prMap).sort((a,b)=>b[1].weight-a[1].weight).forEach(([name,pr])=>{
+    const row=document.createElement('div'); row.className='pr-row';
+    row.innerHTML=`<div><div class="pr-name">${name}</div><div class="pr-muscle">${pr.muscle}</div></div><div style="text-align:right"><div class="pr-weight">${pr.weight} kg</div><div class="pr-reps">${pr.reps} reps</div></div>`;
+    prw.appendChild(row);
+  });
+  prs.appendChild(prw); container.appendChild(prs);
+
+  // Recent sessions
+  const rs=document.createElement('div'); rs.className='stats-section';
+  rs.innerHTML=`<div class="stats-section-title">Recent sessions</div>`;
+  const rw=document.createElement('div'); rw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+  sessions.slice(0,10).forEach(s=>{
+    const startedAt=s.started_at||s.startedAt;
+    const dt=startedAt?new Date(startedAt):null;
+    const dateStr=dt?dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):'—';
+    const sets=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
+    const dur=s.duration?Math.round(s.duration/60)+'m':'—';
+    const name=s.name||(s.exercises?.[0]?.name)||'Workout';
+    const row=document.createElement('div'); row.className='sg-session-row';
+    row.innerHTML=`<div class="sg-session-dot"></div><div><div class="sg-session-name">${name}</div><div class="sg-session-meta">${dateStr} · ${dur}</div></div><div class="sg-session-right"><span class="sg-session-sets">${sets}</span>sets</div>`;
+    rw.appendChild(row);
+  });
+  rs.appendChild(rw); container.appendChild(rs);
 }
 
 function buildStatsWeeks() {
