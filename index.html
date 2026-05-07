@@ -2832,7 +2832,7 @@ async function runIntervalAnalysis(activityId) {
   const secs = parseInt(document.getElementById('ia-sec').value)||10;
   const minDur = parseInt(document.getElementById('ia-dur').value)||60;
 
-  const thresholdMps = 1000 / (mins*60 + secs); // m/s faster than this = interval
+  const thresholdMps = 1000 / (mins*60 + secs);
   btn.textContent = 'Loading…'; btn.disabled = true;
   result.innerHTML = '';
 
@@ -2847,66 +2847,84 @@ async function runIntervalAnalysis(activityId) {
     const hrArr   = streams.heartrate?.data;
 
     if (!timeArr || !velArr) throw new Error('No stream data returned');
+    const n = velArr.length;
 
-    // Detect intervals — windows where velocity > threshold for > minDur seconds
-    const intervals = [];
-    let inInterval = false, startIdx = 0;
+    // Step 1: Rolling average smoothing (15-second window)
+    const smoothWindow = 15;
+    const smoothed = velArr.map((_, i) => {
+      let sum = 0, count = 0;
+      for (let j = Math.max(0, i-smoothWindow); j <= Math.min(n-1, i+smoothWindow); j++) {
+        sum += velArr[j]; count++;
+      }
+      return sum / count;
+    });
 
-    for (let i = 0; i < velArr.length; i++) {
-      const fast = velArr[i] >= thresholdMps;
-      if (fast && !inInterval) { inInterval = true; startIdx = i; }
-      if (!fast && inInterval) {
-        const duration = timeArr[i] - timeArr[startIdx];
-        if (duration >= minDur) {
-          const distCovered = distArr[i] - distArr[startIdx];
-          const avgVel = velArr.slice(startIdx, i).reduce((a,b)=>a+b,0)/(i-startIdx);
-          const avgHr  = hrArr ? Math.round(hrArr.slice(startIdx, i).reduce((a,b)=>a+b,0)/(i-startIdx)) : null;
-          intervals.push({
-            num: intervals.length+1,
-            startDist: distArr[startIdx],
-            endDist: distArr[i],
-            distance: distCovered,
-            duration,
-            avgPaceStr: formatPace(avgVel*duration, duration),
-            avgHr,
-          });
+    // Step 2: Detect with hysteresis — need 20 consecutive seconds below threshold to end interval
+    const HYSTERESIS_SECS = 20;
+    const rawIntervals = [];
+    let inInterval = false, startIdx = 0, belowSince = -1;
+
+    for (let i = 0; i < n; i++) {
+      const fast = smoothed[i] >= thresholdMps;
+      if (!inInterval && fast) {
+        inInterval = true; startIdx = i; belowSince = -1;
+      } else if (inInterval) {
+        if (!fast) {
+          if (belowSince < 0) belowSince = i;
+          const belowSecs = timeArr[i] - timeArr[belowSince];
+          if (belowSecs >= HYSTERESIS_SECS) {
+            rawIntervals.push({ startIdx, endIdx: belowSince });
+            inInterval = false; belowSince = -1;
+          }
+        } else {
+          belowSince = -1;
         }
-        inInterval = false;
       }
     }
-    // Close last interval if still open at end
-    if (inInterval) {
-      const i = velArr.length - 1;
-      const duration = timeArr[i] - timeArr[startIdx];
-      if (duration >= minDur) {
-        const distCovered = distArr[i] - distArr[startIdx];
-        const avgVel = velArr.slice(startIdx).reduce((a,b)=>a+b,0)/(i-startIdx+1);
-        const avgHr  = hrArr ? Math.round(hrArr.slice(startIdx).reduce((a,b)=>a+b,0)/(i-startIdx+1)) : null;
-        intervals.push({
-          num: intervals.length+1,
-          startDist: distArr[startIdx],
-          endDist: distArr[i],
-          distance: distCovered,
-          duration,
+    if (inInterval) rawIntervals.push({ startIdx, endIdx: n-1 });
+
+    // Step 3: Merge intervals closer than 30 seconds apart
+    const MERGE_GAP = 30;
+    const merged = [];
+    rawIntervals.forEach(iv => {
+      if (merged.length && (timeArr[iv.startIdx] - timeArr[merged[merged.length-1].endIdx]) < MERGE_GAP) {
+        merged[merged.length-1].endIdx = iv.endIdx;
+      } else {
+        merged.push({...iv});
+      }
+    });
+
+    // Step 4: Filter by min duration and build objects
+    const intervals = merged
+      .filter(iv => (timeArr[iv.endIdx] - timeArr[iv.startIdx]) >= minDur)
+      .map((iv, i) => {
+        const duration = timeArr[iv.endIdx] - timeArr[iv.startIdx];
+        const distance = distArr[iv.endIdx] - distArr[iv.startIdx];
+        const slice = smoothed.slice(iv.startIdx, iv.endIdx+1);
+        const avgVel = slice.reduce((a,b)=>a+b,0)/slice.length;
+        const hrSlice = hrArr ? hrArr.slice(iv.startIdx, iv.endIdx+1) : null;
+        const avgHr = hrSlice ? Math.round(hrSlice.reduce((a,b)=>a+b,0)/hrSlice.length) : null;
+        return {
+          num: i+1,
+          startDist: distArr[iv.startIdx],
+          endDist: distArr[iv.endIdx],
+          distance, duration,
           avgPaceStr: formatPace(avgVel*duration, duration),
           avgHr,
-        });
-      }
-    }
+          startIdx: iv.startIdx,
+          endIdx: iv.endIdx,
+        };
+      });
 
     if (!intervals.length) {
-      result.innerHTML = `<div class="ia-empty">No intervals found faster than ${mins}:${String(secs).padStart(2,'0')}/km for more than ${minDur}s. Try adjusting the threshold.</div>`;
+      result.innerHTML = `<div class="ia-empty">No intervals found faster than ${mins}:${String(secs).padStart(2,'0')}/km for more than ${minDur}s.<br>Try a slower threshold or shorter minimum duration.</div>`;
     } else {
-      // Save to Supabase automatically
       const thresholdPaceStr = `${mins}:${String(secs).padStart(2,'0')}/km`;
       saveIntervalAnalysis(activityId, thresholdPaceStr, minDur, intervals);
 
-      // Draw pace chart with intervals highlighted
       result.innerHTML = `
         <div class="ia-saved-badge">✓ Saved to Supabase</div>
-        <div class="ia-chart-wrap">
-          <canvas id="ia-pace-chart"></canvas>
-        </div>
+        <div class="ia-chart-wrap"><canvas id="ia-pace-chart"></canvas></div>
         <div class="ia-table-wrap">
           <div class="ia-found">${intervals.length} interval${intervals.length>1?'s':''} detected</div>
           <table class="ia-table">
@@ -2924,11 +2942,9 @@ async function runIntervalAnalysis(activityId) {
           </table>
         </div>`;
 
-      // Draw pace chart
       setTimeout(() => {
         const canvas = document.getElementById('ia-pace-chart');
-        if (!canvas) return;
-        drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdMps);
+        if (canvas) drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdMps);
       }, 50);
     }
 
@@ -2939,37 +2955,32 @@ async function runIntervalAnalysis(activityId) {
   btn.textContent = 'Analyse ↓'; btn.disabled = false;
 }
 
+
 async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, intervals) {
   try {
-    // Get activity name and date from stravaActivities cache
     let activityName = '', activityDate = '';
     Object.entries(stravaActivities).forEach(([date, acts]) => {
       acts.forEach(a => {
-        if (a.id === activityId) {
-          activityName = a.name || '';
-          activityDate = date;
-        }
+        if (a.id === activityId) { activityName = a.name||''; activityDate = date; }
       });
     });
 
-    await fetch(SUPA_BASE + 'interval_analysis?on_conflict=activity_id,threshold_pace,min_duration_secs', {
+    await fetch(SUPA_BASE + 'interval_analysis?on_conflict=activity_id', {
       method: 'POST',
       headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({
-        activity_id:      activityId,
-        activity_name:    activityName,
-        activity_date:    activityDate,
-        threshold_pace:   thresholdPace,
+        activity_id:       activityId,
+        activity_name:     activityName,
+        activity_date:     activityDate,
+        threshold_pace:    thresholdPace,
         min_duration_secs: minDuration,
-        intervals:        intervals,
-        total_intervals:  intervals.length,
-        analysed_at:      new Date().toISOString(),
+        intervals:         intervals,
+        total_intervals:   intervals.length,
+        analysed_at:       new Date().toISOString(),
       })
     });
     console.log('Interval analysis saved for activity', activityId);
-  } catch(e) {
-    console.warn('Failed to save interval analysis:', e);
-  }
+  } catch(e) { console.warn('Failed to save interval analysis:', e); }
 }
 
 function drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdMps) {
