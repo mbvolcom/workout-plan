@@ -2436,16 +2436,22 @@ if (_local) applyState(JSON.parse(_local));
     }
   });
 
-  // 5. Fetch Strava activities in background (only if already connected, never redirect)
+  // 5. Fetch Strava activities in background
   getStravaToken().then(token => {
-    if (token) fetchStravaActivities();
+    if (token) fetchStravaActivities().then(() => {
+      if (isMobilePortrait()) renderMobileRaceWeek();
+    });
   });
 
-  // 6. Fetch weather for current + next week
-  fetchWeather();
+  // 6. Fetch weather
+  fetchWeather().then(() => {
+    if (isMobilePortrait()) renderMobileRaceWeek();
+  });
 
   // 7. Fetch Google Calendar events
-  fetchGCal();
+  fetchGCal().then(() => {
+    if (isMobilePortrait()) renderMobileRaceWeek();
+  });
 
   // 8. Init mobile portrait view
   initMobileView();
