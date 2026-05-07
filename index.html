@@ -4659,6 +4659,70 @@ function renderRunningStats() {
     container.appendChild(paceSection);
   }
 
+  // ── RUN TYPE BREAKDOWN ──────────────────────────────────────────────────────
+  const totalEasy    = weeks.reduce((a,wk)=>a+wk.easyRuns,0);
+  const totalQuality = weeks.reduce((a,wk)=>a+wk.qualityRuns,0);
+  const totalLong    = weeks.reduce((a,wk)=>a+wk.longRuns,0);
+  const totalRunsDone = totalEasy + totalQuality + totalLong;
+  if (totalRunsDone > 0) {
+    const runTypeSection = document.createElement('div'); runTypeSection.className='stats-section';
+    runTypeSection.innerHTML=`<div class="stats-section-title">Run type breakdown</div>`;
+    const rtWrap = document.createElement('div'); rtWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+
+    // Summary badges
+    const badges = document.createElement('div'); badges.style.cssText='display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;';
+    [
+      {label:'Easy', count:totalEasy,    color:'#66BB6A'},
+      {label:'Quality', count:totalQuality, color:'#43A047'},
+      {label:'Long',  count:totalLong,   color:'#c8f06e'},
+    ].forEach(({label,count,color})=>{
+      const pct = Math.round(count/totalRunsDone*100);
+      const b=document.createElement('div'); b.style.cssText=`background:rgba(255,255,255,0.05);border-radius:8px;padding:10px 14px;flex:1;text-align:center;`;
+      b.innerHTML=`<div style="font-size:22px;font-weight:800;color:${color};font-variant-numeric:tabular-nums;">${count}</div><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;">${label}</div><div style="font-size:10px;color:#4b5563;margin-top:2px;">${pct}%</div>`;
+      badges.appendChild(b);
+    });
+    rtWrap.appendChild(badges);
+
+    // Stacked bar chart per week
+    const runTypeWeeks = weeks.filter(wk=>wk.easyRuns+wk.qualityRuns+wk.longRuns>0);
+    if (runTypeWeeks.length) {
+      const maxRuns = Math.max(...runTypeWeeks.map(wk=>wk.easyRuns+wk.qualityRuns+wk.longRuns),1);
+      const chartEl = document.createElement('div'); chartEl.style.cssText='display:flex;align-items:flex-end;gap:4px;height:80px;';
+      runTypeWeeks.forEach(wk=>{
+        const total = wk.easyRuns+wk.qualityRuns+wk.longRuns;
+        const h = Math.round((total/maxRuns)*72);
+        const eH = Math.round((wk.easyRuns/total)*h);
+        const qH = Math.round((wk.qualityRuns/total)*h);
+        const lH = h - eH - qH;
+        const col=document.createElement('div'); col.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:1px;';
+        col.title=`${wk.label}: ${wk.easyRuns} easy, ${wk.qualityRuns} quality, ${wk.longRuns} long`;
+        if (lH>0) { const s=document.createElement('div'); s.style.cssText=`height:${lH}px;width:100%;background:#c8f06e;border-radius:2px 2px 0 0;`; col.appendChild(s); }
+        if (qH>0) { const s=document.createElement('div'); s.style.cssText=`height:${qH}px;width:100%;background:#43A047;`; col.appendChild(s); }
+        if (eH>0) { const s=document.createElement('div'); s.style.cssText=`height:${eH}px;width:100%;background:#66BB6A;border-radius:${lH===0&&qH===0?'2px 2px':0} 0 0;`; col.appendChild(s); }
+        const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;color:#4b5563;margin-top:3px;text-align:center;';
+        lbl.textContent=wk.shortLabel;
+        chartEl.appendChild(col);
+        // Add label below — wrap in a column
+        const colWrap=document.createElement('div'); colWrap.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;gap:0;';
+        colWrap.appendChild(col);
+        colWrap.appendChild(lbl);
+        chartEl.replaceChild(colWrap, col);
+      });
+      rtWrap.appendChild(chartEl);
+
+      // Legend
+      const leg=document.createElement('div'); leg.style.cssText='display:flex;gap:14px;margin-top:10px;';
+      [{c:'#66BB6A',l:'Easy'},{c:'#43A047',l:'Quality/Threshold'},{c:'#c8f06e',l:'Long run'}].forEach(({c,l})=>{
+        const li=document.createElement('div'); li.style.cssText='display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;';
+        li.innerHTML=`<div style="width:8px;height:8px;border-radius:2px;background:${c};"></div>${l}`;
+        leg.appendChild(li);
+      });
+      rtWrap.appendChild(leg);
+    }
+    runTypeSection.appendChild(rtWrap);
+    container.appendChild(runTypeSection);
+  }
+
   // ── MONTHLY TABLE ────────────────────────────────────────────────────────────
   const monthlyData = buildMonthlyData(weeks);
   const tableSection = document.createElement('div'); tableSection.className='stats-section';
@@ -4666,13 +4730,13 @@ function renderRunningStats() {
   const tableWrap = document.createElement('div');
   tableWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
   const table = document.createElement('table'); table.className='stats-table';
-  table.innerHTML=`<thead><tr><th>Month</th><th>Planned</th><th>Logged</th><th>Sessions</th><th>Completion</th></tr></thead>`;
+  table.innerHTML=`<thead><tr><th>Month</th><th>Planned km</th><th>Logged km</th><th>Runs done</th><th>Completion</th></tr></thead>`;
   const tbody = document.createElement('tbody');
   monthlyData.forEach(mo => {
     const pct = mo.plannedKm>0 ? Math.round((mo.actualKm/mo.plannedKm)*100) : 0;
     const pctClass = pct>=90?'good':pct>=60?'warn':'muted';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${mo.label}</td><td class="num">${mo.plannedKm.toFixed(0)} km</td><td class="num">${mo.actualKm.toFixed(1)} km</td><td>${mo.doneSessions}/${mo.plannedSessions}</td><td class="${pctClass}">${mo.plannedKm>0?pct+'%':'—'}</td>`;
+    tr.innerHTML=`<td>${mo.label}</td><td class="num">${mo.plannedKm.toFixed(0)} km</td><td class="num">${mo.actualKm.toFixed(1)} km</td><td>${mo.doneSessions}/${mo.plannedSessions} runs</td><td class="${pctClass}">${mo.plannedKm>0?pct+'%':'—'}</td>`;
     tbody.appendChild(tr);
   });
   table.appendChild(tbody); tableWrap.appendChild(table);
@@ -4837,38 +4901,50 @@ function buildStatsWeeks() {
     const monDate = new Date(y,m-1,d);
     const isCurrent = today >= monDate && today <= new Date(y,m-1,d+6);
 
-    let plannedKm=0, actualKm=0, plannedSessions=0, doneSessions=0, totalSecs=0, longestRun=0;
+    let plannedKm=0, actualKm=0, plannedRuns=0, doneRuns=0, totalSecs=0, longestRun=0;
+    let easyRuns=0, qualityRuns=0, longRuns=0;
     const paceRuns=[], days=[];
 
     DAYS.forEach((_,di) => {
       const dt = new Date(y,m-1,d+di);
       const dateStr=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-      const runVal = s.runs[di], strVal = s.str[di];
+      const runVal = s.runs[di];
       const prefix = runVal ? runVal.split(':')[0] : '';
       const acts = getStravaForDay(wi,di,'runs');
       const strActs = getStravaForDay(wi,di,'str');
 
-      if (runVal) plannedSessions++;
-      if (strVal) plannedSessions++;
-      if (acts)   { doneSessions++; acts.forEach(a=>{ actualKm+=(a.distance||0)/1000; totalSecs+=a.moving_time||0; if(a.distance>longestRun) longestRun=a.distance; if(a.distance&&a.moving_time&&(prefix==='easy'||prefix==='easy-pm')) paceRuns.push(a.moving_time/a.distance*1000/60); }); }
-      if (strActs){ doneSessions++; strActs.forEach(a=>{totalSecs+=a.moving_time||0;}); }
+      if (runVal) plannedRuns++;
+      if (acts) {
+        doneRuns++;
+        acts.forEach(a=>{
+          actualKm+=(a.distance||0)/1000;
+          totalSecs+=a.moving_time||0;
+          if(a.distance>longestRun) longestRun=a.distance;
+          if(a.distance&&a.moving_time&&(prefix==='easy'||prefix==='easy-pm')) paceRuns.push(a.moving_time/a.distance*1000/60);
+        });
+        if (prefix==='long')                            longRuns++;
+        else if (prefix==='quality'||prefix==='kinder') qualityRuns++;
+        else                                             easyRuns++;
+      }
+      if (strActs) strActs.forEach(a=>{totalSecs+=a.moving_time||0;});
 
       days.push({
         date:dt, dateStr,
         hasRun:!!acts, hasStr:!!strActs,
         hasLong:prefix==='long', hasQuality:prefix==='quality',
-        wasPlanned:!!(runVal||strVal),
+        wasPlanned:!!(runVal),
       });
     });
 
-    // Planned km from week's km field (approximate)
     plannedKm = w.km || 0;
 
     return {
       wi, label:w.num, shortLabel: w.num.replace('Week ','W').replace('Pre ','P'),
       phase: w.phase || lastPhase(wi),
-      dates:w.dates, plannedKm, actualKm, plannedSessions, doneSessions,
+      dates:w.dates, plannedKm, actualKm,
+      plannedSessions: plannedRuns, doneSessions: doneRuns,
       totalSecs, longestRun, paceRuns, days, isCurrent,
+      easyRuns, qualityRuns, longRuns,
       month: `${MONTH_NAMES[m-1]} ${y}`,
     };
   });
