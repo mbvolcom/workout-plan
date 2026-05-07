@@ -574,6 +574,18 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 }
 #claude-send-btn:hover { background:#1d4ed8; }
 #claude-send-btn:disabled { background:#2a2a3e; color:#6b7280; cursor:not-allowed; }
+/* INTERVAL ANALYSIS */
+.ia-chart-wrap { width:100%; height:80px; margin-bottom:12px; background:var(--surface2); border-radius:8px; overflow:hidden; }
+.ia-chart-wrap canvas { width:100%; height:80px; display:block; }
+.ia-found { font-size:11px; font-weight:600; color:#FC4C02; margin-bottom:8px; letter-spacing:0.05em; }
+.ia-table { width:100%; border-collapse:collapse; font-size:11px; }
+.ia-table th { text-align:left; padding:5px 8px; font-size:9px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:0.05em; }
+.ia-table td { padding:7px 8px; border-bottom:0.5px solid var(--border); color:var(--text); }
+.ia-table tr:last-child td { border-bottom:none; }
+.ia-pace { font-weight:700; color:#FC4C02; }
+.ia-saved-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(0,255,150,0.1); color:#00ff96; border:1px solid rgba(0,255,150,0.2); border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600; margin-bottom:10px; }
+.ia-empty { font-size:12px; color:var(--muted); padding:12px 0; text-align:center; }
+
 .run-target-row { display:flex; align-items:center; gap:6px; margin-top:6px; }
 .run-target-input { width:70px; border:0.5px solid var(--border-mid); border-radius:6px; padding:6px 8px; font-size:13px; font-family:inherit; color:var(--text); background:var(--bg); outline:none; }
 .run-target-input:focus { border-color:var(--text); }
@@ -2778,6 +2790,234 @@ async function openStravaDetail(activity) {
   } catch(e) {
     stravaSplitsBody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);padding:10px 8px">Could not load splits</td></tr>';
   }
+
+  // Interval analysis button (runs only)
+  if (isRun) {
+    const existingIA = document.getElementById('interval-analysis-wrap');
+    if (existingIA) existingIA.remove();
+    const iaWrap = document.createElement('div');
+    iaWrap.id = 'interval-analysis-wrap';
+    iaWrap.style.cssText = 'margin-top:16px;';
+    iaWrap.innerHTML = `
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Interval Analysis</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:11px;color:var(--muted);">Faster than</label>
+          <div style="display:flex;align-items:center;gap:3px;">
+            <input id="ia-min" type="number" min="3" max="8" step="1" value="5" style="width:36px;background:var(--surface2);border:1px solid var(--border-mid);border-radius:5px;padding:4px 6px;font-size:12px;color:var(--text);font-family:inherit;text-align:center;"/>
+            <span style="font-size:11px;color:var(--muted);">:</span>
+            <input id="ia-sec" type="number" min="0" max="59" step="1" value="10" style="width:36px;background:var(--surface2);border:1px solid var(--border-mid);border-radius:5px;padding:4px 6px;font-size:12px;color:var(--text);font-family:inherit;text-align:center;"/>
+            <span style="font-size:11px;color:var(--muted);">/km</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="font-size:11px;color:var(--muted);">for more than</label>
+          <input id="ia-dur" type="number" min="10" max="600" step="10" value="60" style="width:48px;background:var(--surface2);border:1px solid var(--border-mid);border-radius:5px;padding:4px 6px;font-size:12px;color:var(--text);font-family:inherit;text-align:center;"/>
+          <span style="font-size:11px;color:var(--muted);">sec</span>
+        </div>
+        <button id="ia-run-btn" onclick="runIntervalAnalysis(${activity.id})" style="background:#FC4C02;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Analyse ↓</button>
+      </div>
+      <div id="ia-result"></div>`;
+    stravaPanel.querySelector('#strava-splits-wrap').appendChild(iaWrap);
+  }
+}
+
+// ── INTERVAL ANALYSIS ──────────────────────────────────────────────────────
+const STREAMS_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/strava-streams';
+
+async function runIntervalAnalysis(activityId) {
+  const btn = document.getElementById('ia-run-btn');
+  const result = document.getElementById('ia-result');
+  const mins = parseInt(document.getElementById('ia-min').value)||5;
+  const secs = parseInt(document.getElementById('ia-sec').value)||10;
+  const minDur = parseInt(document.getElementById('ia-dur').value)||60;
+
+  const thresholdMps = 1000 / (mins*60 + secs); // m/s faster than this = interval
+  btn.textContent = 'Loading…'; btn.disabled = true;
+  result.innerHTML = '';
+
+  try {
+    const res = await fetch(`${STREAMS_FN}?id=${activityId}`, { headers: SUPA_HDR });
+    if (!res.ok) throw new Error('Streams fetch failed: ' + res.status);
+    const streams = await res.json();
+
+    const timeArr = streams.time?.data;
+    const distArr = streams.distance?.data;
+    const velArr  = streams.velocity_smooth?.data;
+    const hrArr   = streams.heartrate?.data;
+
+    if (!timeArr || !velArr) throw new Error('No stream data returned');
+
+    // Detect intervals — windows where velocity > threshold for > minDur seconds
+    const intervals = [];
+    let inInterval = false, startIdx = 0;
+
+    for (let i = 0; i < velArr.length; i++) {
+      const fast = velArr[i] >= thresholdMps;
+      if (fast && !inInterval) { inInterval = true; startIdx = i; }
+      if (!fast && inInterval) {
+        const duration = timeArr[i] - timeArr[startIdx];
+        if (duration >= minDur) {
+          const distCovered = distArr[i] - distArr[startIdx];
+          const avgVel = velArr.slice(startIdx, i).reduce((a,b)=>a+b,0)/(i-startIdx);
+          const avgHr  = hrArr ? Math.round(hrArr.slice(startIdx, i).reduce((a,b)=>a+b,0)/(i-startIdx)) : null;
+          intervals.push({
+            num: intervals.length+1,
+            startDist: distArr[startIdx],
+            endDist: distArr[i],
+            distance: distCovered,
+            duration,
+            avgPaceStr: formatPace(avgVel*duration, duration),
+            avgHr,
+          });
+        }
+        inInterval = false;
+      }
+    }
+    // Close last interval if still open at end
+    if (inInterval) {
+      const i = velArr.length - 1;
+      const duration = timeArr[i] - timeArr[startIdx];
+      if (duration >= minDur) {
+        const distCovered = distArr[i] - distArr[startIdx];
+        const avgVel = velArr.slice(startIdx).reduce((a,b)=>a+b,0)/(i-startIdx+1);
+        const avgHr  = hrArr ? Math.round(hrArr.slice(startIdx).reduce((a,b)=>a+b,0)/(i-startIdx+1)) : null;
+        intervals.push({
+          num: intervals.length+1,
+          startDist: distArr[startIdx],
+          endDist: distArr[i],
+          distance: distCovered,
+          duration,
+          avgPaceStr: formatPace(avgVel*duration, duration),
+          avgHr,
+        });
+      }
+    }
+
+    if (!intervals.length) {
+      result.innerHTML = `<div class="ia-empty">No intervals found faster than ${mins}:${String(secs).padStart(2,'0')}/km for more than ${minDur}s. Try adjusting the threshold.</div>`;
+    } else {
+      // Save to Supabase automatically
+      const thresholdPaceStr = `${mins}:${String(secs).padStart(2,'0')}/km`;
+      saveIntervalAnalysis(activityId, thresholdPaceStr, minDur, intervals);
+
+      // Draw pace chart with intervals highlighted
+      result.innerHTML = `
+        <div class="ia-saved-badge">✓ Saved to Supabase</div>
+        <div class="ia-chart-wrap">
+          <canvas id="ia-pace-chart"></canvas>
+        </div>
+        <div class="ia-table-wrap">
+          <div class="ia-found">${intervals.length} interval${intervals.length>1?'s':''} detected</div>
+          <table class="ia-table">
+            <thead><tr><th>#</th><th>Distance</th><th>Duration</th><th>Avg pace</th><th>Start km</th>${hrArr?'<th>Avg HR</th>':''}</tr></thead>
+            <tbody>
+              ${intervals.map(iv=>`<tr>
+                <td>${iv.num}</td>
+                <td>${(iv.distance/1000).toFixed(2)} km</td>
+                <td>${Math.floor(iv.duration/60)}:${String(iv.duration%60).padStart(2,'0')}</td>
+                <td class="ia-pace">${iv.avgPaceStr}/km</td>
+                <td>${(iv.startDist/1000).toFixed(2)} km</td>
+                ${hrArr?`<td>${iv.avgHr} bpm</td>`:''}
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      // Draw pace chart
+      setTimeout(() => {
+        const canvas = document.getElementById('ia-pace-chart');
+        if (!canvas) return;
+        drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdMps);
+      }, 50);
+    }
+
+  } catch(e) {
+    result.innerHTML = `<div class="ia-empty" style="color:#f06e6e;">Error: ${e.message}</div>`;
+    console.error('Interval analysis error:', e);
+  }
+  btn.textContent = 'Analyse ↓'; btn.disabled = false;
+}
+
+async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, intervals) {
+  try {
+    // Get activity name and date from stravaActivities cache
+    let activityName = '', activityDate = '';
+    Object.entries(stravaActivities).forEach(([date, acts]) => {
+      acts.forEach(a => {
+        if (a.id === activityId) {
+          activityName = a.name || '';
+          activityDate = date;
+        }
+      });
+    });
+
+    await fetch(SUPA_BASE + 'interval_analysis?on_conflict=activity_id,threshold_pace,min_duration_secs', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        activity_id:      activityId,
+        activity_name:    activityName,
+        activity_date:    activityDate,
+        threshold_pace:   thresholdPace,
+        min_duration_secs: minDuration,
+        intervals:        intervals,
+        total_intervals:  intervals.length,
+        analysed_at:      new Date().toISOString(),
+      })
+    });
+    console.log('Interval analysis saved for activity', activityId);
+  } catch(e) {
+    console.warn('Failed to save interval analysis:', e);
+  }
+}
+
+function drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdMps) {
+  const W = canvas.offsetWidth * devicePixelRatio;
+  const H = 80 * devicePixelRatio;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const w = canvas.offsetWidth, h = 80;
+  const pad = { top:8, right:8, bottom:8, left:8 };
+  const cW = w - pad.left - pad.right;
+  const cH = h - pad.top - pad.bottom;
+
+  // Smooth velocity to pace (m/s → min/km, inverted so faster = higher)
+  const validVel = velArr.filter(v=>v>0);
+  const maxVel = Math.max(...validVel, thresholdMps * 1.3);
+  const minVel = Math.max(0, Math.min(...validVel) * 0.9);
+  const totalTime = timeArr[timeArr.length-1];
+
+  const xScale = t => pad.left + (t/totalTime)*cW;
+  const yScale = v => pad.top + cH - ((v-minVel)/(maxVel-minVel))*cH;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Interval highlight bands
+  intervals.forEach(iv => {
+    const x1 = xScale(timeArr[Math.round(iv.startDist/distArr[distArr.length-1]*timeArr.length)]||0);
+    const x2 = xScale(timeArr[Math.min(Math.round(iv.endDist/distArr[distArr.length-1]*timeArr.length), timeArr.length-1)]||totalTime);
+    ctx.fillStyle = 'rgba(252,76,2,0.15)';
+    ctx.fillRect(x1, pad.top, x2-x1, cH);
+  });
+
+  // Threshold line
+  const thY = yScale(thresholdMps);
+  ctx.strokeStyle = 'rgba(252,76,2,0.4)';
+  ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(pad.left, thY); ctx.lineTo(w-pad.right, thY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Pace line
+  ctx.strokeStyle = '#6eb8f0'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  velArr.forEach((v, i) => {
+    const x = xScale(timeArr[i]);
+    const y = yScale(Math.max(minVel, Math.min(maxVel, v)));
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
 }
 
 // ── WEATHER ────────────────────────────────────────────────────────────────
