@@ -2823,7 +2823,7 @@ async function openStravaDetail(activity) {
           <option value="min">min</option>
           <option value="km">km</option>
         </select>
-        <span style="font-size:10px;color:var(--muted);">±30% tolerance</span>
+        <span style="font-size:10px;color:var(--muted);">±10% tolerance</span>
         <button id="ia-run-btn" onclick="runIntervalAnalysis(${activity.id})" style="background:#FC4C02;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Analyse ↓</button>
       </div>
       <div id="ia-result"></div>`;
@@ -2853,7 +2853,7 @@ async function runIntervalAnalysis(activityId) {
   const expectedMetres = hasLenHint
     ? (lenUnit === 'km' ? lenVal * 1000 : null)
     : null;
-  const TOLERANCE = 0.35; // ±35%
+  const TOLERANCE = 0.10; // ±10%
   btn.textContent = 'Loading…'; btn.disabled = true;
   result.innerHTML = '';
 
