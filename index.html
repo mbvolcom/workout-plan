@@ -2800,7 +2800,7 @@ async function openStravaDetail(activity) {
     iaWrap.style.cssText = 'margin-top:16px;';
     iaWrap.innerHTML = `
       <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Interval Analysis</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:6px;">
           <label style="font-size:11px;color:var(--muted);">Faster than</label>
           <div style="display:flex;align-items:center;gap:3px;">
@@ -2815,6 +2815,15 @@ async function openStravaDetail(activity) {
           <input id="ia-dur" type="number" min="10" max="600" step="10" value="60" style="width:48px;background:var(--surface2);border:1px solid var(--border-mid);border-radius:5px;padding:4px 6px;font-size:12px;color:var(--text);font-family:inherit;text-align:center;"/>
           <span style="font-size:11px;color:var(--muted);">sec</span>
         </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+        <label style="font-size:11px;color:var(--muted);">Expected length</label>
+        <input id="ia-len" type="number" min="0" max="60" step="0.1" value="" placeholder="optional" style="width:72px;background:var(--surface2);border:1px solid var(--border-mid);border-radius:5px;padding:4px 6px;font-size:12px;color:var(--text);font-family:inherit;text-align:center;"/>
+        <select id="ia-len-unit" style="background:var(--surface2);border:1px solid var(--border-mid);border-radius:5px;padding:4px 8px;font-size:12px;color:var(--text);font-family:inherit;">
+          <option value="min">min</option>
+          <option value="km">km</option>
+        </select>
+        <span style="font-size:10px;color:var(--muted);">±30% tolerance</span>
         <button id="ia-run-btn" onclick="runIntervalAnalysis(${activity.id})" style="background:#FC4C02;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Analyse ↓</button>
       </div>
       <div id="ia-result"></div>`;
@@ -2833,6 +2842,18 @@ async function runIntervalAnalysis(activityId) {
   const minDur = parseInt(document.getElementById('ia-dur').value)||60;
 
   const thresholdMps = 1000 / (mins*60 + secs);
+  const lenVal  = parseFloat(document.getElementById('ia-len').value);
+  const lenUnit = document.getElementById('ia-len-unit').value;
+  const hasLenHint = !isNaN(lenVal) && lenVal > 0;
+  // Expected duration in seconds
+  const expectedSecs = hasLenHint
+    ? (lenUnit === 'min' ? lenVal * 60 : null)
+    : null;
+  // Expected distance in metres
+  const expectedMetres = hasLenHint
+    ? (lenUnit === 'km' ? lenVal * 1000 : null)
+    : null;
+  const TOLERANCE = 0.35; // ±35%
   btn.textContent = 'Loading…'; btn.disabled = true;
   result.innerHTML = '';
 
@@ -2914,10 +2935,18 @@ async function runIntervalAnalysis(activityId) {
           startIdx: iv.startIdx,
           endIdx: iv.endIdx,
         };
-      });
+      })
+      .filter(iv => {
+        // If length hint provided, discard intervals outside ±TOLERANCE of expected
+        if (expectedSecs)   return iv.duration >= expectedSecs*(1-TOLERANCE) && iv.duration <= expectedSecs*(1+TOLERANCE);
+        if (expectedMetres) return iv.distance >= expectedMetres*(1-TOLERANCE) && iv.distance <= expectedMetres*(1+TOLERANCE);
+        return true;
+      })
+      .map((iv, i) => ({ ...iv, num: i+1 })); // renumber after filtering
 
     if (!intervals.length) {
-      result.innerHTML = `<div class="ia-empty">No intervals found faster than ${mins}:${String(secs).padStart(2,'0')}/km for more than ${minDur}s.<br>Try a slower threshold or shorter minimum duration.</div>`;
+      const lenHint = hasLenHint ? ` with length ~${lenVal}${lenUnit}` : '';
+      result.innerHTML = `<div class="ia-empty">No intervals found faster than ${mins}:${String(secs).padStart(2,'0')}/km for more than ${minDur}s${lenHint}.<br>Try adjusting the threshold, duration or expected length.</div>`;
     } else {
       const thresholdPaceStr = `${mins}:${String(secs).padStart(2,'0')}/km`;
       saveIntervalAnalysis(activityId, thresholdPaceStr, minDur, intervals);
