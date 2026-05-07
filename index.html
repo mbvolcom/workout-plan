@@ -4566,330 +4566,173 @@ function renderRunningStats() {
   container.innerHTML = '';
   const today = new Date(); today.setHours(0,0,0,0);
 
-  // Gather week data
-  const weeks = buildStatsWeeks();
+  let weeks;
+  try { weeks = buildStatsWeeks(); }
+  catch(e) { container.innerHTML=`<div style="color:#f06e6e;padding:20px;font-size:12px;">Error building stats: ${e.message}</div>`; console.error(e); return; }
 
-  // ── KPI CARDS ──────────────────────────────────────────────────────────────
-  let totalPlannedKm = 0, totalActualKm = 0, totalPlannedSessions = 0, totalDoneSessions = 0;
-  let longestRun = 0, totalSecs = 0, paceRuns = [];
-
-  weeks.forEach(wk => {
-    totalPlannedKm      += wk.plannedKm;
-    totalActualKm       += wk.actualKm;
-    totalPlannedSessions+= wk.plannedSessions;
-    totalDoneSessions   += wk.doneSessions;
-    totalSecs           += wk.totalSecs;
-    if (wk.longestRun > longestRun) longestRun = wk.longestRun;
-    paceRuns.push(...wk.paceRuns);
-  });
-
-  const completionPct = totalPlannedKm > 0 ? Math.round((totalActualKm/totalPlannedKm)*100) : 0;
-  const avgPace = paceRuns.length
-    ? paceRuns.reduce((a,b)=>a+b,0)/paceRuns.length
-    : null;
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+  const totalPlannedKm    = weeks.reduce((a,wk)=>a+wk.plannedKm,0);
+  const totalActualKm     = weeks.reduce((a,wk)=>a+wk.actualKm,0);
+  const totalPlannedRuns  = weeks.reduce((a,wk)=>a+wk.plannedSessions,0);
+  const totalDoneRuns     = weeks.reduce((a,wk)=>a+wk.doneSessions,0);
+  const totalSecs         = weeks.reduce((a,wk)=>a+wk.totalSecs,0);
+  const longestRun        = Math.max(...weeks.map(wk=>wk.longestRun),0);
+  const allPaceRuns       = weeks.flatMap(wk=>wk.paceRuns);
+  const avgPace           = allPaceRuns.length ? allPaceRuns.reduce((a,b)=>a+b,0)/allPaceRuns.length : null;
+  const completionPct     = totalPlannedKm > 0 ? Math.round((totalActualKm/totalPlannedKm)*100) : 0;
 
   const kpiGrid = document.createElement('div'); kpiGrid.className='stats-kpi-grid';
   [
-    { val: totalActualKm.toFixed(0)+'km', sub: `of ${totalPlannedKm.toFixed(0)}km planned`, lbl:'Distance logged', cls:'accent' },
-    { val: completionPct+'%',             sub: `${totalDoneSessions}/${totalPlannedSessions} sessions`, lbl:'Plan completion', cls:'blue' },
-    { val: longestRun > 0 ? (longestRun/1000).toFixed(1)+'km' : '—', sub:'longest Strava run', lbl:'Longest run', cls:'orange' },
-    { val: avgPace ? formatPace(1000, avgPace*60) : '—', sub:'avg easy run pace', lbl:'Avg pace', cls:'gold' },
-  ].forEach(({val,sub,lbl,cls}) => {
-    const card = document.createElement('div'); card.className='stats-kpi';
+    {val:totalActualKm.toFixed(0)+'km', sub:`of ${totalPlannedKm.toFixed(0)}km planned`, lbl:'Distance logged', cls:'accent'},
+    {val:completionPct+'%', sub:`${totalDoneRuns}/${totalPlannedRuns} runs`, lbl:'Run completion', cls:'blue'},
+    {val:longestRun>0?(longestRun/1000).toFixed(1)+'km':'—', sub:'longest Strava run', lbl:'Longest run', cls:'orange'},
+    {val:avgPace?formatPace(1000,avgPace*60):'—', sub:'avg easy run pace', lbl:'Avg pace', cls:'gold'},
+  ].forEach(({val,sub,lbl,cls})=>{
+    const card=document.createElement('div'); card.className='stats-kpi';
     card.innerHTML=`<div class="stats-kpi-val ${cls}">${val}</div><div class="stats-kpi-lbl">${lbl}</div><div class="stats-kpi-sub">${sub}</div>`;
     kpiGrid.appendChild(card);
   });
   container.appendChild(kpiGrid);
 
-  // ── WEEKLY BAR CHART ────────────────────────────────────────────────────────
-  const barSection = document.createElement('div'); barSection.className='stats-section';
-  barSection.innerHTML=`<div class="stats-section-title">Weekly km — planned vs actual</div>`;
-  const barWrap = document.createElement('div'); barWrap.className='stats-bar-chart';
-  const barsEl  = document.createElement('div'); barsEl.className='stats-bars';
-
-  const maxKm = Math.max(...weeks.map(w=>Math.max(w.plannedKm,w.actualKm)),1);
-  const phaseColors = { 'Pre-plan':'#6eb8f0', 'Build':'#c8f06e', 'Peak':'#f0a96e', 'Taper':'#f0c060' };
-  let lastPhase = null;
-
-  weeks.forEach(wk => {
-    const plannedH = Math.round((wk.plannedKm/maxKm)*120);
-    const actualH  = Math.round((wk.actualKm/maxKm)*120);
-    const color = phaseColors[wk.phase] || '#6b7280';
-    const isCurrent = wk.isCurrent;
-
-    const col = document.createElement('div'); col.className='stats-bar-col';
-    const wrap = document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
-
-    const planned = document.createElement('div'); planned.className='stats-bar-planned';
-    planned.style.height=plannedH+'px';
+  // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
+  const barSection=document.createElement('div'); barSection.className='stats-section';
+  barSection.innerHTML='<div class="stats-section-title">Weekly km — planned vs actual</div>';
+  const barWrap=document.createElement('div'); barWrap.className='stats-bar-chart';
+  const barsEl=document.createElement('div'); barsEl.className='stats-bars';
+  const maxKm=Math.max(...weeks.map(w=>Math.max(w.plannedKm,w.actualKm)),1);
+  const phaseColors={'Pre-plan':'#6eb8f0','Build':'#c8f06e','Peak':'#f0a96e','Taper':'#f0c060'};
+  weeks.forEach(wk=>{
+    const ph=wk.phase; const color=phaseColors[ph]||'#6b7280';
+    const col=document.createElement('div'); col.className='stats-bar-col';
+    const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
+    const planned=document.createElement('div'); planned.className='stats-bar-planned';
+    planned.style.height=Math.round((wk.plannedKm/maxKm)*120)+'px';
     planned.title=`${wk.label}: ${wk.plannedKm}km planned`;
-
-    const actual = document.createElement('div'); actual.className='stats-bar-actual';
-    actual.style.cssText=`height:${actualH}px;background:${color}${isCurrent?'':'99'};`;
+    const actual=document.createElement('div'); actual.className='stats-bar-actual';
+    actual.style.cssText=`height:${Math.round((wk.actualKm/maxKm)*120)}px;background:${color}${wk.isCurrent?'':'99'};`;
     actual.title=`${wk.label}: ${wk.actualKm.toFixed(1)}km logged`;
-
     wrap.appendChild(planned); wrap.appendChild(actual);
-    const lbl = document.createElement('div');
-    lbl.className='stats-bar-lbl'+(isCurrent?' current':'');
-    lbl.textContent=wk.shortLabel;
-    col.appendChild(wrap); col.appendChild(lbl);
-    barsEl.appendChild(col);
+    const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'+(wk.isCurrent?' current':''); lbl.textContent=wk.shortLabel;
+    col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
   });
-
-  const legend = document.createElement('div'); legend.className='stats-chart-legend';
-  legend.innerHTML=`
-    <div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div>
-    <div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div>
-    <div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div>
-    <div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div>
-    <div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div>`;
-
+  const legend=document.createElement('div'); legend.className='stats-chart-legend';
+  legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div>';
   barWrap.appendChild(barsEl); barWrap.appendChild(legend);
-  barSection.appendChild(barWrap);
-  container.appendChild(barSection);
+  barSection.appendChild(barWrap); container.appendChild(barSection);
 
-  // ── PACE PROGRESSION ────────────────────────────────────────────────────────
-  const pacePoints = buildPacePoints(weeks);
-  if (pacePoints.length >= 2) {
-    const paceSection = document.createElement('div'); paceSection.className='stats-section';
-    paceSection.innerHTML=`<div class="stats-section-title">Pace progression (easy runs)</div>`;
-    const paceWrap = document.createElement('div'); paceWrap.className='stats-pace-chart';
-    paceWrap.appendChild(buildPaceSVG(pacePoints));
-    paceSection.appendChild(paceWrap);
-    container.appendChild(paceSection);
-  }
+  // ── PACE PROGRESSION ──────────────────────────────────────────────────────
+  try {
+    const pacePoints=buildPacePoints(weeks);
+    if (pacePoints.length>=2) {
+      const paceSection=document.createElement('div'); paceSection.className='stats-section';
+      paceSection.innerHTML='<div class="stats-section-title">Pace progression (easy runs)</div>';
+      const paceWrap=document.createElement('div'); paceWrap.className='stats-pace-chart';
+      paceWrap.appendChild(buildPaceSVG(pacePoints));
+      paceSection.appendChild(paceWrap); container.appendChild(paceSection);
+    }
+  } catch(e) { console.warn('Pace chart error:', e); }
 
-  // ── RUN TYPE BREAKDOWN ──────────────────────────────────────────────────────
-  const totalEasy    = weeks.reduce((a,wk)=>a+wk.easyRuns,0);
-  const totalQuality = weeks.reduce((a,wk)=>a+wk.qualityRuns,0);
-  const totalLong    = weeks.reduce((a,wk)=>a+wk.longRuns,0);
-  const totalRunsDone = totalEasy + totalQuality + totalLong;
-  if (totalRunsDone > 0) {
-    const runTypeSection = document.createElement('div'); runTypeSection.className='stats-section';
-    runTypeSection.innerHTML=`<div class="stats-section-title">Run type breakdown</div>`;
-    const rtWrap = document.createElement('div'); rtWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+  // ── RUN TYPE BREAKDOWN ────────────────────────────────────────────────────
+  const totalEasy    = weeks.reduce((a,wk)=>a+(wk.easyRuns||0),0);
+  const totalQuality = weeks.reduce((a,wk)=>a+(wk.qualityRuns||0),0);
+  const totalLong    = weeks.reduce((a,wk)=>a+(wk.longRuns||0),0);
+  const totalRunsDone = totalEasy+totalQuality+totalLong;
 
-    // Summary badges
-    const badges = document.createElement('div'); badges.style.cssText='display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;';
-    [
-      {label:'Easy', count:totalEasy,    color:'#66BB6A'},
-      {label:'Quality', count:totalQuality, color:'#43A047'},
-      {label:'Long',  count:totalLong,   color:'#c8f06e'},
-    ].forEach(({label,count,color})=>{
-      const pct = Math.round(count/totalRunsDone*100);
-      const b=document.createElement('div'); b.style.cssText=`background:rgba(255,255,255,0.05);border-radius:8px;padding:10px 14px;flex:1;text-align:center;`;
-      b.innerHTML=`<div style="font-size:22px;font-weight:800;color:${color};font-variant-numeric:tabular-nums;">${count}</div><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;">${label}</div><div style="font-size:10px;color:#4b5563;margin-top:2px;">${pct}%</div>`;
+  const rtSection=document.createElement('div'); rtSection.className='stats-section';
+  rtSection.innerHTML='<div class="stats-section-title">Run type breakdown</div>';
+  const rtWrap=document.createElement('div'); rtWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+
+  if (totalRunsDone===0) {
+    rtWrap.innerHTML='<div style="color:#4b5563;font-size:12px;padding:8px 0;">No Strava runs logged yet in this plan.</div>';
+  } else {
+    const badges=document.createElement('div'); badges.style.cssText='display:flex;gap:10px;margin-bottom:16px;';
+    [{label:'Easy',count:totalEasy,color:'#66BB6A'},{label:'Quality',count:totalQuality,color:'#43A047'},{label:'Long',count:totalLong,color:'#c8f06e'}].forEach(({label,count,color})=>{
+      const pct=Math.round(count/totalRunsDone*100);
+      const b=document.createElement('div'); b.style.cssText='background:rgba(255,255,255,0.05);border-radius:8px;padding:10px;flex:1;text-align:center;';
+      b.innerHTML=`<div style="font-size:22px;font-weight:800;color:${color};">${count}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;">${label}</div><div style="font-size:10px;color:#4b5563;margin-top:2px;">${pct}%</div>`;
       badges.appendChild(b);
     });
     rtWrap.appendChild(badges);
 
-    // Stacked bar chart per week
-    const runTypeWeeks = weeks.filter(wk=>wk.easyRuns+wk.qualityRuns+wk.longRuns>0);
+    // Stacked bar chart
+    const runTypeWeeks=weeks.filter(wk=>(wk.easyRuns||0)+(wk.qualityRuns||0)+(wk.longRuns||0)>0);
     if (runTypeWeeks.length) {
-      const maxRuns = Math.max(...runTypeWeeks.map(wk=>wk.easyRuns+wk.qualityRuns+wk.longRuns),1);
-      const chartEl = document.createElement('div'); chartEl.style.cssText='display:flex;align-items:flex-end;gap:4px;height:80px;';
+      const maxR=Math.max(...runTypeWeeks.map(wk=>(wk.easyRuns||0)+(wk.qualityRuns||0)+(wk.longRuns||0)),1);
+      const chartEl=document.createElement('div'); chartEl.style.cssText='display:flex;align-items:flex-end;gap:4px;height:90px;';
       runTypeWeeks.forEach(wk=>{
-        const total = wk.easyRuns+wk.qualityRuns+wk.longRuns;
-        const h = Math.round((total/maxRuns)*72);
-        const eH = Math.round((wk.easyRuns/total)*h);
-        const qH = Math.round((wk.qualityRuns/total)*h);
-        const lH = h - eH - qH;
-        const col=document.createElement('div'); col.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:1px;';
-        col.title=`${wk.label}: ${wk.easyRuns} easy, ${wk.qualityRuns} quality, ${wk.longRuns} long`;
-        if (lH>0) { const s=document.createElement('div'); s.style.cssText=`height:${lH}px;width:100%;background:#c8f06e;border-radius:2px 2px 0 0;`; col.appendChild(s); }
-        if (qH>0) { const s=document.createElement('div'); s.style.cssText=`height:${qH}px;width:100%;background:#43A047;`; col.appendChild(s); }
-        if (eH>0) { const s=document.createElement('div'); s.style.cssText=`height:${eH}px;width:100%;background:#66BB6A;border-radius:${lH===0&&qH===0?'2px 2px':0} 0 0;`; col.appendChild(s); }
-        const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;color:#4b5563;margin-top:3px;text-align:center;';
+        const tot=(wk.easyRuns||0)+(wk.qualityRuns||0)+(wk.longRuns||0);
+        const h=Math.round((tot/maxR)*72);
+        const eH=Math.round(((wk.easyRuns||0)/tot)*h);
+        const qH=Math.round(((wk.qualityRuns||0)/tot)*h);
+        const lH=h-eH-qH;
+        const colWrap=document.createElement('div'); colWrap.style.cssText='flex:1;display:flex;flex-direction:column;align-items:stretch;';
+        const bar=document.createElement('div'); bar.style.cssText='display:flex;flex-direction:column;justify-content:flex-end;height:72px;gap:1px;';
+        bar.title=`${wk.label}: ${wk.easyRuns||0} easy, ${wk.qualityRuns||0} quality, ${wk.longRuns||0} long`;
+        if (lH>0){const s=document.createElement('div');s.style.cssText=`height:${lH}px;background:#c8f06e;border-radius:2px 2px 0 0;`;bar.appendChild(s);}
+        if (qH>0){const s=document.createElement('div');s.style.cssText=`height:${qH}px;background:#43A047;`;bar.appendChild(s);}
+        if (eH>0){const s=document.createElement('div');s.style.cssText=`height:${eH}px;background:#66BB6A;`;bar.appendChild(s);}
+        const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;color:#4b5563;text-align:center;margin-top:3px;overflow:hidden;';
         lbl.textContent=wk.shortLabel;
-        chartEl.appendChild(col);
-        // Add label below — wrap in a column
-        const colWrap=document.createElement('div'); colWrap.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;gap:0;';
-        colWrap.appendChild(col);
-        colWrap.appendChild(lbl);
-        chartEl.replaceChild(colWrap, col);
+        colWrap.appendChild(bar); colWrap.appendChild(lbl); chartEl.appendChild(colWrap);
       });
       rtWrap.appendChild(chartEl);
-
-      // Legend
-      const leg=document.createElement('div'); leg.style.cssText='display:flex;gap:14px;margin-top:10px;';
-      [{c:'#66BB6A',l:'Easy'},{c:'#43A047',l:'Quality/Threshold'},{c:'#c8f06e',l:'Long run'}].forEach(({c,l})=>{
+      const leg=document.createElement('div'); leg.style.cssText='display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;';
+      [{c:'#66BB6A',l:'Easy'},{c:'#43A047',l:'Quality'},{c:'#c8f06e',l:'Long'}].forEach(({c,l})=>{
         const li=document.createElement('div'); li.style.cssText='display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;';
-        li.innerHTML=`<div style="width:8px;height:8px;border-radius:2px;background:${c};"></div>${l}`;
+        li.innerHTML=`<div style="width:8px;height:8px;border-radius:2px;background:${c};flex-shrink:0;"></div>${l}`;
         leg.appendChild(li);
       });
       rtWrap.appendChild(leg);
     }
-    runTypeSection.appendChild(rtWrap);
-    container.appendChild(runTypeSection);
   }
+  rtSection.appendChild(rtWrap); container.appendChild(rtSection);
 
-  // ── MONTHLY TABLE ────────────────────────────────────────────────────────────
-  const monthlyData = buildMonthlyData(weeks);
-  const tableSection = document.createElement('div'); tableSection.className='stats-section';
-  tableSection.innerHTML=`<div class="stats-section-title">Monthly breakdown</div>`;
-  const tableWrap = document.createElement('div');
-  tableWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
-  const table = document.createElement('table'); table.className='stats-table';
-  table.innerHTML=`<thead><tr><th>Month</th><th>Planned km</th><th>Logged km</th><th>Runs done</th><th>Completion</th></tr></thead>`;
-  const tbody = document.createElement('tbody');
-  monthlyData.forEach(mo => {
-    const pct = mo.plannedKm>0 ? Math.round((mo.actualKm/mo.plannedKm)*100) : 0;
-    const pctClass = pct>=90?'good':pct>=60?'warn':'muted';
+  // ── MONTHLY TABLE ─────────────────────────────────────────────────────────
+  const monthlyData=buildMonthlyData(weeks);
+  const tableSection=document.createElement('div'); tableSection.className='stats-section';
+  tableSection.innerHTML='<div class="stats-section-title">Monthly breakdown</div>';
+  const tableWrap=document.createElement('div'); tableWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+  const table=document.createElement('table'); table.className='stats-table';
+  table.innerHTML='<thead><tr><th>Month</th><th>Planned km</th><th>Logged km</th><th>Runs done</th><th>Completion</th></tr></thead>';
+  const tbody=document.createElement('tbody');
+  monthlyData.forEach(mo=>{
+    const pct=mo.plannedKm>0?Math.round((mo.actualKm/mo.plannedKm)*100):0;
+    const pctClass=pct>=90?'good':pct>=60?'warn':'muted';
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${mo.label}</td><td class="num">${mo.plannedKm.toFixed(0)} km</td><td class="num">${mo.actualKm.toFixed(1)} km</td><td>${mo.doneSessions}/${mo.plannedSessions} runs</td><td class="${pctClass}">${mo.plannedKm>0?pct+'%':'—'}</td>`;
     tbody.appendChild(tr);
   });
   table.appendChild(tbody); tableWrap.appendChild(table);
-  tableSection.appendChild(tableWrap);
-  container.appendChild(tableSection);
+  tableSection.appendChild(tableWrap); container.appendChild(tableSection);
 
-  // ── TRAINING HEATMAP ────────────────────────────────────────────────────────
-  const heatSection = document.createElement('div'); heatSection.className='stats-section';
-  heatSection.innerHTML=`<div class="stats-section-title">Training heatmap</div>`;
-  const heatWrap = document.createElement('div'); heatWrap.className='stats-heatmap-wrap';
-  const heatmap  = document.createElement('div'); heatmap.className='stats-heatmap';
-
-  weeks.forEach(wk => {
-    wk.days.forEach(day => {
-      const dot = document.createElement('div'); dot.className='stats-heat-day';
-      const dt = day.date;
-      const isPast = dt <= today;
-      if (!isPast) { dot.classList.add('stats-heat-empty'); dot.title=day.dateStr; }
-      else if (day.hasRun && day.hasStr)   { dot.classList.add('stats-heat-both');    dot.title=`${day.dateStr}: Run + Strength`; }
-      else if (day.hasLong)                { dot.classList.add('stats-heat-long');    dot.title=`${day.dateStr}: Long run`; }
-      else if (day.hasQuality)             { dot.classList.add('stats-heat-quality'); dot.title=`${day.dateStr}: Quality run`; }
-      else if (day.hasRun)                 { dot.classList.add('stats-heat-easy');    dot.title=`${day.dateStr}: Easy run`; }
-      else if (day.hasStr)                 { dot.classList.add('stats-heat-str');     dot.title=`${day.dateStr}: Strength`; }
-      else if (day.wasPlanned)             { dot.classList.add('stats-heat-missed');  dot.title=`${day.dateStr}: Missed`; }
-      else                                 { dot.classList.add('stats-heat-rest');    dot.title=`${day.dateStr}: Rest`; }
+  // ── TRAINING HEATMAP ──────────────────────────────────────────────────────
+  const heatSection=document.createElement('div'); heatSection.className='stats-section';
+  heatSection.innerHTML='<div class="stats-section-title">Training heatmap</div>';
+  const heatWrap=document.createElement('div'); heatWrap.className='stats-heatmap-wrap';
+  const heatmap=document.createElement('div'); heatmap.className='stats-heatmap';
+  weeks.forEach(wk=>{
+    wk.days.forEach(day=>{
+      const dot=document.createElement('div'); dot.className='stats-heat-day';
+      const isPast=day.date<=today;
+      if (!isPast)           dot.classList.add('stats-heat-empty');
+      else if (day.hasRun&&day.hasStr) dot.classList.add('stats-heat-both');
+      else if (day.hasLong)  dot.classList.add('stats-heat-long');
+      else if (day.hasQuality) dot.classList.add('stats-heat-quality');
+      else if (day.hasRun)   dot.classList.add('stats-heat-easy');
+      else if (day.hasStr)   dot.classList.add('stats-heat-str');
+      else if (day.wasPlanned) dot.classList.add('stats-heat-missed');
+      else                   dot.classList.add('stats-heat-rest');
+      dot.title=day.dateStr;
       heatmap.appendChild(dot);
     });
   });
-
-  const heatLegend = document.createElement('div');
+  const heatLegend=document.createElement('div');
   heatLegend.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;';
-  heatLegend.innerHTML=`
-    <div class="stats-legend-item"><div class="stats-heat-day stats-heat-long" style="flex-shrink:0"></div>Long run</div>
-    <div class="stats-legend-item"><div class="stats-heat-day stats-heat-quality" style="flex-shrink:0"></div>Quality</div>
-    <div class="stats-legend-item"><div class="stats-heat-day stats-heat-easy" style="flex-shrink:0"></div>Easy run</div>
-    <div class="stats-legend-item"><div class="stats-heat-day stats-heat-str" style="flex-shrink:0"></div>Strength</div>
-    <div class="stats-legend-item"><div class="stats-heat-day stats-heat-both" style="flex-shrink:0"></div>Run+Str</div>
-    <div class="stats-legend-item"><div class="stats-heat-day stats-heat-missed" style="flex-shrink:0"></div>Missed</div>
-    <div class="stats-legend-item"><div class="stats-heat-day stats-heat-rest" style="flex-shrink:0"></div>Rest</div>`;
-
+  heatLegend.innerHTML='<div class="stats-legend-item"><div class="stats-heat-day stats-heat-long" style="flex-shrink:0"></div>Long run</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-quality" style="flex-shrink:0"></div>Quality</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-easy" style="flex-shrink:0"></div>Easy run</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-str" style="flex-shrink:0"></div>Strength</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-both" style="flex-shrink:0"></div>Run+Str</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-missed" style="flex-shrink:0"></div>Missed</div>';
   heatWrap.appendChild(heatmap); heatWrap.appendChild(heatLegend);
-  heatSection.appendChild(heatWrap);
-  container.appendChild(heatSection);
+  heatSection.appendChild(heatWrap); container.appendChild(heatSection);
 }
 
-// ── STERK GUTT STATS ────────────────────────────────────────────────────────
-async function renderSGStats() {
-  const container = document.getElementById('stats-content');
-  container.innerHTML = '<div style="color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;">Loading Sterk Gutt data…</div>';
-  const sessions = await fetchSGSessions();
-  container.innerHTML = '';
-  if (!sessions.length) {
-    container.innerHTML = '<div style="color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;">No sessions found.</div>';
-    return;
-  }
-
-  let totalSets=0, totalDuration=0;
-  const prMap={}, muscleMap={}, monthMap={};
-
-  sessions.forEach(s => {
-    const startedAt = s.started_at || s.startedAt;
-    totalDuration += s.duration||0;
-    const mk = startedAt ? startedAt.slice(0,7) : '?';
-    monthMap[mk] = (monthMap[mk]||0)+1;
-    (s.exercises||[]).forEach(ex => {
-      const loggedSets=(ex.sets||[]).filter(st=>st.logged);
-      totalSets+=loggedSets.length;
-      muscleMap[ex.muscle||'Other']=(muscleMap[ex.muscle||'Other']||0)+loggedSets.length;
-      loggedSets.forEach(st=>{
-        const w=parseFloat(st.weight)||0;
-        if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};
-      });
-    });
-  });
-
-  const avgSets = sessions.length ? Math.round(totalSets/sessions.length) : 0;
-  const avgDur  = sessions.length ? Math.round(totalDuration/sessions.length/60) : 0;
-
-  // KPIs
-  const kpiGrid=document.createElement('div'); kpiGrid.className='stats-kpi-grid';
-  [{val:sessions.length,lbl:'Total sessions',sub:'all time',cls:'sg-neon'},
-   {val:totalSets,lbl:'Total sets',sub:`avg ${avgSets}/session`,cls:'sg-green'},
-   {val:avgDur+'m',lbl:'Avg session',sub:'duration',cls:'sg-orange'},
-   {val:Object.keys(prMap).length,lbl:'Exercises',sub:'with PR data',cls:'sg-purple'},
-  ].forEach(({val,lbl,sub,cls})=>{
-    const c=document.createElement('div'); c.className='stats-kpi';
-    c.innerHTML=`<div class="stats-kpi-val ${cls}">${val}</div><div class="stats-kpi-lbl">${lbl}</div><div class="stats-kpi-sub">${sub}</div>`;
-    kpiGrid.appendChild(c);
-  });
-  container.appendChild(kpiGrid);
-
-  // Sessions per month bar chart
-  const MONTH_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const sortedMonths=Object.keys(monthMap).sort();
-  const maxSess=Math.max(...Object.values(monthMap),1);
-  const ms=document.createElement('div'); ms.className='stats-section';
-  ms.innerHTML=`<div class="stats-section-title">Sessions per month</div>`;
-  const bw=document.createElement('div'); bw.className='stats-bar-chart';
-  const be=document.createElement('div'); be.className='stats-bars';
-  sortedMonths.forEach(mk=>{
-    const count=monthMap[mk], h=Math.round((count/maxSess)*120);
-    const [,m]=mk.split('-');
-    const col=document.createElement('div'); col.className='stats-bar-col';
-    const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
-    const bar=document.createElement('div'); bar.className='stats-bar-actual';
-    bar.style.cssText=`height:${h}px;background:#00b4ff88;`; bar.title=`${mk}: ${count} sessions`;
-    wrap.appendChild(bar);
-    const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'; lbl.textContent=MONTH_SHORT[parseInt(m,10)-1];
-    col.appendChild(wrap); col.appendChild(lbl); be.appendChild(col);
-  });
-  bw.appendChild(be); ms.appendChild(bw); container.appendChild(ms);
-
-  // Muscle volume
-  const mvs=document.createElement('div'); mvs.className='stats-section';
-  mvs.innerHTML=`<div class="stats-section-title">Volume by muscle group</div>`;
-  const mvw=document.createElement('div'); mvw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
-  const sortedMuscles=Object.entries(muscleMap).sort((a,b)=>b[1]-a[1]);
-  const maxM=sortedMuscles[0]?.[1]||1;
-  sortedMuscles.forEach(([muscle,sets])=>{
-    const row=document.createElement('div'); row.className='muscle-vol-row';
-    row.innerHTML=`<span class="muscle-vol-name">${muscle}</span><div class="muscle-vol-bar"><div class="muscle-vol-fill" style="width:${Math.round(sets/maxM*100)}%"></div></div><span class="muscle-vol-val">${sets}</span>`;
-    mvw.appendChild(row);
-  });
-  mvs.appendChild(mvw); container.appendChild(mvs);
-
-  // PRs
-  const prs=document.createElement('div'); prs.className='stats-section';
-  prs.innerHTML=`<div class="stats-section-title">Personal records</div>`;
-  const prw=document.createElement('div'); prw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
-  Object.entries(prMap).sort((a,b)=>b[1].weight-a[1].weight).forEach(([name,pr])=>{
-    const row=document.createElement('div'); row.className='pr-row';
-    row.innerHTML=`<div><div class="pr-name">${name}</div><div class="pr-muscle">${pr.muscle}</div></div><div style="text-align:right"><div class="pr-weight">${pr.weight} kg</div><div class="pr-reps">${pr.reps} reps</div></div>`;
-    prw.appendChild(row);
-  });
-  prs.appendChild(prw); container.appendChild(prs);
-
-  // Recent sessions
-  const rs=document.createElement('div'); rs.className='stats-section';
-  rs.innerHTML=`<div class="stats-section-title">Recent sessions</div>`;
-  const rw=document.createElement('div'); rw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
-  sessions.slice(0,10).forEach(s=>{
-    const startedAt=s.started_at||s.startedAt;
-    const dt=startedAt?new Date(startedAt):null;
-    const dateStr=dt?dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):'—';
-    const sets=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
-    const dur=s.duration?Math.round(s.duration/60)+'m':'—';
-    const name=s.name||(s.exercises?.[0]?.name)||'Workout';
-    const row=document.createElement('div'); row.className='sg-session-row';
-    row.innerHTML=`<div class="sg-session-dot"></div><div><div class="sg-session-name">${name}</div><div class="sg-session-meta">${dateStr} · ${dur}</div></div><div class="sg-session-right"><span class="sg-session-sets">${sets}</span>sets</div>`;
-    rw.appendChild(row);
-  });
-  rs.appendChild(rw); container.appendChild(rs);
-}
 
 function buildStatsWeeks() {
   const today = new Date(); today.setHours(0,0,0,0);
