@@ -5360,9 +5360,27 @@ function renderMobileRaceWeek() {
 
     // Cross
     const cross=s.cross&&s.cross[di];
-    const crossP = document.createElement('div'); crossP.className= cross ? 'mob-pill mob-pill-cross' : 'mob-pill mob-pill-empty';
-    if (cross) { const cp=parse(cross); if(cp) crossP.textContent=cp.label; else crossP.innerHTML=`<span class="mob-add-btn">+ Add cross</span>`; }
-    else { crossP.innerHTML=`<span class="mob-add-btn">+ Add cross</span>`; crossP.addEventListener('click',()=>openAddModal(wi,'cross',di)); }
+    const crossActs=getStravaForDay(wi,di,'cross');
+    const crossP = document.createElement('div');
+    if (cross) {
+      const cp=parse(cross);
+      if(cp) {
+        crossP.className='mob-pill mob-pill-cross';
+        let html=`<span class="mob-pill-label">${cp.label}</span>`;
+        if(crossActs) crossActs.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${a.name} · ${(a.distance/1000).toFixed(1)}km</span>`;});
+        crossP.innerHTML=html;
+      }
+    } else if (crossActs) {
+      // Unplanned Strava cross activity
+      crossP.className='mob-pill mob-pill-cross';
+      let html='';
+      crossActs.forEach(a=>{html+=`<span class="mob-pill-label">⚡ ${a.name}</span><span class="mob-pill-sub">${a.type} · ${(a.distance/1000).toFixed(1)}km</span>`;});
+      crossP.innerHTML=html;
+    } else {
+      crossP.className='mob-pill mob-pill-empty';
+      crossP.innerHTML=`<span class="mob-add-btn">+ Add cross</span>`;
+      crossP.addEventListener('click',()=>openAddModal(wi,'cross',di));
+    }
     pills.appendChild(crossP);
 
     card.appendChild(pills);
