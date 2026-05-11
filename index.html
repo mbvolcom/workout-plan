@@ -1773,6 +1773,69 @@ document.getElementById('ctx-flag-clear').addEventListener('click', async () => 
 document.addEventListener('click', e => { if (!ctxMenu.contains(e.target)) closeCtxMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCtxMenu(); closeAddModal(); } });
 
+// ── Dedicated flag menu (for date number right-click) ───────────────────────
+function openFlagMenuAt(x, y, dateStr) {
+  // Remove any existing flag menu
+  document.getElementById('flag-dropdown')?.remove();
+
+  const flag = dayFlags[dateStr];
+  const dt = new Date(dateStr+'T12:00:00');
+  const dateLabel = dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+
+  const menu = document.createElement('div');
+  menu.id = 'flag-dropdown';
+  menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:9999;background:var(--surface);border:0.5px solid var(--border-mid);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.18);min-width:180px;padding:4px 0;font-size:12px;`;
+
+  const title = document.createElement('div');
+  title.style.cssText = 'padding:6px 14px 4px;font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);';
+  title.textContent = 'Flag — ' + dateLabel;
+  menu.appendChild(title);
+
+  const options = [
+    {type:'sick',          icon:'🤒', label:'Sick day'},
+    {type:'injured_run',   icon:'🤕', label:'Running injury'},
+    {type:'injured_str',   icon:'🤕', label:'Strength injury'},
+    {type:'injured_cross', icon:'🤕', label:'Cross injury'},
+  ];
+
+  options.forEach(opt => {
+    const item = document.createElement('div');
+    item.style.cssText = `padding:7px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text);${flag?.type===opt.type?'font-weight:600;background:rgba(255,255,255,0.04);':''}`;
+    item.innerHTML = `${opt.icon} ${opt.label}${flag?.type===opt.type?' ✓':''}`;
+    item.addEventListener('mouseenter', () => item.style.background='rgba(255,255,255,0.06)');
+    item.addEventListener('mouseleave', () => item.style.background=flag?.type===opt.type?'rgba(255,255,255,0.04)':'');
+    item.addEventListener('click', e => {
+      e.stopPropagation();
+      menu.remove();
+      openFlagDialog(dateStr, opt.type);
+    });
+    menu.appendChild(item);
+  });
+
+  if (flag) {
+    const divider = document.createElement('div');
+    divider.style.cssText = 'border-top:0.5px solid var(--border);margin:3px 0;';
+    menu.appendChild(divider);
+    const clearItem = document.createElement('div');
+    clearItem.style.cssText = 'padding:7px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;color:#b91c1c;';
+    clearItem.innerHTML = '✕ Remove flag';
+    clearItem.addEventListener('mouseenter', () => clearItem.style.background='rgba(255,255,255,0.04)');
+    clearItem.addEventListener('mouseleave', () => clearItem.style.background='');
+    clearItem.addEventListener('click', async e => { e.stopPropagation(); menu.remove(); await deleteDayFlag(dateStr); });
+    menu.appendChild(clearItem);
+  }
+
+  // Adjust position if off screen
+  document.body.appendChild(menu);
+  const rect = menu.getBoundingClientRect();
+  if (rect.right > window.innerWidth)  menu.style.left = (x - rect.width) + 'px';
+  if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+
+  // Close on outside click
+  const close = e => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', close); } };
+  setTimeout(() => document.addEventListener('click', close), 10);
+}
+
 // ── FLAG DIALOG ─────────────────────────────────────────────────────────────
 const FLAG_TYPES = {
   sick:          { icon:'🤒', label:'Sick day' },
@@ -3245,15 +3308,19 @@ function addFlagBadges() {
       cell.addEventListener('contextmenu', e => {
         e.preventDefault();
         e.stopPropagation();
-        openCtxMenuAt(e.clientX, e.clientY, parseInt(cell.dataset.wi), 'runs', parseInt(cell.dataset.di));
+        const _wi = parseInt(cell.dataset.wi), _di = parseInt(cell.dataset.di);
+        const [y,m,d] = WEEK_MONDAYS[_wi];
+        const dt = new Date(y,m-1,d+_di);
+        const ds = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+        openFlagMenuAt(e.clientX, e.clientY, ds);
       });
       let _lp = null;
       cell.addEventListener('touchstart', e => {
-        _lp = setTimeout(() => {
-          _lp = null;
-          navigator.vibrate && navigator.vibrate(20);
-          openCtxMenuAt(e.touches[0].clientX, e.touches[0].clientY, parseInt(cell.dataset.wi), 'runs', parseInt(cell.dataset.di));
-        }, 600);
+        const _wi = parseInt(cell.dataset.wi), _di = parseInt(cell.dataset.di);
+        const [y,m,d] = WEEK_MONDAYS[_wi];
+        const dt = new Date(y,m-1,d+_di);
+        const ds = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+        _lp = setTimeout(() => { _lp = null; navigator.vibrate && navigator.vibrate(20); openFlagMenuAt(e.touches[0].clientX, e.touches[0].clientY, ds); }, 600);
       }, {passive:true});
       cell.addEventListener('touchend',  () => { if(_lp){clearTimeout(_lp);_lp=null;} });
       cell.addEventListener('touchmove', () => { if(_lp){clearTimeout(_lp);_lp=null;} });
