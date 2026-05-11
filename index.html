@@ -393,7 +393,11 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 /* CONTEXT MENU */
 #ctx-menu { position:fixed; z-index:9999; background:var(--surface); border:0.5px solid var(--border-mid); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.13); min-width:170px; padding:4px 0; display:none; font-size:12px; }
 #ctx-menu.open { display:block; }
-.ctx-item { padding:7px 14px; cursor:pointer; color:var(--text); display:flex; align-items:center; gap:8px; }
+.flag-badge { font-size:11px; line-height:1; margin-left:2px; cursor:default; }
+.ctx-flag-btn { flex:1; background:var(--surface2); border:0.5px solid var(--border); border-radius:5px; padding:5px 6px; font-size:11px; cursor:pointer; font-family:inherit; color:var(--text); transition:background 0.1s; }
+.ctx-flag-btn:hover { background:var(--border); }
+.ctx-flag-btn.ctx-flag-clear { color:#b91c1c; border-color:#f09595; background:#fcebeb; }
+.ctx-flag-btn.active-flag { background:rgba(185,28,28,0.1); border-color:#f09595; }
 .ctx-item:hover { background:var(--bg); }
 .ctx-item.danger { color:#b91c1c; }
 .ctx-divider { border-top:0.5px solid var(--border); margin:3px 0; }
@@ -1163,6 +1167,15 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   <div class="ctx-divider"></div>
   <div class="ctx-submenu-label">Change to…</div>
   <div class="ctx-type-grid" id="ctx-types"></div>
+  <div class="ctx-divider" id="ctx-flag-divider"></div>
+  <div class="ctx-submenu-label" id="ctx-flag-label">Flag day</div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px;padding:4px 8px 8px;" id="ctx-flag-btns">
+    <button class="ctx-flag-btn" id="ctx-flag-sick">🤒 Sick</button>
+    <button class="ctx-flag-btn" id="ctx-flag-inj-run">🤕 Run injury</button>
+    <button class="ctx-flag-btn" id="ctx-flag-inj-str">🤕 Strength injury</button>
+    <button class="ctx-flag-btn" id="ctx-flag-inj-cross">🤕 Cross injury</button>
+    <button class="ctx-flag-btn ctx-flag-clear" id="ctx-flag-clear" style="display:none;">✕ Clear</button>
+  </div>
 </div>
 
 <div id="add-modal-overlay">
@@ -1690,6 +1703,13 @@ function touchEndHandler(e) {
 let ctxTarget = null;
 const ctxMenu = document.getElementById('ctx-menu');
 const ctxTypesEl = document.getElementById('ctx-types');
+
+function getCtxDateStr(weekIdx, dayIdx) {
+  const [y,m,d] = WEEK_MONDAYS[weekIdx];
+  const dt = new Date(y,m-1,d+dayIdx);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
 function openCtxMenuAt(x, y, weekIdx, row, dayIdx) {
   ctxTarget = { weekIdx, row, dayIdx };
   ctxTypesEl.innerHTML = '';
@@ -1705,7 +1725,17 @@ function openCtxMenuAt(x, y, weekIdx, row, dayIdx) {
       renderWeek(weekIdx); closeCtxMenu();    });
     ctxTypesEl.appendChild(opt);
   });
-  const menuW = 180, menuH = ctxMenu.scrollHeight || 280;
+
+  // Update flag buttons to reflect current flag state
+  const dateStr = getCtxDateStr(weekIdx, dayIdx);
+  const flag = dayFlags[dateStr];
+  document.getElementById('ctx-flag-sick').classList.toggle('active-flag', flag?.type==='sick');
+  document.getElementById('ctx-flag-inj-run').classList.toggle('active-flag', flag?.type==='injured_run');
+  document.getElementById('ctx-flag-inj-str').classList.toggle('active-flag', flag?.type==='injured_str');
+  document.getElementById('ctx-flag-inj-cross').classList.toggle('active-flag', flag?.type==='injured_cross');
+  document.getElementById('ctx-flag-clear').style.display = flag ? '' : 'none';
+
+  const menuW = 200, menuH = ctxMenu.scrollHeight || 320;
   if (x + menuW > window.innerWidth)  x = window.innerWidth  - menuW - 8;
   if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
   ctxMenu.style.left = x + 'px'; ctxMenu.style.top = y + 'px';
@@ -1713,16 +1743,79 @@ function openCtxMenuAt(x, y, weekIdx, row, dayIdx) {
 }
 function openCtxMenu(e, weekIdx, row, dayIdx) { e.preventDefault(); openCtxMenuAt(e.clientX, e.clientY, weekIdx, row, dayIdx); }
 function closeCtxMenu() { ctxMenu.classList.remove('open'); ctxTarget = null; }
+
 document.getElementById('ctx-delete').addEventListener('click', () => {
   if (!ctxTarget) return;
   const { weekIdx, row, dayIdx } = ctxTarget;
   if (row === 'wife') wifeState[weekIdx][dayIdx] = '';
-  else if (row === 'kinder') kinderState[weekIdx][dayIdx] = null; // reset to auto
+  else if (row === 'kinder') kinderState[weekIdx][dayIdx] = null;
   else state[weekIdx][row][dayIdx] = null;
   renderWeek(weekIdx); closeCtxMenu();
 });
+
+// Flag button handlers
+['ctx-flag-sick','ctx-flag-inj-run','ctx-flag-inj-str','ctx-flag-inj-cross'].forEach(id => {
+  const typeMap = {'ctx-flag-sick':'sick','ctx-flag-inj-run':'injured_run','ctx-flag-inj-str':'injured_str','ctx-flag-inj-cross':'injured_cross'};
+  document.getElementById(id).addEventListener('click', () => {
+    if (!ctxTarget) return;
+    const dateStr = getCtxDateStr(ctxTarget.weekIdx, ctxTarget.dayIdx);
+    closeCtxMenu();
+    openFlagDialog(dateStr, typeMap[id]);
+  });
+});
+document.getElementById('ctx-flag-clear').addEventListener('click', async () => {
+  if (!ctxTarget) return;
+  const dateStr = getCtxDateStr(ctxTarget.weekIdx, ctxTarget.dayIdx);
+  closeCtxMenu();
+  await deleteDayFlag(dateStr);
+});
+
 document.addEventListener('click', e => { if (!ctxMenu.contains(e.target)) closeCtxMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCtxMenu(); closeAddModal(); } });
+
+// ── FLAG DIALOG ─────────────────────────────────────────────────────────────
+const FLAG_TYPES = {
+  sick:          { icon:'🤒', label:'Sick day' },
+  injured_run:   { icon:'🤕', label:'Running injury' },
+  injured_str:   { icon:'🤕', label:'Strength injury' },
+  injured_cross: { icon:'🤕', label:'Cross-training injury' },
+};
+function flagInfo(type) { return FLAG_TYPES[type] || { icon:'🏳️', label:type }; }
+
+function openFlagDialog(dateStr, type) {
+  const existing = dayFlags[dateStr];
+  const info = flagInfo(type);
+  const dt = new Date(dateStr+'T12:00:00');
+  const dateLabel = dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);padding:20px;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:var(--surface);border:0.5px solid var(--border-mid);border-radius:12px;padding:20px;width:100%;max-width:320px;';
+  panel.innerHTML = `
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">${info.icon} ${info.label}</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">${dateLabel}</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Note (optional)</div>
+    <input id="flag-note-input" type="text" placeholder="e.g. sore throat, strained calf…" value="${existing?.note||''}"
+      style="width:100%;background:var(--bg);border:0.5px solid var(--border-mid);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none;margin-bottom:14px;box-sizing:border-box;"/>
+    <div style="display:flex;gap:8px;">
+      <button id="flag-cancel-btn" style="flex:1;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:9px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);">Cancel</button>
+      <button id="flag-save-btn" style="flex:1;background:var(--text);border:none;border-radius:7px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--bg);">Save flag</button>
+    </div>`;
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  setTimeout(() => panel.querySelector('#flag-note-input').focus(), 100);
+
+  panel.querySelector('#flag-cancel-btn').addEventListener('click', () => overlay.remove());
+  panel.querySelector('#flag-save-btn').addEventListener('click', async () => {
+    const note = panel.querySelector('#flag-note-input').value.trim();
+    overlay.remove();
+    await saveDayFlag(dateStr, type, note);
+  });
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+}
 
 // ── ADD SESSION MODAL ──────────────────────────────────────────────────────
 const addOverlay    = document.getElementById('add-modal-overlay');
@@ -2417,8 +2510,8 @@ if (_local) applyState(JSON.parse(_local));
     }
   }
 
-  // 2. Load run and strength libraries + run targets
-  await Promise.all([loadRunLibrary(), loadStrengthLibrary(), loadRunTargets()]);
+  // 2. Load run and strength libraries + run targets + day flags
+  await Promise.all([loadRunLibrary(), loadStrengthLibrary(), loadRunTargets(), loadDayFlags()]);
 
   // 3. Load user state from Supabase (drag/drop edits etc)
   const cloud = await loadCloudState();
@@ -3064,6 +3157,74 @@ function drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdM
 // ── WEATHER ────────────────────────────────────────────────────────────────
 const YR_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/yr-weather';
 let weatherData = {}; // keyed by YYYY-MM-DD, value = array of hourly entries
+
+// ── DAY FLAGS (sick / injured) ──────────────────────────────────────────────
+let dayFlags = {}; // keyed by YYYY-MM-DD → {type, note}
+
+async function loadDayFlags() {
+  try {
+    const res = await fetch(SUPA_BASE + 'day_flags?select=*', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error();
+    const rows = await res.json();
+    dayFlags = {};
+    rows.forEach(r => { dayFlags[r.date] = { id: r.id, type: r.type, note: r.note || '' }; });
+    addFlagBadges();
+  } catch(e) { console.warn('Failed to load day flags:', e); }
+}
+
+async function saveDayFlag(dateStr, type, note) {
+  try {
+    const existing = dayFlags[dateStr];
+    if (existing) {
+      await fetch(SUPA_BASE + `day_flags?id=eq.${existing.id}`, {
+        method: 'PATCH', headers: SUPA_HDR,
+        body: JSON.stringify({ type, note })
+      });
+      dayFlags[dateStr] = { ...existing, type, note };
+    } else {
+      const res = await fetch(SUPA_BASE + 'day_flags', {
+        method: 'POST', headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+        body: JSON.stringify({ date: dateStr, type, note })
+      });
+      const rows = await res.json();
+      if (rows[0]) dayFlags[dateStr] = { id: rows[0].id, type, note };
+    }
+    addFlagBadges();
+    if (typeof renderMobileRaceWeek === 'function' && isMobilePortrait()) renderMobileRaceWeek();
+  } catch(e) { console.warn('Failed to save day flag:', e); }
+}
+
+async function deleteDayFlag(dateStr) {
+  try {
+    const existing = dayFlags[dateStr];
+    if (!existing) return;
+    await fetch(SUPA_BASE + `day_flags?id=eq.${existing.id}`, { method: 'DELETE', headers: SUPA_HDR });
+    delete dayFlags[dateStr];
+    addFlagBadges();
+    if (typeof renderMobileRaceWeek === 'function' && isMobilePortrait()) renderMobileRaceWeek();
+  } catch(e) { console.warn('Failed to delete day flag:', e); }
+}
+
+function addFlagBadges() {
+  // Desktop — add/update flag badges in date-num-cells
+  document.querySelectorAll('.date-num-cell').forEach(cell => {
+    cell.querySelector('.flag-badge')?.remove();
+    const wi = parseInt(cell.closest('[id^="week-"]')?.id?.replace('week-',''));
+    const di = [...cell.parentElement.children].indexOf(cell) - 2; // offset for meta + label spacer
+    if (isNaN(wi) || di < 0 || di > 6) return;
+    const [y,m,d] = WEEK_MONDAYS[wi];
+    const dt = new Date(y,m-1,d+di);
+    const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const flag = dayFlags[dateStr];
+    if (!flag) return;
+    const info = flagInfo(flag.type);
+    const badge = document.createElement('span');
+    badge.className = 'flag-badge';
+    badge.textContent = info.icon;
+    badge.title = info.label + (flag.note ? ': ' + flag.note : '');
+    cell.appendChild(badge);
+  });
+}
 
 const INTERVALS = [
   { label: '07:00 – 12:00', start: 7,  end: 12 },
@@ -5485,7 +5646,56 @@ function renderMobileView() {
   else renderMobileMonth();
 }
 
-// ── Mobile: show full marathon plan for the week ──────────────────────────────
+function openMobFlagMenu(dateStr) {
+  const flag = dayFlags[dateStr];
+  const dt = new Date(dateStr+'T12:00:00');
+  const dateLabel = dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;justify-content:flex-end;';
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.4);';
+  backdrop.addEventListener('click', () => overlay.remove());
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'position:relative;background:var(--surface);border-radius:16px 16px 0 0;padding:20px 20px 40px;';
+
+  const flagOptions = [
+    {type:'sick',          icon:'🤒', label:'Sick day'},
+    {type:'injured_run',   icon:'🤕', label:'Running injury'},
+    {type:'injured_str',   icon:'🤕', label:'Strength injury'},
+    {type:'injured_cross', icon:'🤕', label:'Cross-training injury'},
+  ];
+
+  panel.innerHTML = `
+    <div style="width:36px;height:4px;background:var(--border-mid);border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Flag day</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;">${dateLabel}</div>
+    <div style="display:flex;flex-direction:column;gap:8px;" id="mob-flag-options"></div>`;
+
+  const optContainer = panel.querySelector('#mob-flag-options');
+  flagOptions.forEach(opt => {
+    const btn = document.createElement('button');
+    const isActive = flag?.type === opt.type;
+    btn.style.cssText = `padding:12px;background:${isActive?'rgba(255,255,255,0.08)':'var(--surface2)'};border:0.5px solid ${isActive?'var(--border-mid)':'var(--border)'};border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text);text-align:left;font-weight:${isActive?'600':'400'};`;
+    btn.textContent = `${opt.icon} ${opt.label}${isActive?' ✓':''}`;
+    btn.addEventListener('click', () => { overlay.remove(); openFlagDialog(dateStr, opt.type); });
+    optContainer.appendChild(btn);
+  });
+
+  if (flag) {
+    const clearBtn = document.createElement('button');
+    clearBtn.style.cssText = 'padding:12px;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:#b91c1c;text-align:left;margin-top:4px;';
+    clearBtn.textContent = '✕ Clear flag';
+    clearBtn.addEventListener('click', async () => { overlay.remove(); await deleteDayFlag(dateStr); });
+    optContainer.appendChild(clearBtn);
+  }
+
+  overlay.appendChild(backdrop); overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+}
+
+// ── MOBILE: show full marathon plan for the week ──────────────────────────────
 function showMobDayPlan(wi) {
   const w = WEEKS[wi];
   if (!w) return;
@@ -5570,23 +5780,35 @@ function renderMobileRaceWeek() {
 
     // Day header with weather
     const hdr=document.createElement('div'); hdr.className='mob-day-header';
+    const flag = dayFlags[dateStr];
+    const flagHTML = flag ? (() => { const fi=flagInfo(flag.type); return `<span style="font-size:13px;margin-left:2px;" title="${fi.label}${flag.note?': '+flag.note:''}">${fi.icon}</span>`; })() : '';
     const weatherEntries = weatherData[dateStr] || [];
     const best = weatherEntries.find(w=>w.hour>=8&&w.hour<=18) || weatherEntries[0];
     const weatherHTML = best
       ? `<span class="mob-day-weather" style="cursor:pointer;">${yrSymbol(best.symbol)} ${Math.round(best.temp)}°</span>`
       : '';
-    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>${weatherHTML}`;
+    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>${flagHTML}${weatherHTML}`;
 
-    // Click date/day → jump to marathon plan week in landscape
+    // Click date/day → open week plan
     hdr.querySelector('.mob-day-name').style.cursor='pointer';
     hdr.querySelector('.mob-day-num').style.cursor='pointer';
     const openPlan = () => showMobDayPlan(wi);
     hdr.querySelector('.mob-day-name').addEventListener('click', openPlan);
     hdr.querySelector('.mob-day-num').addEventListener('click', openPlan);
 
+    // Long-press day header → flag menu
+    let flagLp = null;
+    hdr.addEventListener('touchstart', e => {
+      if (e.target.classList.contains('mob-day-weather')) return;
+      if (e.target.classList.contains('mob-day-name') || e.target.classList.contains('mob-day-num')) return;
+      flagLp = setTimeout(() => { flagLp = null; openMobFlagMenu(dateStr); }, 600);
+    }, {passive:true});
+    hdr.addEventListener('touchend', () => { if(flagLp){clearTimeout(flagLp);flagLp=null;} });
+    hdr.addEventListener('touchmove', () => { if(flagLp){clearTimeout(flagLp);flagLp=null;} });
+    hdr.addEventListener('contextmenu', e => { e.preventDefault(); openMobFlagMenu(dateStr); });
     // Click weather → open weather panel
     if (best) {
-      hdr.querySelector('.mob-day-weather').addEventListener('click', () => openWeather(dateStr));
+      hdr.querySelector('.mob-day-weather')?.addEventListener('click', () => openWeather(dateStr));
     }
     card.appendChild(hdr);
 
