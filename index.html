@@ -5394,263 +5394,331 @@ function renderRunningStats() {
 
 
 // ── STERK GUTT STATS (mirrors Sterk Gutt app exactly) ──────────────────────
+// ── SG STATS STATE ─────────────────────────────────────────────────────────
+let _sgPreset = 'all';
+let _sgSubtab = 'overview';
+
 async function renderSGStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
 
-  // Date filter bar
-  const filterBar = document.createElement('div');
-  filterBar.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;margin-bottom:16px;';
-  filterBar.innerHTML = `
-    <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;margin-bottom:10px;">Report period</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-      <input type="date" id="sg-from" style="flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;"/>
-      <span style="color:#4b5563;">→</span>
-      <input type="date" id="sg-to" style="flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;"/>
-    </div>
-    <button onclick="applySGFilter()" style="width:100%;background:rgba(0,180,255,0.1);color:#00b4ff;border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:1px;">APPLY</button>`;
-  container.appendChild(filterBar);
-
-  const defFrom = new Date(); defFrom.setMonth(defFrom.getMonth()-3);
-  document.getElementById('sg-from').value = defFrom.toISOString().slice(0,10);
-  document.getElementById('sg-to').value   = new Date().toISOString().slice(0,10);
-
+  // Fetch data first
   const loadEl = document.createElement('div');
   loadEl.style.cssText = 'color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;';
   loadEl.textContent = 'Loading Sterk Gutt data…';
   container.appendChild(loadEl);
-
-  const sessions = await fetchSGSessions();
+  const allSessions = await fetchSGSessions();
   loadEl.remove();
 
-  if (!sessions.length) {
-    container.innerHTML += '<div style="color:#4b5563;font-size:13px;padding:20px 0;text-align:center;">No sessions found in Sterk Gutt.</div>';
+  if (!allSessions.length) {
+    container.innerHTML = '<div style="color:#4b5563;font-size:13px;padding:20px 0;text-align:center;">No sessions found in Sterk Gutt.</div>';
     return;
   }
-  window._sgAllSessions = sessions;
-  renderSGContent(sessions, document.getElementById('sg-from').value, document.getElementById('sg-to').value, container);
+  window._sgAllSessions = allSessions;
+  buildSGStatsUI(container, allSessions);
 }
 
-async function applySGFilter() {
-  const from = document.getElementById('sg-from')?.value;
-  const to   = document.getElementById('sg-to')?.value;
-  if (!from || !to || !window._sgAllSessions) return;
-  const container = document.getElementById('stats-content');
-  while (container.children.length > 1) container.removeChild(container.lastChild);
-  renderSGContent(window._sgAllSessions, from, to, container);
-}
+function buildSGStatsUI(container, allSessions) {
+  container.innerHTML = '';
 
-function renderSGContent(allSessions, fromStr, toStr, container) {
-  const fromDate = new Date(fromStr + 'T00:00:00');
-  const toDate   = new Date(toStr   + 'T23:59:59');
-  const sessions = allSessions.filter(s => {
-    const d = new Date(s.started_at || s.startedAt);
-    return d >= fromDate && d <= toDate;
+  // ── Preset buttons ──────────────────────────────────────────────────────
+  const filterBar = document.createElement('div');
+  filterBar.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;margin-bottom:12px;';
+  const filterTitle = document.createElement('div');
+  filterTitle.style.cssText = 'font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:10px;';
+  filterTitle.textContent = 'Time period';
+  filterBar.appendChild(filterTitle);
+
+  const presetRow = document.createElement('div');
+  presetRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;';
+  const presets = [
+    {key:'all',label:'All time'},{key:'1w',label:'Last week'},
+    {key:'1m',label:'1 month'},{key:'3m',label:'3 months'},
+    {key:'6m',label:'6 months'},{key:'1y',label:'1 year'},
+    {key:'custom',label:'Custom…'},
+  ];
+
+  const customRow = document.createElement('div');
+  customRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:6px;' + (_sgPreset==='custom'?'':'display:none;');
+  customRow.id = 'sg-custom-row';
+
+  // Default dates for custom
+  const earliest = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt).getTime()))) : new Date();
+  const fromInput = document.createElement('input'); fromInput.type='date'; fromInput.id='sg-from';
+  fromInput.style.cssText='flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;';
+  fromInput.value = earliest.toISOString().slice(0,10);
+  const sep = document.createElement('span'); sep.textContent='→'; sep.style.color='#4b5563';
+  const toInput = document.createElement('input'); toInput.type='date'; toInput.id='sg-to';
+  toInput.style.cssText='flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;';
+  toInput.value = new Date().toISOString().slice(0,10);
+  const goBtn = document.createElement('button');
+  goBtn.textContent='Go'; goBtn.style.cssText='background:rgba(0,180,255,0.1);color:#00b4ff;border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;';
+  goBtn.addEventListener('click', () => { _sgPreset='custom'; renderSGFiltered(allSessions, container, subtabRow); });
+  customRow.appendChild(fromInput); customRow.appendChild(sep); customRow.appendChild(toInput); customRow.appendChild(goBtn);
+
+  presets.forEach(p => {
+    const btn = document.createElement('button');
+    btn.style.cssText = `padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${_sgPreset===p.key?'#00b4ff':'rgba(255,255,255,0.1)'};background:${_sgPreset===p.key?'rgba(0,180,255,0.15)':'transparent'};color:${_sgPreset===p.key?'#00b4ff':'#9ca3af'};transition:all 0.15s;`;
+    btn.textContent = p.label;
+    btn.addEventListener('click', () => {
+      _sgPreset = p.key;
+      presetRow.querySelectorAll('button').forEach(b => {
+        const active = b.textContent === p.label;
+        b.style.borderColor = active?'#00b4ff':'rgba(255,255,255,0.1)';
+        b.style.background  = active?'rgba(0,180,255,0.15)':'transparent';
+        b.style.color       = active?'#00b4ff':'#9ca3af';
+      });
+      customRow.style.display = p.key==='custom' ? 'flex' : 'none';
+      if (p.key !== 'custom') renderSGFiltered(allSessions, container, subtabRow);
+    });
+    presetRow.appendChild(btn);
   });
 
+  filterBar.appendChild(presetRow);
+  filterBar.appendChild(customRow);
+  container.appendChild(filterBar);
+
+  // ── Sub-tabs ────────────────────────────────────────────────────────────
+  const subtabRow = document.createElement('div');
+  subtabRow.style.cssText = 'display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:10px;padding:3px;margin-bottom:12px;';
+  ['Overview','Routines','Exercise'].forEach(tab => {
+    const btn = document.createElement('button');
+    btn.textContent = tab; btn.dataset.tab = tab.toLowerCase();
+    btn.style.cssText = `flex:1;background:${_sgSubtab===tab.toLowerCase()?'#16181c':'none'};border:none;padding:8px 4px;font-size:12px;font-weight:600;color:${_sgSubtab===tab.toLowerCase()?'#e0ddd8':'#6b7280'};cursor:pointer;border-radius:8px;font-family:inherit;transition:all 0.15s;box-shadow:${_sgSubtab===tab.toLowerCase()?'0 1px 4px rgba(0,0,0,0.2)':'none'};`;
+    btn.addEventListener('click', () => {
+      _sgSubtab = tab.toLowerCase();
+      subtabRow.querySelectorAll('button').forEach(b => {
+        const a = b.dataset.tab===_sgSubtab;
+        b.style.background = a?'#16181c':'none';
+        b.style.color      = a?'#e0ddd8':'#6b7280';
+        b.style.boxShadow  = a?'0 1px 4px rgba(0,0,0,0.2)':'none';
+      });
+      renderSGFiltered(allSessions, container, subtabRow);
+    });
+    subtabRow.appendChild(btn);
+  });
+  container.appendChild(subtabRow);
+
+  // Content area
+  const contentArea = document.createElement('div');
+  contentArea.id = 'sg-content-area';
+  container.appendChild(contentArea);
+
+  renderSGFiltered(allSessions, container, subtabRow);
+}
+
+function getSGDateRange(allSessions) {
+  const now = new Date(); now.setHours(23,59,59,999);
+  if (_sgPreset === 'all') {
+    const earliest = allSessions.length
+      ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt).getTime())))
+      : new Date();
+    earliest.setHours(0,0,0,0);
+    return {from:earliest, to:now};
+  }
+  if (_sgPreset === 'custom') {
+    const from = document.getElementById('sg-from')?.value;
+    const to   = document.getElementById('sg-to')?.value;
+    return {
+      from: from ? new Date(from+'T00:00:00') : new Date(0),
+      to:   to   ? new Date(to+'T23:59:59')   : now,
+    };
+  }
+  const days = {'1w':7,'1m':30,'3m':90,'6m':180,'1y':365}[_sgPreset]||90;
+  const from = new Date(now); from.setDate(from.getDate()-days); from.setHours(0,0,0,0);
+  return {from, to:now};
+}
+
+function renderSGFiltered(allSessions, container, subtabRow) {
+  const {from,to} = getSGDateRange(allSessions);
+  const sessions = allSessions.filter(s => {
+    const d = new Date(s.started_at||s.startedAt);
+    return d >= from && d <= to;
+  });
+  const area = document.getElementById('sg-content-area');
+  if (!area) return;
+  area.innerHTML = '';
+
+  if (_sgSubtab === 'overview') renderSGOverview(sessions, from, to, area);
+  if (_sgSubtab === 'routines') renderSGRoutines(sessions, allSessions, area);
+  if (_sgSubtab === 'exercise') renderSGExerciseTab(sessions, area);
+}
+
+function renderSGOverview(sessions, fromDate, toDate, area) {
+  const n = sessions.length;
   let totalSets=0, totalDuration=0;
   const prMap={}, muscleMap={}, weekMap={};
-
   sessions.forEach(s => {
-    const startedAt = s.started_at || s.startedAt;
-    totalDuration += s.duration||0;
-    const d = new Date(startedAt);
-    const mon = new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
-    weekMap[mon.toISOString().slice(0,10)] = (weekMap[mon.toISOString().slice(0,10)]||0)+1;
-    (s.exercises||[]).forEach(ex => {
+    const d=new Date(s.started_at||s.startedAt);
+    totalDuration+=(s.duration||0);
+    const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+    weekMap[mon.toISOString().slice(0,10)]=(weekMap[mon.toISOString().slice(0,10)]||0)+1;
+    (s.exercises||[]).forEach(ex=>{
       const logged=(ex.sets||[]).filter(st=>st.logged);
       totalSets+=logged.length;
       muscleMap[ex.muscle||'Other']=(muscleMap[ex.muscle||'Other']||0)+logged.length;
-      logged.forEach(st=>{
-        const w=parseFloat(st.weight)||0;
-        if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};
-      });
+      logged.forEach(st=>{const w=parseFloat(st.weight)||0;if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};});
     });
   });
 
-  const n = sessions.length;
-  const avgSets  = n ? (totalSets/n).toFixed(1) : 0;
-  const days     = Math.max(1,(toDate-fromDate)/(1000*60*60*24*7));
-  const freq     = (n/days).toFixed(1);
-  const avgDur   = n ? Math.round(totalDuration/n/60) : 0;
+  const weeksWithSessions = Object.keys(weekMap).length || 1;
+  const avgSets  = n?(totalSets/n).toFixed(1):0;
+  const freq     = (n/weeksWithSessions).toFixed(1);
+  const avgDur   = n?Math.round(totalDuration/n/60):0;
   const totalVol = Math.round(sessions.reduce((a,s)=>a+sgCalcVolume(s),0));
 
   // KPIs
-  const kpiGrid=document.createElement('div'); kpiGrid.className='stats-kpi-grid';
+  const kpiGrid=document.createElement('div'); kpiGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;';
   [{val:n,lbl:'Sessions',sub:'in period',color:'#00b4ff'},
    {val:avgSets,lbl:'Avg sets',sub:'per session',color:'#00ffcc'},
-   {val:freq,lbl:'Sessions/week',sub:'frequency',color:'#f0a96e'},
+   {val:freq,lbl:'Sessions/week',sub:`over ${weeksWithSessions} active week${weeksWithSessions!==1?'s':''}`,color:'#f0a96e'},
    {val:avgDur+'m',lbl:'Avg duration',sub:'per session',color:'#7c6aff'},
    {val:totalVol.toLocaleString()+'kg',lbl:'Total volume',sub:'sets×reps×kg',color:'#00ffcc'},
    {val:totalSets,lbl:'Total sets',sub:'logged',color:'#00b4ff'},
-  ].forEach(({val,lbl,sub,color})=>{
-    const c=document.createElement('div'); c.className='stats-kpi';
-    c.innerHTML=`<div class="stats-kpi-val" style="color:${color}">${val}</div><div class="stats-kpi-lbl">${lbl}</div><div class="stats-kpi-sub">${sub}</div>`;
+  ].forEach(k=>{
+    const c=document.createElement('div'); c.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;';
+    c.innerHTML=`<div style="font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;color:${k.color};margin-bottom:4px;">${k.val}</div><div style="font-size:11px;font-weight:600;color:#c8c4be;letter-spacing:0.04em;">${k.lbl}</div><div style="font-size:10px;color:#6b7280;margin-top:2px;">${k.sub}</div>`;
     kpiGrid.appendChild(c);
   });
-  container.appendChild(kpiGrid);
+  area.appendChild(kpiGrid);
 
   // Muscle volume
-  const ms=document.createElement('div'); ms.className='stats-section';
-  ms.innerHTML='<div class="stats-section-title">Volume by muscle group</div>';
-  const mw=document.createElement('div'); mw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+  const ms=document.createElement('div'); ms.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  ms.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:14px;">Volume by muscle group</div>';
   const sortedM=Object.entries(muscleMap).sort((a,b)=>b[1]-a[1]);
   const maxM=sortedM[0]?.[1]||1;
-  if (!sortedM.length) {
-    mw.innerHTML='<div style="color:#4b5563;font-size:12px;">No data in this period.</div>';
-  } else {
-    sortedM.forEach(([m,v])=>{
-      const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
-      row.innerHTML=`<span style="font-size:11px;color:#9ca3af;min-width:110px;">${m}</span><div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:#00b4ff;width:${Math.round(v/maxM*100)}%"></div></div><span style="font-size:11px;color:#6b7280;min-width:24px;text-align:right;">${v}</span>`;
-      mw.appendChild(row);
-    });
-  }
-  ms.appendChild(mw); container.appendChild(ms);
+  sortedM.forEach(([m,v])=>{
+    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+    row.innerHTML=`<span style="font-size:11px;color:#9ca3af;min-width:110px;">${m}</span><div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:#00b4ff;width:${Math.round(v/maxM*100)}%"></div></div><span style="font-size:11px;color:#6b7280;min-width:24px;text-align:right;">${v}</span>`;
+    ms.appendChild(row);
+  });
+  area.appendChild(ms);
 
-  // Weekly sessions bars
-  const ws=document.createElement('div'); ws.className='stats-section';
-  ws.innerHTML='<div class="stats-section-title">Weekly sessions</div>';
-  const ww=document.createElement('div'); ww.className='stats-bar-chart';
-  const wb=document.createElement('div'); wb.className='stats-bars';
+  // Weekly sessions bar
+  const ws=document.createElement('div'); ws.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  ws.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:10px;">Weekly sessions</div>';
   const sortedWks=Object.keys(weekMap).sort();
   const maxWk=Math.max(...Object.values(weekMap),1);
-  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const chartEl=document.createElement('div'); chartEl.style.cssText='display:flex;align-items:flex-end;gap:3px;height:80px;';
   sortedWks.forEach(wk=>{
-    const cnt=weekMap[wk]; const h=Math.round((cnt/maxWk)*120);
+    const cnt=weekMap[wk]; const h=Math.round((cnt/maxWk)*72);
     const [,m]=wk.split('-');
-    const col=document.createElement('div'); col.className='stats-bar-col';
-    const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
-    const bar=document.createElement('div'); bar.className='stats-bar-actual';
-    bar.style.cssText=`height:${h}px;background:#00b4ff88;`; bar.title=`${wk}: ${cnt}`;
-    wrap.appendChild(bar);
-    const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'; lbl.textContent=MO[parseInt(m,10)-1];
-    col.appendChild(wrap); col.appendChild(lbl); wb.appendChild(col);
+    const col=document.createElement('div'); col.style.cssText='flex:1;display:flex;flex-direction:column;align-items:stretch;';
+    const bar=document.createElement('div'); bar.style.cssText=`display:flex;flex-direction:column;justify-content:flex-end;height:72px;`;
+    const fill=document.createElement('div'); fill.style.cssText=`height:${h}px;background:#00b4ff88;border-radius:2px 2px 0 0;`; fill.title=`${wk}: ${cnt}`;
+    bar.appendChild(fill);
+    const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;color:#4b5563;text-align:center;margin-top:2px;overflow:hidden;';
+    lbl.textContent=MONTHS[parseInt(m,10)-1];
+    col.appendChild(bar); col.appendChild(lbl); chartEl.appendChild(col);
   });
-  ww.appendChild(wb); ws.appendChild(ww); container.appendChild(ws);
+  ws.appendChild(chartEl); area.appendChild(ws);
 
   // PRs
-  const ps=document.createElement('div'); ps.className='stats-section';
-  ps.innerHTML='<div class="stats-section-title">Personal records</div>';
-  const pw=document.createElement('div'); pw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+  const ps=document.createElement('div'); ps.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;margin-bottom:12px;';
+  ps.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;padding:14px 16px 10px;">Personal records</div>';
   Object.entries(prMap).sort((a,b)=>b[1].weight-a[1].weight).forEach(([name,pr])=>{
-    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);';
+    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04);';
     row.innerHTML=`<div><div style="font-size:13px;color:#d1d5db;">${name}</div><div style="font-size:10px;color:#4b5563;">${pr.muscle}</div></div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#00ffcc;">${pr.weight} kg</div><div style="font-size:10px;color:#4b5563;">${pr.reps} reps</div></div>`;
-    pw.appendChild(row);
+    ps.appendChild(row);
   });
-  if (!Object.keys(prMap).length) pw.innerHTML='<div style="color:#4b5563;font-size:12px;padding:14px 16px;">No data in this period.</div>';
-  ps.appendChild(pw); container.appendChild(ps);
-
-  // Exercise progress
-  const es=document.createElement('div'); es.className='stats-section';
-  es.innerHTML='<div class="stats-section-title">Exercise progress</div>';
-  const ec=document.createElement('div'); ec.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
-  const exNames=[...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
-  const exSel=document.createElement('select');
-  exSel.style.cssText='width:100%;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:13px;color:#f0ede8;font-family:inherit;outline:none;margin-bottom:14px;';
-  exSel.innerHTML='<option value="">— Select exercise —</option>'+exNames.map(n=>`<option value="${n}">${n}</option>`).join('');
-  const exBody=document.createElement('div');
-  exSel.addEventListener('change',()=>renderSGExerciseProgress(sessions,exSel.value,exBody));
-  ec.appendChild(exSel); ec.appendChild(exBody); es.appendChild(ec); container.appendChild(es);
+  if (!Object.keys(prMap).length) ps.innerHTML+='<div style="color:#4b5563;font-size:12px;padding:14px 16px;">No data.</div>';
+  area.appendChild(ps);
 }
 
-function sgCalcVolume(s) {
-  return (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).reduce((b,st)=>{
-    if(!st.logged) return b;
-    const w=parseFloat(st.weight)||0;
-    const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):(parseFloat(st.reps)||0);
-    return b+w*r;
-  },0),0);
-}
-
-function renderSGExerciseProgress(sessions, exName, body) {
-  if (!exName) { body.innerHTML=''; return; }
-  const points=[];
+function renderSGRoutines(sessions, allSessions, area) {
+  const routineMap={};
   sessions.forEach(s=>{
-    (s.exercises||[]).forEach(ex=>{
-      if(ex.name!==exName) return;
-      const logged=(ex.sets||[]).filter(st=>st.logged);
-      if(!logged.length) return;
-      const totalVol=logged.reduce((a,st)=>{
-        const w=parseFloat(st.weight)||0;
-        const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):(parseFloat(st.reps)||0);
-        return a+w*r;
-      },0);
-      const maxWeight=Math.max(...logged.map(st=>parseFloat(st.weight)||0));
-      let best1RM=0;
-      logged.forEach(st=>{
-        const w=parseFloat(st.weight)||0;
-        const r=ex.unilateral?Math.max(parseFloat(st.repsL)||0,parseFloat(st.repsR)||0):parseFloat(st.reps)||0;
-        if(r>0) best1RM=Math.max(best1RM,w*(1+r/30));
-      });
-      const startedAt=s.started_at||s.startedAt;
-      points.push({
-        dateStr:new Date(startedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-        volumeLoad:Math.round(totalVol), maxWeight, est1RM:Math.round(best1RM*10)/10,
-      });
-    });
+    const key=s.routineId||s.routineName||'Unknown';
+    const name=s.routineName||s.routineId||'Unknown';
+    if(!routineMap[key]) routineMap[key]={name,count:0,totalSets:0,totalVol:0,totalDur:0,sessions:[]};
+    const sets=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
+    routineMap[key].count++;
+    routineMap[key].totalSets+=sets;
+    routineMap[key].totalVol+=sgCalcVolume(s);
+    routineMap[key].totalDur+=(s.duration||0);
+    routineMap[key].sessions.push(s);
   });
 
-  if (!points.length) { body.innerHTML=`<div style="color:#4b5563;font-size:12px;padding:12px 0;text-align:center;">No data for ${exName}.</div>`; return; }
+  const entries=Object.values(routineMap).sort((a,b)=>b.count-a.count);
+  const maxCount=entries[0]?.count||1;
 
-  const first=points[0], last=points[points.length-1];
-  const volChange=first.volumeLoad>0?((last.volumeLoad-first.volumeLoad)/first.volumeLoad*100).toFixed(1):null;
-  const wChange=first.maxWeight>0?((last.maxWeight-first.maxWeight)/first.maxWeight*100).toFixed(1):null;
-  const trendDir=volChange>2?'up':volChange<-2?'down':'flat';
-  const trendIcon=trendDir==='up'?'↑':trendDir==='down'?'↓':'→';
-  const trendText=trendDir==='up'?`Progressing +${volChange}% volume load`:trendDir==='down'?`Volume load -${Math.abs(volChange)}%`:'Maintaining — stable load';
-  const trendBg=trendDir==='up'?'rgba(0,255,150,0.12)':trendDir==='down'?'rgba(255,68,102,0.12)':'rgba(255,255,255,0.06)';
-  const trendColor=trendDir==='up'?'#00ff96':trendDir==='down'?'#ff4466':'#6b7280';
+  if (!entries.length) {
+    area.innerHTML='<div style="color:#6b7280;font-size:13px;padding:20px 0;text-align:center;">No sessions in this period.</div>';
+    return;
+  }
 
-  body.innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
-      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#00b4ff;">${last.volumeLoad}kg</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Vol load</div></div>
-      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#00b4ff;">${last.maxWeight}kg</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Top weight</div></div>
-      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#00b4ff;">${last.est1RM}kg</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Est. 1RM</div></div>
-    </div>
-    <div style="display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;margin-bottom:12px;background:${trendBg};color:${trendColor};">${trendIcon} ${trendText}</div>
-    ${wChange!==null?`<div style="font-size:11px;color:#4b5563;margin-bottom:12px;">Top weight: ${first.maxWeight}kg → ${last.maxWeight}kg (${wChange>0?'+':''}${wChange}%) · ${points.length} sessions</div>`:''}
-    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px;">Volume load per session (sets × reps × kg)</div>
-    <div class="chart-wrap"><canvas id="sg-chart-vol"></canvas></div>
-    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px;">Top weight per session (kg)</div>
-    <div class="chart-wrap"><canvas id="sg-chart-w"></canvas></div>
-    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px;">Estimated 1RM (Epley formula)</div>
-    <div class="chart-wrap"><canvas id="sg-chart-1rm"></canvas></div>`;
+  entries.forEach(r=>{
+    const avgSets=r.count?(r.totalSets/r.count).toFixed(1):0;
+    const avgDur=r.count?Math.round(r.totalDur/r.count/60):0;
+    const pct=Math.round((r.count/maxCount)*100);
+    const card=document.createElement('div');
+    card.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s;';
+    card.innerHTML=`
+      <div style="font-size:14px;font-weight:700;color:#e0ddd8;margin-bottom:8px;">${r.name}</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${r.count}</span> sessions</div>
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${avgSets}</span> avg sets</div>
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${avgDur}m</span> avg dur</div>
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${Math.round(r.totalVol/1000)}t</span> vol</div>
+      </div>
+      <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="height:100%;border-radius:2px;background:#00b4ff;width:${pct}%"></div></div>`;
+    card.addEventListener('mouseenter',()=>card.style.borderColor='rgba(0,180,255,0.3)');
+    card.addEventListener('mouseleave',()=>card.style.borderColor='rgba(255,255,255,0.07)');
+    card.addEventListener('click',()=>showSGRoutineProgress(r,area,sessions,allSessions));
+    area.appendChild(card);
+  });
+}
+
+function showSGRoutineProgress(routineData, area, sessions, allSessions) {
+  area.innerHTML='';
+  const back=document.createElement('button');
+  back.style.cssText='background:none;border:none;color:#00b4ff;font-size:13px;cursor:pointer;font-family:inherit;padding:0 0 16px;';
+  back.textContent='← Back to routines';
+  back.addEventListener('click',()=>{area.innerHTML='';renderSGRoutines(sessions,allSessions,area);});
+  area.appendChild(back);
+
+  const title=document.createElement('div');
+  title.style.cssText='font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:2px;color:#e0ddd8;margin-bottom:16px;';
+  title.textContent=routineData.name;
+  area.appendChild(title);
+
+  // Volume trend
+  const sortedSess=routineData.sessions.sort((a,b)=>new Date(a.started_at||a.startedAt)-new Date(b.started_at||b.startedAt));
+  const volData=sortedSess.map(s=>Math.round(sgCalcVolume(s)));
+  const volLabels=sortedSess.map(s=>new Date(s.started_at||s.startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
+  const setData=sortedSess.map(s=>(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0));
+
+  const vc=document.createElement('div'); vc.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  vc.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:8px;">Volume load per session</div>';
+  const cw1=document.createElement('div'); cw1.style.cssText='position:relative;width:100%;height:140px;overflow:hidden;';
+  const c1=document.createElement('canvas'); c1.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;';
+  cw1.appendChild(c1); vc.appendChild(cw1); area.appendChild(vc);
+
+  const sc=document.createElement('div'); sc.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  sc.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:8px;">Sets per session</div>';
+  const cw2=document.createElement('div'); cw2.style.cssText='position:relative;width:100%;height:140px;overflow:hidden;';
+  const c2=document.createElement('canvas'); c2.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;';
+  cw2.appendChild(c2); sc.appendChild(cw2); area.appendChild(sc);
 
   setTimeout(()=>{
-    const labels=points.map(p=>p.dateStr);
-    const c1=document.getElementById('sg-chart-vol');  if(c1) drawSGLine(c1,labels,points.map(p=>p.volumeLoad),'#00b4ff');
-    const c2=document.getElementById('sg-chart-w');    if(c2) drawSGLine(c2,labels,points.map(p=>p.maxWeight),'#00ffcc');
-    const c3=document.getElementById('sg-chart-1rm');  if(c3) drawSGLine(c3,labels,points.map(p=>p.est1RM),'#7c6aff');
-  },50);
+    if(c1.offsetWidth) drawSGLine(c1,volLabels,volData,'#7c6aff');
+    if(c2.offsetWidth) drawSGLine(c2,volLabels,setData,'#00b4ff');
+  },100);
 }
 
-function drawSGLine(canvas, labels, data, color) {
-  const dpr=devicePixelRatio;
-  canvas.width=canvas.offsetWidth*dpr; canvas.height=canvas.offsetHeight*dpr;
-  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  const w=canvas.offsetWidth, h=canvas.offsetHeight;
-  const pad={top:10,right:10,bottom:24,left:40};
-  const cW=w-pad.left-pad.right, cH=h-pad.top-pad.bottom;
-  const maxV=Math.max(...data,1), minV=Math.min(...data,0);
-  const n=data.length;
-  const xS=i=>pad.left+(n===1?cW/2:i/(n-1)*cW);
-  const yS=v=>pad.top+cH-((v-minV)/(maxV-minV||1))*cH;
-  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
-  [0,0.5,1].forEach(t=>{
-    const y=pad.top+t*cH;
-    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(w-pad.right,y); ctx.stroke();
-    ctx.fillStyle='#4b5563'; ctx.font='9px sans-serif'; ctx.textAlign='right';
-    ctx.fillText(Math.round(maxV-t*(maxV-minV)),pad.left-4,y+4);
-  });
-  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
-  ctx.beginPath();
-  data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
-  ctx.stroke();
-  data.forEach((v,i)=>{ ctx.fillStyle=color; ctx.beginPath(); ctx.arc(xS(i),yS(v),3,0,Math.PI*2); ctx.fill(); });
-  ctx.fillStyle='#4b5563'; ctx.textAlign='center'; ctx.font='8px sans-serif';
-  const step=Math.ceil(n/6);
-  data.forEach((_,i)=>{ if(i%step===0||i===n-1) ctx.fillText(labels[i],xS(i),h-6); });
+function renderSGExerciseTab(sessions, area) {
+  const card=document.createElement('div'); card.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+  // Exercise selector — build from sessions in period
+  const exNames=[...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
+  const sel=document.createElement('select');
+  sel.style.cssText='width:100%;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:13px;color:#f0ede8;font-family:inherit;outline:none;margin-bottom:14px;appearance:auto;cursor:pointer;';
+  sel.innerHTML='<option value="">— Select exercise —</option>'+exNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+  const exBody=document.createElement('div');
+  sel.addEventListener('change',()=>renderSGExerciseProgress(sessions,sel.value,exBody));
+  card.appendChild(sel); card.appendChild(exBody); area.appendChild(card);
 }
+
 
 function buildStatsWeeks() {
   const today = new Date(); today.setHours(0,0,0,0);
