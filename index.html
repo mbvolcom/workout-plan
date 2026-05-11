@@ -291,8 +291,8 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .week-row.collapsed-row { display:none; }
 .week-meta { font-size:11px; font-weight:600; color:var(--text); padding-top:4px; line-height:1.4; }
 .week-dates { font-size:10px; font-weight:400; color:var(--muted); display:block; }
-.week-km    { font-size:10px; font-weight:400; color:var(--muted); display:block; }
-.moved-tag  { display:inline-block; font-size:9px; background:#FCEBEB; color:#791F1F; border-radius:3px; padding:1px 4px; margin-top:2px; }
+.week-km    { font-size:10px; font-weight:400; color:var(--muted); display:inline; }
+.moved-tag  { display:inline-block; font-size:9px; background:#FCEBEB; color:#791F1F; border-radius:3px; padding:1px 4px; margin-left:4px; vertical-align:middle; }
 
 /* WEEK HEADER WRAP — floats left so grid rows sit beside it */
 .week-header-wrap { float: left; width: 88px; padding-top: 4px; margin-bottom: 0; }
@@ -3211,15 +3211,40 @@ async function deleteDayFlag(dateStr) {
 }
 
 function addFlagBadges() {
-  // Desktop — add/update flag badges in date-num-cells
   document.querySelectorAll('.date-num-cell').forEach(cell => {
     cell.querySelector('.flag-badge')?.remove();
     const wi = parseInt(cell.closest('[id^="week-"]')?.id?.replace('week-',''));
-    const di = [...cell.parentElement.children].indexOf(cell) - 2; // offset for meta + label spacer
+    const di = [...cell.parentElement.children].indexOf(cell) - 2;
     if (isNaN(wi) || di < 0 || di > 6) return;
     const [y,m,d] = WEEK_MONDAYS[wi];
     const dt = new Date(y,m-1,d+di);
     const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+
+    // Add right-click handler to open flag menu (only once)
+    if (!cell.dataset.flagInit) {
+      cell.dataset.flagInit = '1';
+      cell.style.cursor = 'pointer';
+      cell.title = 'Right-click to flag day';
+      cell.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        // Re-derive wi/di at event time since data-flag-init is set once
+        const _wi = parseInt(cell.closest('[id^="week-"]')?.id?.replace('week-',''));
+        const _di = [...cell.parentElement.children].indexOf(cell) - 2;
+        if (isNaN(_wi) || _di < 0) return;
+        openCtxMenuAt(e.clientX, e.clientY, _wi, 'runs', _di);
+      });
+      // Long-press on mobile date cell
+      let _lp = null;
+      cell.addEventListener('touchstart', e => {
+        const _wi = parseInt(cell.closest('[id^="week-"]')?.id?.replace('week-',''));
+        const _di = [...cell.parentElement.children].indexOf(cell) - 2;
+        if (isNaN(_wi) || _di < 0) return;
+        _lp = setTimeout(() => { _lp = null; openCtxMenuAt(e.touches[0].clientX, e.touches[0].clientY, _wi, 'runs', _di); }, 600);
+      }, {passive:true});
+      cell.addEventListener('touchend',  () => { if(_lp){clearTimeout(_lp);_lp=null;} });
+      cell.addEventListener('touchmove', () => { if(_lp){clearTimeout(_lp);_lp=null;} });
+    }
+
     const flag = dayFlags[dateStr];
     if (!flag) return;
     const info = flagInfo(flag.type);
@@ -3230,6 +3255,10 @@ function addFlagBadges() {
     cell.appendChild(badge);
   });
 }
+
+// Call addFlagBadges after build so cells exist
+const _origBuild = build;
+build = function() { _origBuild(); setTimeout(addFlagBadges, 50); };
 
 const INTERVALS = [
   { label: '07:00 – 12:00', start: 7,  end: 12 },
