@@ -2149,6 +2149,25 @@ function renderWeek(wi) {
         c.textContent = WEEK_DATES[wi][di];
         c.dataset.wi = wi;
         c.dataset.di = di;
+        // Right-click → flag menu
+        c.addEventListener('contextmenu', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const [y,m,d] = WEEK_MONDAYS[wi];
+          const dt = new Date(y,m-1,d+di);
+          const ds = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+          openFlagMenuAt(e.clientX, e.clientY, ds);
+        });
+        // Long-press → flag menu
+        let _lp = null;
+        c.addEventListener('touchstart', e => {
+          const [y,m,d] = WEEK_MONDAYS[wi];
+          const dt = new Date(y,m-1,d+di);
+          const ds = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+          _lp = setTimeout(() => { _lp=null; navigator.vibrate&&navigator.vibrate(20); openFlagMenuAt(e.touches[0].clientX, e.touches[0].clientY, ds); }, 600);
+        }, {passive:true});
+        c.addEventListener('touchend',  () => { if(_lp){clearTimeout(_lp);_lp=null;} });
+        c.addEventListener('touchmove', () => { if(_lp){clearTimeout(_lp);_lp=null;} });
         rowEl.appendChild(c);
       });
 
