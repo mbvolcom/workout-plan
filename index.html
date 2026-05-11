@@ -983,6 +983,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-day-name { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; min-width:28px; }
 .mob-day-num { font-size:22px; font-weight:700; color:var(--text); line-height:1; }
 .mob-day-num.mob-today-num { color:#FC4C02; }
+.mob-day-weather { margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap; }
 .mob-day-pills { padding:10px 14px; display:flex; flex-direction:column; gap:5px; }
 .mob-pill { border-radius:8px; padding:8px 12px; font-size:13px; font-weight:500; line-height:1.4; }
 .mob-pill-sub { font-size:11px; opacity:0.8; display:block; margin-top:2px; }
@@ -5014,6 +5015,265 @@ function renderRunningStats() {
 }
 
 
+// ── STERK GUTT STATS (mirrors Sterk Gutt app exactly) ──────────────────────
+async function renderSGStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = '';
+
+  // Date filter bar
+  const filterBar = document.createElement('div');
+  filterBar.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;margin-bottom:16px;';
+  filterBar.innerHTML = `
+    <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;margin-bottom:10px;">Report period</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <input type="date" id="sg-from" style="flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;"/>
+      <span style="color:#4b5563;">→</span>
+      <input type="date" id="sg-to" style="flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;"/>
+    </div>
+    <button onclick="applySGFilter()" style="width:100%;background:rgba(0,180,255,0.1);color:#00b4ff;border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:1px;">APPLY</button>`;
+  container.appendChild(filterBar);
+
+  const defFrom = new Date(); defFrom.setMonth(defFrom.getMonth()-3);
+  document.getElementById('sg-from').value = defFrom.toISOString().slice(0,10);
+  document.getElementById('sg-to').value   = new Date().toISOString().slice(0,10);
+
+  const loadEl = document.createElement('div');
+  loadEl.style.cssText = 'color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;';
+  loadEl.textContent = 'Loading Sterk Gutt data…';
+  container.appendChild(loadEl);
+
+  const sessions = await fetchSGSessions();
+  loadEl.remove();
+
+  if (!sessions.length) {
+    container.innerHTML += '<div style="color:#4b5563;font-size:13px;padding:20px 0;text-align:center;">No sessions found in Sterk Gutt.</div>';
+    return;
+  }
+  window._sgAllSessions = sessions;
+  renderSGContent(sessions, document.getElementById('sg-from').value, document.getElementById('sg-to').value, container);
+}
+
+async function applySGFilter() {
+  const from = document.getElementById('sg-from')?.value;
+  const to   = document.getElementById('sg-to')?.value;
+  if (!from || !to || !window._sgAllSessions) return;
+  const container = document.getElementById('stats-content');
+  while (container.children.length > 1) container.removeChild(container.lastChild);
+  renderSGContent(window._sgAllSessions, from, to, container);
+}
+
+function renderSGContent(allSessions, fromStr, toStr, container) {
+  const fromDate = new Date(fromStr + 'T00:00:00');
+  const toDate   = new Date(toStr   + 'T23:59:59');
+  const sessions = allSessions.filter(s => {
+    const d = new Date(s.started_at || s.startedAt);
+    return d >= fromDate && d <= toDate;
+  });
+
+  let totalSets=0, totalDuration=0;
+  const prMap={}, muscleMap={}, weekMap={};
+
+  sessions.forEach(s => {
+    const startedAt = s.started_at || s.startedAt;
+    totalDuration += s.duration||0;
+    const d = new Date(startedAt);
+    const mon = new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+    weekMap[mon.toISOString().slice(0,10)] = (weekMap[mon.toISOString().slice(0,10)]||0)+1;
+    (s.exercises||[]).forEach(ex => {
+      const logged=(ex.sets||[]).filter(st=>st.logged);
+      totalSets+=logged.length;
+      muscleMap[ex.muscle||'Other']=(muscleMap[ex.muscle||'Other']||0)+logged.length;
+      logged.forEach(st=>{
+        const w=parseFloat(st.weight)||0;
+        if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};
+      });
+    });
+  });
+
+  const n = sessions.length;
+  const avgSets  = n ? (totalSets/n).toFixed(1) : 0;
+  const days     = Math.max(1,(toDate-fromDate)/(1000*60*60*24*7));
+  const freq     = (n/days).toFixed(1);
+  const avgDur   = n ? Math.round(totalDuration/n/60) : 0;
+  const totalVol = Math.round(sessions.reduce((a,s)=>a+sgCalcVolume(s),0));
+
+  // KPIs
+  const kpiGrid=document.createElement('div'); kpiGrid.className='stats-kpi-grid';
+  [{val:n,lbl:'Sessions',sub:'in period',color:'#00b4ff'},
+   {val:avgSets,lbl:'Avg sets',sub:'per session',color:'#00ffcc'},
+   {val:freq,lbl:'Sessions/week',sub:'frequency',color:'#f0a96e'},
+   {val:avgDur+'m',lbl:'Avg duration',sub:'per session',color:'#7c6aff'},
+   {val:totalVol.toLocaleString()+'kg',lbl:'Total volume',sub:'sets×reps×kg',color:'#00ffcc'},
+   {val:totalSets,lbl:'Total sets',sub:'logged',color:'#00b4ff'},
+  ].forEach(({val,lbl,sub,color})=>{
+    const c=document.createElement('div'); c.className='stats-kpi';
+    c.innerHTML=`<div class="stats-kpi-val" style="color:${color}">${val}</div><div class="stats-kpi-lbl">${lbl}</div><div class="stats-kpi-sub">${sub}</div>`;
+    kpiGrid.appendChild(c);
+  });
+  container.appendChild(kpiGrid);
+
+  // Muscle volume
+  const ms=document.createElement('div'); ms.className='stats-section';
+  ms.innerHTML='<div class="stats-section-title">Volume by muscle group</div>';
+  const mw=document.createElement('div'); mw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+  const sortedM=Object.entries(muscleMap).sort((a,b)=>b[1]-a[1]);
+  const maxM=sortedM[0]?.[1]||1;
+  if (!sortedM.length) {
+    mw.innerHTML='<div style="color:#4b5563;font-size:12px;">No data in this period.</div>';
+  } else {
+    sortedM.forEach(([m,v])=>{
+      const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+      row.innerHTML=`<span style="font-size:11px;color:#9ca3af;min-width:110px;">${m}</span><div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:#00b4ff;width:${Math.round(v/maxM*100)}%"></div></div><span style="font-size:11px;color:#6b7280;min-width:24px;text-align:right;">${v}</span>`;
+      mw.appendChild(row);
+    });
+  }
+  ms.appendChild(mw); container.appendChild(ms);
+
+  // Weekly sessions bars
+  const ws=document.createElement('div'); ws.className='stats-section';
+  ws.innerHTML='<div class="stats-section-title">Weekly sessions</div>';
+  const ww=document.createElement('div'); ww.className='stats-bar-chart';
+  const wb=document.createElement('div'); wb.className='stats-bars';
+  const sortedWks=Object.keys(weekMap).sort();
+  const maxWk=Math.max(...Object.values(weekMap),1);
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  sortedWks.forEach(wk=>{
+    const cnt=weekMap[wk]; const h=Math.round((cnt/maxWk)*120);
+    const [,m]=wk.split('-');
+    const col=document.createElement('div'); col.className='stats-bar-col';
+    const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
+    const bar=document.createElement('div'); bar.className='stats-bar-actual';
+    bar.style.cssText=`height:${h}px;background:#00b4ff88;`; bar.title=`${wk}: ${cnt}`;
+    wrap.appendChild(bar);
+    const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'; lbl.textContent=MO[parseInt(m,10)-1];
+    col.appendChild(wrap); col.appendChild(lbl); wb.appendChild(col);
+  });
+  ww.appendChild(wb); ws.appendChild(ww); container.appendChild(ws);
+
+  // PRs
+  const ps=document.createElement('div'); ps.className='stats-section';
+  ps.innerHTML='<div class="stats-section-title">Personal records</div>';
+  const pw=document.createElement('div'); pw.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+  Object.entries(prMap).sort((a,b)=>b[1].weight-a[1].weight).forEach(([name,pr])=>{
+    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);';
+    row.innerHTML=`<div><div style="font-size:13px;color:#d1d5db;">${name}</div><div style="font-size:10px;color:#4b5563;">${pr.muscle}</div></div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#00ffcc;">${pr.weight} kg</div><div style="font-size:10px;color:#4b5563;">${pr.reps} reps</div></div>`;
+    pw.appendChild(row);
+  });
+  if (!Object.keys(prMap).length) pw.innerHTML='<div style="color:#4b5563;font-size:12px;padding:14px 16px;">No data in this period.</div>';
+  ps.appendChild(pw); container.appendChild(ps);
+
+  // Exercise progress
+  const es=document.createElement('div'); es.className='stats-section';
+  es.innerHTML='<div class="stats-section-title">Exercise progress</div>';
+  const ec=document.createElement('div'); ec.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+  const exNames=[...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
+  const exSel=document.createElement('select');
+  exSel.style.cssText='width:100%;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:13px;color:#f0ede8;font-family:inherit;outline:none;margin-bottom:14px;';
+  exSel.innerHTML='<option value="">— Select exercise —</option>'+exNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+  const exBody=document.createElement('div');
+  exSel.addEventListener('change',()=>renderSGExerciseProgress(sessions,exSel.value,exBody));
+  ec.appendChild(exSel); ec.appendChild(exBody); es.appendChild(ec); container.appendChild(es);
+}
+
+function sgCalcVolume(s) {
+  return (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).reduce((b,st)=>{
+    if(!st.logged) return b;
+    const w=parseFloat(st.weight)||0;
+    const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):(parseFloat(st.reps)||0);
+    return b+w*r;
+  },0),0);
+}
+
+function renderSGExerciseProgress(sessions, exName, body) {
+  if (!exName) { body.innerHTML=''; return; }
+  const points=[];
+  sessions.forEach(s=>{
+    (s.exercises||[]).forEach(ex=>{
+      if(ex.name!==exName) return;
+      const logged=(ex.sets||[]).filter(st=>st.logged);
+      if(!logged.length) return;
+      const totalVol=logged.reduce((a,st)=>{
+        const w=parseFloat(st.weight)||0;
+        const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):(parseFloat(st.reps)||0);
+        return a+w*r;
+      },0);
+      const maxWeight=Math.max(...logged.map(st=>parseFloat(st.weight)||0));
+      let best1RM=0;
+      logged.forEach(st=>{
+        const w=parseFloat(st.weight)||0;
+        const r=ex.unilateral?Math.max(parseFloat(st.repsL)||0,parseFloat(st.repsR)||0):parseFloat(st.reps)||0;
+        if(r>0) best1RM=Math.max(best1RM,w*(1+r/30));
+      });
+      const startedAt=s.started_at||s.startedAt;
+      points.push({
+        dateStr:new Date(startedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
+        volumeLoad:Math.round(totalVol), maxWeight, est1RM:Math.round(best1RM*10)/10,
+      });
+    });
+  });
+
+  if (!points.length) { body.innerHTML=`<div style="color:#4b5563;font-size:12px;padding:12px 0;text-align:center;">No data for ${exName}.</div>`; return; }
+
+  const first=points[0], last=points[points.length-1];
+  const volChange=first.volumeLoad>0?((last.volumeLoad-first.volumeLoad)/first.volumeLoad*100).toFixed(1):null;
+  const wChange=first.maxWeight>0?((last.maxWeight-first.maxWeight)/first.maxWeight*100).toFixed(1):null;
+  const trendDir=volChange>2?'up':volChange<-2?'down':'flat';
+  const trendIcon=trendDir==='up'?'↑':trendDir==='down'?'↓':'→';
+  const trendText=trendDir==='up'?`Progressing +${volChange}% volume load`:trendDir==='down'?`Volume load -${Math.abs(volChange)}%`:'Maintaining — stable load';
+  const trendBg=trendDir==='up'?'rgba(0,255,150,0.12)':trendDir==='down'?'rgba(255,68,102,0.12)':'rgba(255,255,255,0.06)';
+  const trendColor=trendDir==='up'?'#00ff96':trendDir==='down'?'#ff4466':'#6b7280';
+
+  body.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#00b4ff;">${last.volumeLoad}kg</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Vol load</div></div>
+      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#00b4ff;">${last.maxWeight}kg</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Top weight</div></div>
+      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#00b4ff;">${last.est1RM}kg</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Est. 1RM</div></div>
+    </div>
+    <div style="display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;margin-bottom:12px;background:${trendBg};color:${trendColor};">${trendIcon} ${trendText}</div>
+    ${wChange!==null?`<div style="font-size:11px;color:#4b5563;margin-bottom:12px;">Top weight: ${first.maxWeight}kg → ${last.maxWeight}kg (${wChange>0?'+':''}${wChange}%) · ${points.length} sessions</div>`:''}
+    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px;">Volume load per session (sets × reps × kg)</div>
+    <div class="chart-wrap"><canvas id="sg-chart-vol"></canvas></div>
+    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px;">Top weight per session (kg)</div>
+    <div class="chart-wrap"><canvas id="sg-chart-w"></canvas></div>
+    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px;">Estimated 1RM (Epley formula)</div>
+    <div class="chart-wrap"><canvas id="sg-chart-1rm"></canvas></div>`;
+
+  setTimeout(()=>{
+    const labels=points.map(p=>p.dateStr);
+    const c1=document.getElementById('sg-chart-vol');  if(c1) drawSGLine(c1,labels,points.map(p=>p.volumeLoad),'#00b4ff');
+    const c2=document.getElementById('sg-chart-w');    if(c2) drawSGLine(c2,labels,points.map(p=>p.maxWeight),'#00ffcc');
+    const c3=document.getElementById('sg-chart-1rm');  if(c3) drawSGLine(c3,labels,points.map(p=>p.est1RM),'#7c6aff');
+  },50);
+}
+
+function drawSGLine(canvas, labels, data, color) {
+  const dpr=devicePixelRatio;
+  canvas.width=canvas.offsetWidth*dpr; canvas.height=canvas.offsetHeight*dpr;
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const w=canvas.offsetWidth, h=canvas.offsetHeight;
+  const pad={top:10,right:10,bottom:24,left:40};
+  const cW=w-pad.left-pad.right, cH=h-pad.top-pad.bottom;
+  const maxV=Math.max(...data,1), minV=Math.min(...data,0);
+  const n=data.length;
+  const xS=i=>pad.left+(n===1?cW/2:i/(n-1)*cW);
+  const yS=v=>pad.top+cH-((v-minV)/(maxV-minV||1))*cH;
+  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+  [0,0.5,1].forEach(t=>{
+    const y=pad.top+t*cH;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(w-pad.right,y); ctx.stroke();
+    ctx.fillStyle='#4b5563'; ctx.font='9px sans-serif'; ctx.textAlign='right';
+    ctx.fillText(Math.round(maxV-t*(maxV-minV)),pad.left-4,y+4);
+  });
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.beginPath();
+  data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
+  ctx.stroke();
+  data.forEach((v,i)=>{ ctx.fillStyle=color; ctx.beginPath(); ctx.arc(xS(i),yS(v),3,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle='#4b5563'; ctx.textAlign='center'; ctx.font='8px sans-serif';
+  const step=Math.ceil(n/6);
+  data.forEach((_,i)=>{ if(i%step===0||i===n-1) ctx.fillText(labels[i],xS(i),h-6); });
+}
+
 function buildStatsWeeks() {
   const today = new Date(); today.setHours(0,0,0,0);
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -5225,6 +5485,22 @@ function renderMobileView() {
   else renderMobileMonth();
 }
 
+// ── Mobile pill: tap = action, long-press = edit/delete context menu ─────────
+function addMobPillHandlers(el, tapFn, wi, row, di) {
+  let lp = null;
+  el.addEventListener('touchstart', e => {
+    lp = setTimeout(() => {
+      lp = null;
+      navigator.vibrate && navigator.vibrate(30);
+      openCtxMenuAt(e.touches[0].clientX, e.touches[0].clientY, wi, row, di);
+    }, 500);
+  }, {passive:true});
+  el.addEventListener('touchend',   () => { if(lp){clearTimeout(lp);lp=null;} });
+  el.addEventListener('touchmove',  () => { if(lp){clearTimeout(lp);lp=null;} });
+  el.addEventListener('click', tapFn);
+  el.addEventListener('contextmenu', e => { e.preventDefault(); openCtxMenuAt(e.clientX, e.clientY, wi, row, di); });
+}
+
 function renderMobileRaceWeek() {
   const mc = document.getElementById('mobile-cal');
   while (mc.children.length > 1) mc.removeChild(mc.lastChild);
@@ -5283,9 +5559,15 @@ function renderMobileRaceWeek() {
     const card = document.createElement('div');
     card.className='mob-day-card'+(isToday?' mob-today':'');
 
-    // Day header
+    // Day header with weather
     const hdr=document.createElement('div'); hdr.className='mob-day-header';
-    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>`;
+    const weatherDots = weatherData[dateStr];
+    let weatherHTML = '';
+    if (weatherDots && weatherDots.length) {
+      const best = weatherDots.find(w=>w.hour>=8&&w.hour<=18) || weatherDots[0];
+      weatherHTML = `<span class="mob-day-weather" title="${best.desc}">${best.icon} ${Math.round(best.temp)}°</span>`;
+    }
+    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>${weatherHTML}`;
     card.appendChild(hdr);
 
     const pills=document.createElement('div'); pills.className='mob-day-pills';
@@ -5332,7 +5614,8 @@ function renderMobileRaceWeek() {
       const acts=getStravaForDay(wi,di,'runs');
       if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
       runP.innerHTML=html;
-      runP.addEventListener('click',()=>openRunPanel(rp.label,wi,di));
+      // Tap → open run panel; long-press → edit/delete menu
+      addMobPillHandlers(runP, ()=>openRunPanel(rp.label,wi,di), wi,'runs',di);
     } else {
       runP.className='mob-pill mob-pill-empty';
       runP.innerHTML=`<span class="mob-add-btn">+ Add run</span>`;
@@ -5350,7 +5633,7 @@ function renderMobileRaceWeek() {
       const acts=getStravaForDay(wi,di,'str');
       if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
       strP.innerHTML=html;
-      strP.addEventListener('click',()=>openStrPanel(sp.label,wi,di));
+      addMobPillHandlers(strP, ()=>openStrPanel(sp.label,wi,di), wi,'str',di);
     } else {
       strP.className='mob-pill mob-pill-empty';
       strP.innerHTML=`<span class="mob-add-btn">+ Add strength</span>`;
@@ -5365,13 +5648,13 @@ function renderMobileRaceWeek() {
     if (cross) {
       const cp=parse(cross);
       if(cp) {
-        crossP.className='mob-pill mob-pill-cross';
+        crossP.className='mob-pill mob-pill-cross'; crossP.style.cursor='pointer';
         let html=`<span class="mob-pill-label">${cp.label}</span>`;
         if(crossActs) crossActs.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${a.name} · ${(a.distance/1000).toFixed(1)}km</span>`;});
         crossP.innerHTML=html;
+        addMobPillHandlers(crossP, ()=>{}, wi,'cross',di);
       }
     } else if (crossActs) {
-      // Unplanned Strava cross activity
       crossP.className='mob-pill mob-pill-cross';
       let html='';
       crossActs.forEach(a=>{html+=`<span class="mob-pill-label">⚡ ${a.name}</span><span class="mob-pill-sub">${a.type} · ${(a.distance/1000).toFixed(1)}km</span>`;});
