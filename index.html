@@ -5226,18 +5226,18 @@ function renderRunningStats() {
     actual.title=`${wk.label}: ${wk.actualKm.toFixed(1)}km logged`;
     wrap.appendChild(planned); wrap.appendChild(actual);
     const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'+(wk.isCurrent?' current':''); lbl.textContent=wk.shortLabel;
-    col.appendChild(wrap); col.appendChild(lbl);
-    // Health flag marker below label
+    // Health flag marker inside bar at bottom
     const wFlags = weekFlagMap[weeks.indexOf(wk)];
     if (wFlags && wFlags.length) {
       const hasSick = wFlags.includes('sick'), hasInj = wFlags.includes('injured_run');
       const marker = document.createElement('div');
-      marker.style.cssText = 'text-align:center;font-size:9px;line-height:1;margin-top:1px;';
+      marker.style.cssText = 'position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;line-height:1;pointer-events:none;';
       marker.textContent = hasSick && hasInj ? '🤒🤕' : hasSick ? '🤒' : '🤕';
       marker.title = wFlags.map(f=>flagInfo(f).label).join(', ');
-      col.appendChild(marker);
+      wrap.style.position = 'relative';
+      wrap.appendChild(marker);
     }
-    barsEl.appendChild(col);
+    col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
   });
   const legend=document.createElement('div'); legend.className='stats-chart-legend';
   legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div>';
