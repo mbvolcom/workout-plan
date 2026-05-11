@@ -1801,7 +1801,8 @@ function openFlagDialog(dateStr, type) {
       style="width:100%;background:var(--bg);border:0.5px solid var(--border-mid);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none;margin-bottom:14px;box-sizing:border-box;"/>
     <div style="display:flex;gap:8px;">
       <button id="flag-cancel-btn" style="flex:1;background:var(--surface2);border:0.5px solid var(--border);border-radius:7px;padding:9px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);">Cancel</button>
-      <button id="flag-save-btn" style="flex:1;background:var(--text);border:none;border-radius:7px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--bg);">Save flag</button>
+      ${existing ? `<button id="flag-remove-btn" style="flex:1;background:#fcebeb;border:0.5px solid #f09595;border-radius:7px;padding:9px;font-size:12px;cursor:pointer;font-family:inherit;color:#b91c1c;">Remove flag</button>` : ''}
+      <button id="flag-save-btn" style="flex:1;background:var(--text);border:none;border-radius:7px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--bg);">Save</button>
     </div>`;
 
   overlay.appendChild(panel);
@@ -1809,6 +1810,10 @@ function openFlagDialog(dateStr, type) {
   setTimeout(() => panel.querySelector('#flag-note-input').focus(), 100);
 
   panel.querySelector('#flag-cancel-btn').addEventListener('click', () => overlay.remove());
+  panel.querySelector('#flag-remove-btn')?.addEventListener('click', async () => {
+    overlay.remove();
+    await deleteDayFlag(dateStr);
+  });
   panel.querySelector('#flag-save-btn').addEventListener('click', async () => {
     const note = panel.querySelector('#flag-note-input').value.trim();
     overlay.remove();
@@ -1892,10 +1897,10 @@ function toggleCollapse(wi) {
   if (!wrap) return;
   const isCollapsed = collapsedWeeks.has(wi);
   wrap.classList.toggle('collapsed', isCollapsed);
+  // Skip first row (date row with toggle button) — it must always stay visible
   wrap.querySelectorAll('.week-row').forEach((row, i) => {
-    row.classList.toggle('collapsed-row', isCollapsed);
+    if (i > 0) row.classList.toggle('collapsed-row', isCollapsed);
   });
-  // Toggle summary visibility
   const sumEl = wrap.querySelector('.week-summary');
   if (sumEl) sumEl.classList.toggle('collapsed-hidden', isCollapsed);
   const btn = wrap.querySelector('.week-toggle');
@@ -5604,27 +5609,40 @@ function initMobileView() {
 
   renderMobileView();
 
-  // Swipe detection
-  const mc = document.getElementById('mobile-cal');
-  mc.addEventListener('touchstart', e => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, {passive:true});
-  mc.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (mobMode === 'race') {
-        if (dx < 0) mobWeekIndex = Math.min(WEEKS.length-1, mobWeekIndex+1);
-        else        mobWeekIndex = Math.max(0, mobWeekIndex-1);
-        renderMobileRaceWeek();
-      } else {
-        if (dx < 0) mobMonthOffset++;
-        else        mobMonthOffset = Math.max(0, mobMonthOffset-1);
-        renderMobileMonth();
+  // Swipe detection — add only once
+  if (!window._mobSwipeInit) {
+    window._mobSwipeInit = true;
+    const mc = document.getElementById('mobile-cal');
+    let _sx = 0, _sy = 0, _swiping = false;
+    mc.addEventListener('touchstart', e => {
+      _sx = e.touches[0].clientX;
+      _sy = e.touches[0].clientY;
+      _swiping = false;
+    }, {passive:true});
+    mc.addEventListener('touchmove', e => {
+      const dx = Math.abs(e.touches[0].clientX - _sx);
+      const dy = Math.abs(e.touches[0].clientY - _sy);
+      if (dx > dy && dx > 10) _swiping = true;
+    }, {passive:true});
+    mc.addEventListener('touchend', e => {
+      if (!_swiping) return;
+      _swiping = false;
+      const dx = e.changedTouches[0].clientX - _sx;
+      const dy = e.changedTouches[0].clientY - _sy;
+      if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 60) {
+        if (mobMode === 'race') {
+          mobWeekIndex = dx < 0
+            ? Math.min(WEEKS.length-1, mobWeekIndex+1)
+            : Math.max(0, mobWeekIndex-1);
+          renderMobileRaceWeek();
+        } else {
+          if (dx < 0) mobMonthOffset++;
+          else        mobMonthOffset = Math.max(0, mobMonthOffset-1);
+          renderMobileMonth();
+        }
       }
-    }
-  }, {passive:true});
+    }, {passive:true});
+  }
 }
 
 function renderMobileView() {
