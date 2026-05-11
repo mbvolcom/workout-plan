@@ -5306,12 +5306,15 @@ const SG_HDR  = { 'apikey': SG_KEY, 'Authorization': 'Bearer ' + SG_KEY };
 
 let sgSessions = null; // cached
 
-async function fetchSGSessions() {
-  if (sgSessions) return sgSessions;
+async function fetchSGSessions(force) {
+  if (sgSessions && !force) return sgSessions;
   try {
     const res = await fetch(SG_BASE + 'sessions?select=*&is_active=eq.false&order=started_at.desc', { headers: SG_HDR });
     if (!res.ok) throw new Error('SG fetch failed: ' + res.status);
-    sgSessions = await res.json();
+    const rows = await res.json();
+    // Deduplicate by id in case of duplicates
+    const seen = new Set();
+    sgSessions = rows.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
     return sgSessions;
   } catch(e) { console.warn('Sterk Gutt fetch failed:', e); return []; }
 }
@@ -5320,6 +5323,7 @@ let statsTab   = 'running';
 
 function openStatsPage() {
   document.getElementById('stats-overlay').classList.add('open');
+  sgSessions = null; // reset cache so we always get fresh data
   renderStats();
 }
 function closeStatsPage() {
@@ -5763,7 +5767,6 @@ function renderSGOverview(sessions, fromDate, toDate, area) {
       logged.forEach(st=>{const w=parseFloat(st.weight)||0;if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};});
     });
   });
-
   const weeksWithSessions = Object.keys(weekMap).length || 1;
   const avgSets  = n?(totalSets/n).toFixed(1):0;
   const freq     = (n/weeksWithSessions).toFixed(1);
@@ -5832,8 +5835,11 @@ function renderSGOverview(sessions, fromDate, toDate, area) {
 function renderSGRoutines(sessions, allSessions, area) {
   const routineMap={};
   sessions.forEach(s=>{
-    const key=s.routineId||s.routineName||'Unknown';
-    const name=s.routineName||s.routineId||'Unknown';
+    // Supabase returns snake_case — handle both
+    const routineName = s.routine_name || s.routineName || null;
+    const routineId   = s.routine_id   || s.routineId   || null;
+    const key  = routineId || routineName || 'Unknown';
+    const name = routineName || routineId || 'Unknown routine';
     if(!routineMap[key]) routineMap[key]={name,count:0,totalSets:0,totalVol:0,totalDur:0,sessions:[]};
     const sets=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
     routineMap[key].count++;
