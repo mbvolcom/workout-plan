@@ -12,13 +12,20 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/>
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <title>Training Calendar 2026</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── DESIGN SYSTEM ────────────────────────────────────────────────── */
 :root {
-  --bg: #f7f6f3; --surface: #ffffff; --border: #e5e3dc; --border-mid: #d0cec5;
-  --text: #1a1a18; --muted: #7a7870;
+  --bg: #f6f0ea; --surface: rgba(255,255,255,0.45); --border: rgba(255,255,255,0.55); --border-mid: rgba(200,195,188,0.6);
+  --text: #1a1626; --muted: oklch(0.56 0.04 25);
+  --ink-display: oklch(0.26 0.07 25);
+  --ink-sub:     oklch(0.48 0.05 25);
+  --ink-meta:    oklch(0.56 0.04 25);
 
   /* ── RUN (greens) ─────────────────────────────────────── */
   --easy-bg:#E8F5E9;  --easy-c:#1B5E20;  --easy-b:#66BB6A;   /* light green */
@@ -60,13 +67,16 @@
 }
 
 body {
-  font-family: -apple-system,'Helvetica Neue',Arial,sans-serif;
+  font-family: 'Inter Tight', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
   background: #f6f0ea; color:var(--text); font-size:13px;
-  padding:24px 16px 60px;
+  padding:16px 16px 60px;
   padding-left:max(16px,env(safe-area-inset-left));
   padding-right:max(16px,env(safe-area-inset-right));
   padding-bottom:max(60px,calc(env(safe-area-inset-bottom) + 20px));
 }
+.mono { font-family:'JetBrains Mono',ui-monospace,monospace; font-feature-settings:"tnum"; }
 
 /* ── BACKGROUND BLOBS ────────────────────────────────────────── */
 .bg-stage { position:fixed; inset:0; z-index:-1; overflow:hidden; }
@@ -97,7 +107,66 @@ body {
   pointer-events:none;
 }
 
-/* INSTALL BANNER */
+/* ── HEADER + TOOLBAR SYSTEM ─────────────────────────────────────── */
+.hdr { padding:18px 22px; display:grid; grid-template-columns:1fr auto auto; gap:20px; align-items:center; margin-bottom:8px; }
+.hdr-title { font-size:26px; font-weight:700; letter-spacing:-0.02em; margin:0 0 4px; color:var(--ink-display); }
+.hdr-sub { color:var(--ink-sub); font-size:13px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.hdr-sub .dot { width:3px; height:3px; border-radius:50%; background:var(--ink-meta); flex-shrink:0; }
+.pill-tag { padding:2px 8px; border-radius:999px; background:rgba(255,255,255,0.5); border:0.5px solid rgba(255,255,255,0.5); font-size:12px; }
+.glass-soft {
+  background:rgba(255,255,255,0.28);
+  backdrop-filter:blur(16px) saturate(140%);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  border:0.5px solid rgba(255,255,255,0.35);
+  border-radius:14px;
+}
+.hdr-weather { display:flex; align-items:center; gap:10px; padding:8px 14px; }
+.hdr-weather .icon { font-size:24px; filter:drop-shadow(0 1px 4px rgba(255,200,80,0.4)); }
+.hdr-weather .meta { display:flex; flex-direction:column; line-height:1.15; }
+.hdr-weather .t { font-size:20px; font-weight:600; letter-spacing:-0.02em; color:var(--ink-display); font-variant-numeric:tabular-nums; }
+.hdr-weather .c { font-size:10px; color:var(--ink-meta); letter-spacing:0.06em; text-transform:uppercase; }
+.hdr-count { display:flex; gap:4px; padding:8px 12px; }
+.hdr-count .seg { display:flex; flex-direction:column; align-items:center; padding:2px 10px; min-width:40px; }
+.hdr-count .seg+.seg { border-left:0.5px solid rgba(255,255,255,0.35); }
+.hdr-count .n { font-size:20px; font-weight:600; letter-spacing:-0.02em; color:var(--ink-display); font-variant-numeric:tabular-nums; }
+.hdr-count .u { font-size:9px; color:var(--ink-meta); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+
+.toolbar { display:flex; gap:8px; flex-wrap:wrap; padding:8px 10px; align-items:center; margin-bottom:10px; }
+.tb-group { display:flex; gap:6px; flex-wrap:wrap; }
+.tb-spacer { flex:1; }
+
+.btn {
+  appearance:none; border:0; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px;
+  height:34px; padding:0 13px; border-radius:11px;
+  background:rgba(255,255,255,0.62);
+  border:0.5px solid rgba(255,255,255,0.55);
+  box-shadow:0 1px 0 rgba(255,255,255,0.5) inset, 0 1px 3px rgba(40,30,70,0.07);
+  color:#1a1626;
+  font:500 12.5px 'Inter Tight',system-ui,sans-serif;
+  letter-spacing:-0.005em;
+  transition:transform .12s, background .12s;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.btn:hover { background:rgba(255,255,255,0.80); transform:translateY(-0.5px); }
+.btn:active { transform:translateY(0); }
+.btn.is-primary { background:linear-gradient(180deg,rgba(26,22,38,0.92),rgba(26,22,38,0.82)); color:#fff; border-color:rgba(0,0,0,0.3); }
+.btn.is-success { background:linear-gradient(180deg,oklch(0.62 0.18 145),oklch(0.55 0.18 145)); color:#fff; border-color:rgba(0,0,0,0.15); }
+.btn.is-violet  { background:linear-gradient(180deg,oklch(0.45 0.20 290),oklch(0.38 0.20 290)); color:#fff; border-color:rgba(0,0,0,0.2); }
+.btn.is-active  { background:rgba(255,255,255,0.80); font-weight:600; }
+
+.seg-tabs { display:flex; padding:3px; gap:2px; border-radius:12px; background:rgba(255,255,255,0.28); border:0.5px solid rgba(255,255,255,0.35); }
+.seg-tabs button {
+  appearance:none; border:0; background:transparent; cursor:pointer;
+  padding:5px 12px; border-radius:9px;
+  font:500 12px 'Inter Tight',system-ui,sans-serif;
+  letter-spacing:-0.005em;
+  color:var(--ink-sub);
+  white-space:nowrap;
+}
+.seg-tabs button.on { background:rgba(255,255,255,0.62); color:#1a1626; box-shadow:0 1px 0 rgba(255,255,255,0.5) inset,0 1px 3px rgba(0,0,0,0.06); font-weight:600; }
+.seg-tabs button.on.race { background:linear-gradient(180deg,rgba(26,22,38,0.92),rgba(26,22,38,0.82)); color:#fff; }
 #install-banner { display:none; align-items:center; justify-content:space-between; gap:10px; background:#1a1a18; color:#f7f6f3; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:12px; }
 #install-banner.show { display:flex; }
 #install-banner strong { display:block; font-size:13px; margin-bottom:2px; }
@@ -980,7 +1049,9 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .sg-session-sets { font-size:16px; font-weight:700; color:#00b4ff; display:block; }
 @media (max-width: 600px) and (orientation: portrait) {
   #desktop-cal-wrap { display: none !important; }
-  .view-switcher { display: none !important; }
+  #main-header { grid-template-columns:1fr; }
+  #main-header .hdr-weather, #main-header .hdr-count { display:none; }
+  .toolbar { display:none !important; }
   .drag-hint { display: none !important; }
   #mobile-cal { display: block !important; }
   #countdown-banner { display: none !important; }
@@ -1079,46 +1150,50 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   <button id="install-close">✕</button>
 </div>
 
-<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;">
-  <h1>Training Calendar 2026</h1>
-  <div style="display:flex;align-items:flex-start;gap:16px;">
-    <div id="now-weather"></div>
-    <div id="countdown-banner">
-    <div class="cd-label">Stavanger Marathon</div>
-    <div class="cd-timer">
-      <div class="cd-unit"><span id="cd-weeks">--</span><span class="cd-lbl">weeks</span></div>
-      <div class="cd-sep">:</div>
-      <div class="cd-unit"><span id="cd-days">--</span><span class="cd-lbl">days</span></div>
-      <div class="cd-sep">:</div>
-      <div class="cd-unit"><span id="cd-hours">--</span><span class="cd-lbl">hours</span></div>
-      <div class="cd-sep">:</div>
-      <div class="cd-unit"><span id="cd-mins">--</span><span class="cd-lbl">mins</span></div>
+<header class="glass hdr" id="main-header">
+  <div>
+    <h1 class="hdr-title">Training Calendar 2026</h1>
+    <div class="hdr-sub" id="header-sub-line">
+      <span style="font-weight:600" id="header-plan-name">Stavanger Marathon</span>
+      <span class="dot"></span>
+      <span class="mono" id="header-race-date">29 August 2026</span>
+      <span class="dot"></span>
+      <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
   </div>
+  <div class="glass-soft hdr-weather" id="now-weather"></div>
+  <div class="glass-soft hdr-count" id="countdown-banner">
+    <div class="seg"><div class="n" id="cd-weeks">--</div><div class="u">weeks</div></div>
+    <div class="seg"><div class="n" id="cd-days">--</div><div class="u">days</div></div>
+    <div class="seg"><div class="n" id="cd-hours">--</div><div class="u">hours</div></div>
+    <div class="seg"><div class="n" id="cd-mins">--</div><div class="u">mins</div></div>
   </div>
-</div>
+</header>
+
 <p class="subtitle" id="race-subtitle" style="display:none;"></p>
 
-<div class="drag-hint"><span>✦</span> Drag pills to reschedule. Click an empty cell to add a session. Long-press or right-click to edit or delete.</div>
+<div class="drag-hint"><span>✦</span> Drag pills to reschedule · Click empty cell to add · Long-press or right-click to edit or delete</div>
 
-<div class="btn-row">
-  <button class="export-btn btn-save"      onclick="saveState()">💾 Save changes</button>
-  <button class="export-btn btn-edit-wife" id="edit-wife-btn" onclick="toggleWifeEdit()">✏️ Edit Work</button>
-  <a class="export-btn btn-nav" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
-  <button class="strava-connect-btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
-  <button class="export-btn btn-nav" onclick="openLibModal().catch(console.error)">📚 Library</button>
-  <button class="export-btn btn-nav" onclick="openStatsPage()">📊 Stats</button>
-  <button class="export-btn btn-claude" onclick="openClaudePanel()">✦ Claude</button>
-  <div class="view-switcher">
-    <button class="view-btn" id="view-btn-month" onclick="setCalMode('month')">📅 Month</button>
-    <button class="view-btn active" id="view-btn-race" id="race-mode-btn"
+<div class="glass toolbar">
+  <div class="tb-group">
+    <button class="btn is-primary" onclick="saveState()">💾 Save</button>
+    <button class="btn" id="edit-wife-btn" onclick="toggleWifeEdit()">✏️ Edit Work</button>
+    <a class="btn" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
+    <button class="btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
+    <button class="btn" onclick="openLibModal().catch(console.error)">📚 Library</button>
+    <button class="btn" onclick="openStatsPage()">📊 Stats</button>
+    <button class="btn is-violet" onclick="openClaudePanel()">✦ Claude</button>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="seg-tabs" id="view-seg-tabs">
+    <button id="view-btn-month" onclick="setCalMode('month')">📅 Month</button>
+    <button class="on race" id="view-btn-race"
       onclick="setCalMode('race')"
       oncontextmenu="showPlanDropdown(event)"
       ontouchstart="startPlanLongPress(event)">🏃 Race</button>
-    <span class="view-divider"></span>
-    <button class="view-btn" id="view-btn-calendar" onclick="setView('calendar')">☰ All</button>
-    <button class="view-btn" id="view-btn-week" onclick="setView('week')">📆 Week</button>
-    <button class="view-btn" id="view-btn-day" onclick="setView('day')">📋 Day</button>
+    <button id="view-btn-calendar" onclick="setView('calendar')">☰ All</button>
+    <button id="view-btn-week" onclick="setView('week')">📆 Week</button>
+    <button id="view-btn-day" onclick="setView('day')">📋 Day</button>
   </div>
 </div>
 
@@ -3449,13 +3524,13 @@ function renderNowWeather() {
 
   if (!entry) { el.innerHTML = ''; return; }
 
+  const desc = `${entry.wind != null ? entry.wind+' m/s' : ''} ${yrDesc(entry.symbol)}`.trim();
   el.innerHTML = `
-    <div class="nw-top">
-      <span class="nw-icon">${yrSymbol(entry.symbol)}</span>
-      <span class="nw-temp">${entry.temp != null ? Math.round(entry.temp)+'°C' : '—'}</span>
-    </div>
-    <div class="nw-label">Now · Stavanger</div>
-    <div class="nw-details">${entry.wind != null ? entry.wind+' m/s' : ''} ${yrDesc(entry.symbol)}</div>`;
+    <span class="icon">${yrSymbol(entry.symbol)}</span>
+    <div class="meta">
+      <span class="t">${entry.temp != null ? Math.round(entry.temp)+'°' : '—'}</span>
+      <span class="c">Stavanger · ${desc}</span>
+    </div>`;
 }
 
 async function fetchWeather() {
@@ -4377,6 +4452,15 @@ function updateCountdownForPlan(plan) {
   if (!plan) return;
   const raceDate = new Date(plan.race_date);
   const dateStr = raceDate.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+
+  // Update new header elements
+  const nameEl = document.getElementById('header-plan-name');
+  const dateEl = document.getElementById('header-race-date');
+  const goalEl = document.getElementById('header-goal');
+  if (nameEl) nameEl.textContent = plan.race_name || plan.name || 'Training Plan';
+  if (dateEl) dateEl.textContent = raceDate.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+  if (goalEl) goalEl.textContent = plan.goal || '';
+
   const subtitle = document.getElementById('race-subtitle');
   if (subtitle) {
     subtitle.textContent = `${plan.race_name||plan.name} · ${dateStr}${plan.goal ? ' · Goal: '+plan.goal : ''}`;
