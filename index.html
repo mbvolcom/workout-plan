@@ -5485,6 +5485,13 @@ function renderMobileView() {
   else renderMobileMonth();
 }
 
+// ── Mobile: show full marathon plan for the week ──────────────────────────────
+function showMobDayPlan(wi) {
+  const w = WEEKS[wi];
+  if (!w) return;
+  openWeekPlan(w.num);
+}
+
 // ── Mobile pill: tap = action, long-press = edit/delete context menu ─────────
 function addMobPillHandlers(el, tapFn, wi, row, di) {
   let lp = null;
@@ -5554,23 +5561,54 @@ function renderMobileRaceWeek() {
   DAYS.forEach((dayName, di) => {
     const dt = new Date(y,m-1,d+di);
     const isToday = dt.getTime()===today.getTime();
+    const isPast  = dt < today;
     const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 
     const card = document.createElement('div');
-    card.className='mob-day-card'+(isToday?' mob-today':'');
+    card.className='mob-day-card'+(isToday?' mob-today':'')+(isPast?' mob-past-day':'');
+    if (isPast) card.style.cssText='opacity:0.7;';
 
     // Day header with weather
     const hdr=document.createElement('div'); hdr.className='mob-day-header';
-    const weatherDots = weatherData[dateStr];
-    let weatherHTML = '';
-    if (weatherDots && weatherDots.length) {
-      const best = weatherDots.find(w=>w.hour>=8&&w.hour<=18) || weatherDots[0];
-      weatherHTML = `<span class="mob-day-weather" title="${best.desc}">${best.icon} ${Math.round(best.temp)}°</span>`;
-    }
+    const weatherEntries = weatherData[dateStr] || [];
+    const best = weatherEntries.find(w=>w.hour>=8&&w.hour<=18) || weatherEntries[0];
+    const weatherHTML = best
+      ? `<span class="mob-day-weather" style="cursor:pointer;">${yrSymbol(best.symbol)} ${Math.round(best.temp)}°</span>`
+      : '';
     hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>${weatherHTML}`;
+
+    // Click date/day → jump to marathon plan week in landscape
+    hdr.querySelector('.mob-day-name').style.cursor='pointer';
+    hdr.querySelector('.mob-day-num').style.cursor='pointer';
+    const openPlan = () => showMobDayPlan(wi);
+    hdr.querySelector('.mob-day-name').addEventListener('click', openPlan);
+    hdr.querySelector('.mob-day-num').addEventListener('click', openPlan);
+
+    // Click weather → open weather panel
+    if (best) {
+      hdr.querySelector('.mob-day-weather').addEventListener('click', () => openWeather(dateStr));
+    }
     card.appendChild(hdr);
 
+    // Past days start collapsed — tap header to expand
     const pills=document.createElement('div'); pills.className='mob-day-pills';
+    if (isPast) {
+      pills.style.display = 'none';
+      hdr.style.cursor = 'pointer';
+      hdr.addEventListener('click', e => {
+        if (e.target.classList.contains('mob-day-weather')) return; // don't collapse when tapping weather
+        if (e.target.classList.contains('mob-day-name') || e.target.classList.contains('mob-day-num')) return; // plan opens
+        const isOpen = pills.style.display !== 'none';
+        pills.style.display = isOpen ? 'none' : '';
+        card.style.opacity = isOpen ? '0.7' : '1';
+      });
+      // Add a small chevron to hint it's expandable
+      const chev = document.createElement('span');
+      chev.style.cssText = 'font-size:10px;color:var(--muted);margin-left:auto;padding-left:6px;';
+      chev.textContent = '›';
+      hdr.appendChild(chev);
+      hdr.querySelector('.mob-day-num').style.marginLeft = ''; // reset auto margin
+    }
 
     // GCal
     const gcalEvts = gcalEvents[dateStr]||[];
