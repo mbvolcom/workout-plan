@@ -374,9 +374,20 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .plan-header-row { margin-bottom: 4px; }
 
 /* PHASE */
+/* Phase collapse */
 .phase-block { margin-bottom:6px; }
-.phase-label { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:14px 0 6px; border-top:0.5px solid var(--border-mid); margin-top:4px; }
+.phase-label {
+  font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--muted); padding:14px 0 6px; border-top:0.5px solid var(--border-mid); margin-top:4px;
+  cursor:pointer; display:flex; align-items:center; gap:8px; user-select:none;
+}
+.phase-label:hover { color:var(--text); }
 .phase-block:first-of-type .phase-label { border-top:none; padding-top:0; }
+.phase-chevron { font-size:10px; transition:transform 0.2s; display:inline-block; margin-left:auto; }
+.phase-block.collapsed .phase-chevron { transform:rotate(-90deg); }
+.phase-block.collapsed .week-wrap,
+.phase-block.collapsed .week-divider { display:none; }
+.phase-label .phase-done-badge { font-size:9px; font-weight:600; letter-spacing:0.05em; text-transform:none; background:rgba(0,180,100,0.12); color:#1B7F4A; border-radius:99px; padding:1px 7px; border:0.5px solid rgba(0,180,100,0.25); }
 
 /* GRID */
 .grid-header { display:grid; grid-template-columns:88px 46px repeat(7,minmax(76px,1fr)); gap:3px; margin-bottom:0; min-width:700px; }
@@ -2500,35 +2511,110 @@ function build() {
   const cal = document.getElementById('cal'); cal.innerHTML = '';
   let lastPhase = null;
   let lastPlanName = null;
+  let currentPhaseBlock = null; // tracks which phase-block new week-wraps go into
+  const today = new Date(); today.setHours(0,0,0,0);
 
   WEEKS.forEach((w, wi) => {
-    // Plan boundary — show plan banner + day headers when plan changes
+    // Plan boundary
     const thisPlan = w._planName || 'Stavanger Marathon 2026';
     if (thisPlan !== lastPlanName) {
       const banner = planBanner(thisPlan, w._raceName, w._raceDate, w._goal);
       cal.appendChild(banner);
-      // Day headers once per plan
       const ph = document.createElement('div'); ph.className = 'grid-header plan-header-row';
       ph.appendChild(document.createElement('div'));
       ph.appendChild(document.createElement('div'));
       DAYS.forEach(d => { const h=document.createElement('div'); h.className='col-head'; h.textContent=d; ph.appendChild(h); });
       cal.appendChild(ph);
       lastPlanName = thisPlan;
-      lastPhase = null; // reset so phase headers show fresh
+      lastPhase = null;
+      currentPhaseBlock = null;
     }
 
     // Phase header within plan
     if (w.phase && w.phase !== lastPhase) {
-      const pb=document.createElement('div'); pb.className='phase-block';
-      const pl=document.createElement('div'); pl.className='phase-label'; pl.textContent=w.phase+' phase';
-      pb.appendChild(pl); cal.appendChild(pb); lastPhase=w.phase;
+      const pb = document.createElement('div');
+      pb.className = 'phase-block';
+      pb.dataset.phase = w.phase;
+
+      const pl = document.createElement('div');
+      pl.className = 'phase-label';
+
+      const phaseText = document.createElement('span');
+      phaseText.textContent = w.phase + ' phase';
+      pl.appendChild(phaseText);
+
+      const chevron = document.createElement('span');
+      chevron.className = 'phase-chevron';
+      chevron.textContent = '▾';
+      pl.appendChild(chevron);
+
+      pl.addEventListener('click', () => {
+        pb.classList.toggle('collapsed');
+        // Persist collapse state
+        const key = 'phase-collapsed-' + w.phase.replace(/\s/g,'');
+        localStorage.setItem(key, pb.classList.contains('collapsed') ? '1' : '0');
+      });
+
+      pb.appendChild(pl);
+      cal.appendChild(pb);
+      currentPhaseBlock = pb;
+      lastPhase = w.phase;
     }
 
+    // Week divider
     if (wi > 0 && !w.phase && w._planName === WEEKS[wi-1]?._planName) {
-      const d=document.createElement('div'); d.className='week-divider'; cal.appendChild(d);
+      const d = document.createElement('div'); d.className = 'week-divider';
+      if (currentPhaseBlock) currentPhaseBlock.appendChild(d);
+      else cal.appendChild(d);
     }
-    const wrap=document.createElement('div'); wrap.id='week-'+wi; wrap.className='week-wrap';
-    cal.appendChild(wrap); renderWeek(wi);
+
+    // Week wrap — nest inside phase block
+    const wrap = document.createElement('div'); wrap.id = 'week-'+wi; wrap.className = 'week-wrap';
+    if (currentPhaseBlock) currentPhaseBlock.appendChild(wrap);
+    else cal.appendChild(wrap);
+    renderWeek(wi);
+  });
+
+  // Auto-collapse completed phases + restore saved states
+  document.querySelectorAll('.phase-block').forEach(pb => {
+    const phase = pb.dataset.phase;
+    const key = 'phase-collapsed-' + phase?.replace(/\s/g,'');
+    const saved = localStorage.getItem(key);
+
+    if (saved !== null) {
+      // Respect user's explicit choice
+      if (saved === '1') pb.classList.add('collapsed');
+    } else {
+      // Auto-collapse if all weeks in this phase are in the past
+      const weeks = pb.querySelectorAll('.week-wrap');
+      if (weeks.length > 0) {
+        const allPast = [...weeks].every(ww => {
+          const wi = parseInt(ww.id.replace('week-',''));
+          if (isNaN(wi) || !WEEK_MONDAYS[wi]) return false;
+          const [y,m,d] = WEEK_MONDAYS[wi];
+          const lastDay = new Date(y,m-1,d+6);
+          return lastDay < today;
+        });
+        if (allPast) pb.classList.add('collapsed');
+      }
+    }
+
+    // Add badge if phase is complete
+    const weeks = pb.querySelectorAll('.week-wrap');
+    if (weeks.length > 0) {
+      const allPast = [...weeks].every(ww => {
+        const wi = parseInt(ww.id.replace('week-',''));
+        if (isNaN(wi) || !WEEK_MONDAYS[wi]) return false;
+        const [y,m,d] = WEEK_MONDAYS[wi];
+        return new Date(y,m-1,d+6) < today;
+      });
+      if (allPast) {
+        const badge = document.createElement('span');
+        badge.className = 'phase-done-badge';
+        badge.textContent = 'complete';
+        pb.querySelector('.phase-label').insertBefore(badge, pb.querySelector('.phase-chevron'));
+      }
+    }
   });
 }
 
