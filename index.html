@@ -864,6 +864,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .stats-kpi-val.blue   { color:#6eb8f0; }
 .stats-kpi-val.orange { color:#FC4C02; }
 .stats-kpi-val.gold   { color:#f0c060; }
+.stats-kpi-val.health { color:#f06e6e; }
 .stats-kpi-lbl { font-size:10px; color:#6b7280; text-transform:uppercase; letter-spacing:0.08em; }
 .stats-kpi-sub { font-size:11px; color:#4b5563; margin-top:3px; }
 
@@ -5158,12 +5159,47 @@ function renderRunningStats() {
   const avgPace           = allPaceRuns.length ? allPaceRuns.reduce((a,b)=>a+b,0)/allPaceRuns.length : null;
   const completionPct     = totalPlannedKm > 0 ? Math.round((totalActualKm/totalPlannedKm)*100) : 0;
 
+  // Collect health flags within plan period
+  const healthEvents = []; // { dateStr, type, note, hadPlannedRun, hadStravaRun, wi, di }
+  weeks.forEach(wk => {
+    wk.days.forEach(day => {
+      const flag = dayFlags[day.dateStr];
+      if (!flag) return;
+      if (flag.type !== 'sick' && flag.type !== 'injured_run') return;
+      healthEvents.push({
+        dateStr:      day.dateStr,
+        date:         day.date,
+        type:         flag.type,
+        note:         flag.note || '',
+        hadPlannedRun: day.wasPlanned,
+        hadStravaRun:  day.hasRun,
+        weekLabel:    wk.label,
+      });
+    });
+  });
+  const sickDays    = healthEvents.filter(e=>e.type==='sick').length;
+  const injuredDays = healthEvents.filter(e=>e.type==='injured_run').length;
+  const missedDueToHealth = healthEvents.filter(e=>e.hadPlannedRun && !e.hadStravaRun).length;
+
+  // Per-week flag lookup for bar chart markers
+  const weekFlagMap = {}; // wi → array of flag types
+  weeks.forEach((wk,wi) => {
+    wk.days.forEach(day => {
+      const flag = dayFlags[day.dateStr];
+      if (!flag || (flag.type!=='sick' && flag.type!=='injured_run')) return;
+      if (!weekFlagMap[wi]) weekFlagMap[wi] = [];
+      weekFlagMap[wi].push(flag.type);
+    });
+  });
+
   const kpiGrid = document.createElement('div'); kpiGrid.className='stats-kpi-grid';
   [
     {val:totalActualKm.toFixed(0)+'km', sub:`of ${totalPlannedKm.toFixed(0)}km planned`, lbl:'Distance logged', cls:'accent'},
     {val:completionPct+'%', sub:`${totalDoneRuns}/${totalPlannedRuns} runs`, lbl:'Run completion', cls:'blue'},
     {val:longestRun>0?(longestRun/1000).toFixed(1)+'km':'—', sub:'longest Strava run', lbl:'Longest run', cls:'orange'},
     {val:avgPace?formatPace(1000,avgPace*60):'—', sub:'avg easy run pace', lbl:'Avg pace', cls:'gold'},
+    {val:sickDays+injuredDays || '—', sub:`${sickDays} sick · ${injuredDays} run injury`, lbl:'Days impacted', cls:'health'},
+    {val:missedDueToHealth || '—', sub:'planned runs missed', lbl:'Missed due to health', cls:'health'},
   ].forEach(({val,sub,lbl,cls})=>{
     const card=document.createElement('div'); card.className='stats-kpi';
     card.innerHTML=`<div class="stats-kpi-val ${cls}">${val}</div><div class="stats-kpi-lbl">${lbl}</div><div class="stats-kpi-sub">${sub}</div>`;
@@ -5190,7 +5226,18 @@ function renderRunningStats() {
     actual.title=`${wk.label}: ${wk.actualKm.toFixed(1)}km logged`;
     wrap.appendChild(planned); wrap.appendChild(actual);
     const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'+(wk.isCurrent?' current':''); lbl.textContent=wk.shortLabel;
-    col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
+    col.appendChild(wrap); col.appendChild(lbl);
+    // Health flag marker below label
+    const wFlags = weekFlagMap[weeks.indexOf(wk)];
+    if (wFlags && wFlags.length) {
+      const hasSick = wFlags.includes('sick'), hasInj = wFlags.includes('injured_run');
+      const marker = document.createElement('div');
+      marker.style.cssText = 'text-align:center;font-size:9px;line-height:1;margin-top:1px;';
+      marker.textContent = hasSick && hasInj ? '🤒🤕' : hasSick ? '🤒' : '🤕';
+      marker.title = wFlags.map(f=>flagInfo(f).label).join(', ');
+      col.appendChild(marker);
+    }
+    barsEl.appendChild(col);
   });
   const legend=document.createElement('div'); legend.className='stats-chart-legend';
   legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div>';
@@ -5308,6 +5355,41 @@ function renderRunningStats() {
   heatLegend.innerHTML='<div class="stats-legend-item"><div class="stats-heat-day stats-heat-long" style="flex-shrink:0"></div>Long run</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-quality" style="flex-shrink:0"></div>Quality</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-easy" style="flex-shrink:0"></div>Easy run</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-str" style="flex-shrink:0"></div>Strength</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-both" style="flex-shrink:0"></div>Run+Str</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-missed" style="flex-shrink:0"></div>Missed</div>';
   heatWrap.appendChild(heatmap); heatWrap.appendChild(heatLegend);
   heatSection.appendChild(heatWrap); container.appendChild(heatSection);
+
+  // ── HEALTH EVENTS ─────────────────────────────────────────────────────────
+  if (healthEvents.length) {
+    const healthSection = document.createElement('div'); healthSection.className='stats-section';
+    healthSection.innerHTML = '<div class="stats-section-title">Health events</div>';
+    const healthWrap = document.createElement('div');
+    healthWrap.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+
+    healthEvents.sort((a,b)=>a.date-b.date).forEach(ev => {
+      const info = flagInfo(ev.type);
+      const dateStr = ev.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      const hadRun = ev.hadPlannedRun;
+      const didRun = ev.hadStravaRun;
+      let impact = '';
+      if (hadRun && !didRun) impact = '<span style="color:#f06e6e;font-size:10px;font-weight:600;"> · missed run</span>';
+      else if (hadRun && didRun) impact = '<span style="color:#c8f06e;font-size:10px;"> · ran anyway</span>';
+      else if (!hadRun) impact = '<span style="color:#6b7280;font-size:10px;"> · rest day</span>';
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);';
+      row.innerHTML = `
+        <div style="font-size:20px;flex-shrink:0;padding-top:1px;">${info.icon}</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:#d1d5db;">${info.label}${impact}</div>
+          <div style="font-size:11px;color:#4b5563;margin-top:2px;">${dateStr} · ${ev.weekLabel}</div>
+          ${ev.note ? `<div style="font-size:11px;color:#6b7280;margin-top:3px;font-style:italic;">"${ev.note}"</div>` : ''}
+        </div>`;
+      healthWrap.appendChild(row);
+    });
+
+    // Remove last border
+    healthWrap.lastElementChild && (healthWrap.lastElementChild.style.borderBottom = 'none');
+    healthSection.appendChild(healthWrap);
+    container.appendChild(healthSection);
+  }
 }
 
 
