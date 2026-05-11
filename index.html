@@ -5309,7 +5309,7 @@ let sgSessions = null; // cached
 async function fetchSGSessions() {
   if (sgSessions) return sgSessions;
   try {
-    const res = await fetch(SG_BASE + 'sessions?select=*&order=started_at.desc', { headers: SG_HDR });
+    const res = await fetch(SG_BASE + 'sessions?select=*&is_active=eq.false&order=started_at.desc', { headers: SG_HDR });
     if (!res.ok) throw new Error('SG fetch failed: ' + res.status);
     sgSessions = await res.json();
     return sgSessions;
