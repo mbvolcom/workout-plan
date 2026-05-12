@@ -23,6 +23,7 @@
 :root {
   --bg: #f6f0ea; --surface: rgba(255,255,255,0.45); --border: rgba(255,255,255,0.55); --border-mid: rgba(200,195,188,0.6);
   --text: #1a1626; --muted: oklch(0.56 0.04 25);
+  --muted2: #6b7280; --surface2: rgba(0,0,0,0.06);
   --ink-display: oklch(0.26 0.07 25);
   --ink-sub:     oklch(0.48 0.05 25);
   --ink-meta:    oklch(0.56 0.04 25);
@@ -930,6 +931,9 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #stats-overlay {
   display:none; position:fixed; inset:0; z-index:14000;
   background:#0e0f11; overflow-y:auto;
+  --text: #f0ede8; --muted: #7a7e8a; --muted2: #6b7280;
+  --surface: #16181c; --surface2: rgba(255,255,255,0.06); --border: rgba(255,255,255,0.08);
+  --neon: #00b4ff;
 }
 #stats-overlay.open { display:block; }
 #stats-page { max-width:900px; margin:0 auto; padding:0 0 80px; }
@@ -5600,6 +5604,378 @@ function renderRunningStats() {
 }
 
 
+// ── EXERCISE PROGRESSION ENGINE ──────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXERCISE PROGRESSION ENGINE — shared by Sterk Gutt + Calendar stats
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Marius's dumbbell steps in kg
+const DB_STEPS = [6, 10.5, 15, 19.5, 24, 28.5, 33, 40];
+
+// Exercises where jumping a full dumbbell step is hard
+const COMPOUND_PRESS = ['Bench Press','Incline Bench Press','Dumbbell OHP','Push Up','Floor Press'];
+
+function nextDBStep(currentKg) {
+  const i = DB_STEPS.findIndex(s => s >= currentKg);
+  if (i === -1) return null;
+  if (DB_STEPS[i] === currentKg) return DB_STEPS[i+1] ?? null;
+  return DB_STEPS[i]; // next step up from current
+}
+
+function prevDBStep(currentKg) {
+  const i = DB_STEPS.findLastIndex(s => s <= currentKg);
+  return i > 0 ? DB_STEPS[i-1] : null;
+}
+
+function linearTrend(values) {
+  // Returns slope per session (kg/session)
+  const n = values.length;
+  if (n < 2) return 0;
+  const xs = values.map((_, i) => i);
+  const mx = xs.reduce((a,b)=>a+b,0)/n;
+  const my = values.reduce((a,b)=>a+b,0)/n;
+  const num = xs.reduce((a,x,i) => a + (x-mx)*(values[i]-my), 0);
+  const den = xs.reduce((a,x)   => a + (x-mx)**2, 0);
+  return den === 0 ? 0 : num/den;
+}
+
+function buildExercisePoints(sessions, exName, equipFilter) {
+  // Returns array of { dateStr, weight, reps, sets, est1RM, volLoad, bestLabel }
+  // one entry per session (best set of the session)
+  const points = [];
+  const sessionsInOrder = [...sessions].sort((a,b)=>
+    new Date(a.startedAt||a.started_at) - new Date(b.startedAt||b.started_at));
+
+  sessionsInOrder.forEach(s => {
+    (s.exercises||[]).forEach(ex => {
+      if (ex.name !== exName) return;
+      if (equipFilter && equipFilter !== 'All' && (ex.equipment||'Unspecified') !== equipFilter) return;
+      const logged = (ex.sets||[]).filter(st => st.logged);
+      if (!logged.length) return;
+
+      // Best set = highest est 1RM
+      let bestW=0, bestR=0, best1RM=0;
+      logged.forEach(st => {
+        const w = parseFloat(st.weight)||0;
+        const r = ex.unilateral
+          ? Math.max(parseFloat(st.repsL)||0, parseFloat(st.repsR)||0)
+          : parseFloat(st.reps)||0;
+        const rm = r>0 ? w*(1+r/30) : 0;
+        if (rm > best1RM) { best1RM=rm; bestW=w; bestR=r; }
+      });
+
+      const volLoad = Math.round(logged.reduce((a,st)=>{
+        const w=parseFloat(st.weight)||0;
+        const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):parseFloat(st.reps)||0;
+        return a+w*r;
+      },0));
+
+      const startedAt = s.startedAt||s.started_at;
+      points.push({
+        date: new Date(startedAt),
+        dateStr: new Date(startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}),
+        weight: bestW,
+        reps: bestR,
+        sets: logged.length,
+        est1RM: Math.round(best1RM*10)/10,
+        volLoad,
+        bestLabel: bestW>0 ? `${bestW}kg×${bestR}` : '—',
+        equipment: ex.equipment||null,
+      });
+    });
+  });
+  return points;
+}
+
+function assessProgression(points) {
+  // Returns { status, trendPerMonth, plateau, lastN }
+  if (points.length < 2) return { status:'insufficient', trendPerMonth:0, plateau:false };
+
+  const weights = points.map(p=>p.weight);
+  const slopePerSession = linearTrend(weights);
+  const trendPerMonth = Math.round(slopePerSession * 4 * 10) / 10; // ~4 sessions/month
+
+  const last3 = points.slice(-3);
+  const last3Weights = last3.map(p=>p.weight);
+  const maxInLast3 = Math.max(...last3Weights);
+  const minInLast3 = Math.min(...last3Weights);
+  const plateau = last3.length >= 3 && maxInLast3 - minInLast3 < 1; // <1kg variance
+  const regressing = last3.length >= 3 && last3Weights[last3Weights.length-1] < last3Weights[0] - 0.5;
+
+  let status = 'progressing';
+  if (regressing) status = 'regressing';
+  else if (plateau) status = 'plateau';
+  else if (slopePerSession <= 0.01) status = 'plateau';
+
+  return { status, trendPerMonth, plateau, regressing };
+}
+
+function buildNextSessionSuggestion(points, exName, equipment) {
+  if (!points.length) return null;
+  const last = points[points.length-1];
+  const { weight: w, reps: r, sets } = last;
+  if (!w) return null;
+
+  const isCompound = COMPOUND_PRESS.includes(exName);
+  const isDB = !equipment || equipment === 'Dumbbell';
+  const nextStep = isDB ? nextDBStep(w) : null;
+  const stepGap = nextStep ? nextStep - w : null;
+  const isBigJump = stepGap && stepGap > 6;
+
+  // Get rep range from exercise (assume 6-12 as default)
+  const repMax = 12;
+
+  let suggestion = '';
+  let subtext = '';
+
+  if (r >= repMax) {
+    // Hit top of rep range — step up weight
+    if (isDB && nextStep) {
+      if (isBigJump && isCompound) {
+        suggestion = `Try ${nextStep}kg × ${Math.max(4, r-3)}-${r-1} reps`;
+        subtext = `Big jump from ${w}kg (+${stepGap}kg) — start with fewer reps`;
+      } else if (isBigJump) {
+        suggestion = `Try ${nextStep}kg × ${Math.max(5, r-2)} reps`;
+        subtext = `Step up from ${w}kg — ${stepGap}kg jump, take it steady`;
+      } else {
+        suggestion = `Step up to ${nextStep}kg × ${Math.max(6, r-2)}-${r} reps`;
+        subtext = `You've hit the top of your rep range at ${w}kg`;
+      }
+    } else {
+      suggestion = `Add 1-2kg: try ${w+2}kg × ${Math.max(6, r-2)} reps`;
+      subtext = `Top of rep range — time to increase weight`;
+    }
+  } else if (r >= repMax - 2) {
+    // Close to top — add a rep first
+    suggestion = `Same weight ${w}kg — aim for ${r+1}-${r+2} reps`;
+    subtext = `One more rep before stepping up to ${nextStep ? nextStep+'kg' : 'heavier weight'}`;
+  } else if (r < 6) {
+    // Low reps — add reps not weight
+    suggestion = `Keep ${w}kg — build to ${r+2} reps per set`;
+    subtext = `Focus on reps before adding weight`;
+  } else {
+    // Mid rep range — add a rep
+    suggestion = `Keep ${w}kg — try for ${r+1} reps`;
+    subtext = `Progress: add 1 rep this session`;
+  }
+
+  // Plateau advice
+  const prog = assessProgression(points);
+  if (prog.status === 'plateau' && points.length >= 3) {
+    suggestion = `Try ${w}kg for ${Math.min(r+2, repMax)} reps (plateau — push reps)`;
+    subtext = `Stuck at ${w}kg for ${points.slice(-3).length} sessions — focus on rep quality`;
+  }
+  if (prog.status === 'regressing') {
+    const safeW = prevDBStep(w) || w;
+    suggestion = `Drop to ${safeW}kg × ${Math.min(r+3, repMax)} reps`;
+    subtext = `Weight trending down — consolidate at ${safeW}kg before stepping back up`;
+  }
+
+  return { suggestion, subtext };
+}
+
+function renderExerciseAnalysis(container, points, exName, equipment) {
+  // Clears container and renders full analysis
+  container.innerHTML = '';
+  if (!points.length) {
+    container.innerHTML = `<div style="color:var(--muted2);font-size:12px;padding:12px 0;text-align:center;">No data for ${exName}.</div>`;
+    return;
+  }
+  if (points.length === 1) {
+    renderSingleSessionCard(container, points[0], exName, equipment);
+    return;
+  }
+
+  const prog = assessProgression(points);
+  const hint = buildNextSessionSuggestion(points, exName, equipment);
+  const first = points[0], last = points[points.length-1];
+  const rmChange = first.est1RM>0 ? ((last.est1RM-first.est1RM)/first.est1RM*100).toFixed(1) : null;
+
+  // Status config
+  const statusMap = {
+    progressing: { icon:'↑', label:'Progressing',  color:'#00ff96', bg:'rgba(0,255,150,0.10)' },
+    plateau:     { icon:'→', label:'Plateauing',    color:'#f0c060', bg:'rgba(240,192,96,0.12)' },
+    regressing:  { icon:'↓', label:'Regressing',   color:'#ff4466', bg:'rgba(255,68,102,0.12)' },
+    insufficient:{ icon:'?', label:'Not enough data',color:'#6b7280',bg:'rgba(255,255,255,0.05)' },
+  };
+  const st = statusMap[prog.status];
+
+  // ── KPI row ──────────────────────────────────────────────────────────────
+  const kpiRow = document.createElement('div');
+  kpiRow.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;';
+  [
+    {val:last.weight+'kg', lbl:'Last top weight', color:'#00b4ff'},
+    {val:last.est1RM+'kg', lbl:'Est. 1RM',        color:'#00ffcc'},
+    {val:points.length,    lbl:'Sessions',         color:'#7c6aff'},
+  ].forEach(k=>{
+    const c=document.createElement('div');
+    c.style.cssText='background:rgba(0,0,0,0.06);border-radius:10px;padding:10px 8px;text-align:center;';
+    c.innerHTML=`<div style="font-size:20px;font-weight:800;color:${k.color};font-variant-numeric:tabular-nums;">${k.val}</div><div style="font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;margin-top:3px;">${k.lbl}</div>`;
+    kpiRow.appendChild(c);
+  });
+  container.appendChild(kpiRow);
+
+  // ── Status badge ─────────────────────────────────────────────────────────
+  const badge = document.createElement('div');
+  badge.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:8px;background:${st.bg};color:${st.color};`;
+  badge.innerHTML = `${st.icon} ${st.label}`;
+  if (prog.trendPerMonth !== 0 && prog.status !== 'insufficient') {
+    const sign = prog.trendPerMonth > 0 ? '+' : '';
+    badge.innerHTML += ` <span style="font-weight:400;font-size:11px;opacity:0.8;">${sign}${prog.trendPerMonth}kg/month</span>`;
+  }
+  container.appendChild(badge);
+
+  // ── Weight comparison ─────────────────────────────────────────────────────
+  if (first.weight !== last.weight) {
+    const diff = (last.weight - first.weight).toFixed(1);
+    const sign = diff > 0 ? '+' : '';
+    const meta = document.createElement('div');
+    meta.style.cssText = 'font-size:11px;color:var(--muted2);margin-bottom:14px;';
+    meta.textContent = `Top weight: ${first.weight}kg → ${last.weight}kg (${sign}${diff}kg) over ${points.length} sessions`;
+    container.appendChild(meta);
+  }
+
+  // ── Weight sparkline ─────────────────────────────────────────────────────
+  const sparkTitle = document.createElement('div');
+  sparkTitle.style.cssText = 'font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:6px;';
+  sparkTitle.textContent = 'Best set weight per session (kg)';
+  container.appendChild(sparkTitle);
+
+  const sparkWrap = document.createElement('div');
+  sparkWrap.style.cssText = 'position:relative;width:100%;height:90px;overflow:hidden;margin-bottom:4px;';
+  const sparkCanvas = document.createElement('canvas');
+  sparkCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;';
+  sparkWrap.appendChild(sparkCanvas);
+  container.appendChild(sparkWrap);
+
+  // Dots below sparkline showing best set label
+  const dotRow = document.createElement('div');
+  dotRow.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:16px;';
+  points.forEach((p,i)=>{
+    const show = points.length<=6 || i===0 || i===points.length-1 || i%Math.ceil(points.length/6)===0;
+    if(!show) return;
+    const dot=document.createElement('div');
+    dot.style.cssText='font-size:9px;color:var(--muted2);text-align:center;flex:1;';
+    dot.innerHTML=`<div style="font-weight:600;color:var(--text);">${p.bestLabel}</div><div>${p.dateStr}</div>`;
+    dotRow.appendChild(dot);
+  });
+  container.appendChild(dotRow);
+
+  // ── Est 1RM chart ─────────────────────────────────────────────────────────
+  const rmTitle = document.createElement('div');
+  rmTitle.style.cssText = 'font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:6px;';
+  rmTitle.textContent = 'Estimated 1RM trend';
+  container.appendChild(rmTitle);
+
+  const rmWrap = document.createElement('div');
+  rmWrap.style.cssText = 'position:relative;width:100%;height:110px;overflow:hidden;margin-bottom:16px;';
+  const rmCanvas = document.createElement('canvas');
+  rmCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;';
+  rmWrap.appendChild(rmCanvas);
+  container.appendChild(rmWrap);
+
+  // ── Next session suggestion ───────────────────────────────────────────────
+  if (hint) {
+    const hintCard = document.createElement('div');
+    hintCard.style.cssText = 'background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.2);border-radius:12px;padding:14px 16px;margin-bottom:14px;';
+    hintCard.innerHTML = `
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#00b4ff;font-weight:700;margin-bottom:6px;">Next session</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">${hint.suggestion}</div>
+      <div style="font-size:11px;color:var(--muted2);">${hint.subtext}</div>`;
+    container.appendChild(hintCard);
+  }
+
+  // Draw charts after DOM paint
+  setTimeout(() => {
+    if (sparkCanvas.offsetWidth) {
+      drawProgressLine(sparkCanvas, points.map(p=>p.dateStr), points.map(p=>p.weight), '#00b4ff', true);
+    }
+    if (rmCanvas.offsetWidth) {
+      drawProgressLine(rmCanvas, points.map(p=>p.dateStr), points.map(p=>p.est1RM), '#00ffcc', false);
+    }
+  }, 100);
+}
+
+function renderSingleSessionCard(container, point, exName, equipment) {
+  const hint = buildNextSessionSuggestion([point], exName, equipment);
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+      <div style="background:rgba(0,0,0,0.06);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#00b4ff;">${point.weight}kg</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;">TOP WEIGHT</div></div>
+      <div style="background:rgba(0,0,0,0.06);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#00ffcc;">${point.est1RM}kg</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;">EST. 1RM</div></div>
+      <div style="background:rgba(0,0,0,0.06);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#7c6aff;">${point.bestLabel}</div><div style="font-size:9px;color:var(--muted2);margin-top:2px;">BEST SET</div></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted2);margin-bottom:12px;text-align:center;">First session — do more to see trends</div>`;
+
+  if (hint) {
+    const hintCard = document.createElement('div');
+    hintCard.style.cssText = 'background:rgba(0,180,255,0.08);border:1px solid rgba(0,180,255,0.2);border-radius:12px;padding:14px 16px;';
+    hintCard.innerHTML = `
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#00b4ff;font-weight:700;margin-bottom:6px;">Next session</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;">${hint.suggestion}</div>
+      <div style="font-size:11px;color:var(--muted2);">${hint.subtext}</div>`;
+    container.appendChild(hintCard);
+  }
+}
+
+function drawProgressLine(canvas, labels, data, color, showAnnotations) {
+  const dpr = devicePixelRatio||1;
+  canvas.width  = canvas.offsetWidth  * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const w=canvas.offsetWidth, h=canvas.offsetHeight;
+  const pad={top:12,right:12,bottom:22,left:38};
+  const cW=w-pad.left-pad.right, cH=h-pad.top-pad.bottom;
+  const n=data.length;
+  const maxV=Math.max(...data)*1.05, minV=Math.min(...data)*0.95;
+  const xS=i=>pad.left+(n===1?cW/2:i/(n-1)*cW);
+  const yS=v=>pad.top+cH-((v-minV)/(maxV-minV||1))*cH;
+
+  // Trend line
+  const slope = linearTrend(data);
+  if (n >= 3) {
+    const y0=yS(data[0]+(0)*slope), y1=yS(data[0]+(n-1)*slope);
+    ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(xS(0),y0); ctx.lineTo(xS(n-1),y1); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Grid
+  [0,0.5,1].forEach(t=>{
+    const y=pad.top+t*cH;
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(w-pad.right,y); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font=`9px sans-serif`; ctx.textAlign='right';
+    ctx.fillText(Math.round(maxV-t*(maxV-minV)), pad.left-4, y+3);
+  });
+
+  // Gradient fill
+  const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+  grad.addColorStop(0,color+'40'); grad.addColorStop(1,color+'00');
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
+  ctx.lineTo(xS(n-1),pad.top+cH); ctx.lineTo(xS(0),pad.top+cH); ctx.closePath(); ctx.fill();
+
+  // Line
+  ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.beginPath();
+  data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
+  ctx.stroke();
+
+  // Dots
+  data.forEach((v,i)=>{
+    ctx.fillStyle=color; ctx.beginPath(); ctx.arc(xS(i),yS(v),3.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.arc(xS(i),yS(v),1.5,0,Math.PI*2); ctx.fill();
+  });
+
+  // X labels
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.textAlign='center'; ctx.font='8px sans-serif';
+  const step=Math.max(1,Math.ceil(n/5));
+  data.forEach((_,i)=>{ if(i%step===0||i===n-1) ctx.fillText(labels[i],xS(i),h-4); });
+}
+
+
 // ── STERK GUTT STATS (mirrors Sterk Gutt app exactly) ──────────────────────
 // ── SG STATS STATE ─────────────────────────────────────────────────────────
 let _sgPreset = 'all';
@@ -5937,71 +6313,11 @@ function sgCalcVolume(s) {
 }
 
 function renderSGExerciseProgress(sessions, exName, body) {
-  if (!exName) { body.innerHTML=''; return; }
-  const points=[];
-  sessions.forEach(s=>{
-    (s.exercises||[]).forEach(ex=>{
-      if(ex.name!==exName) return;
-      const logged=(ex.sets||[]).filter(st=>st.logged);
-      if(!logged.length) return;
-      const totalVol=logged.reduce((a,st)=>{
-        const w=parseFloat(st.weight)||0;
-        const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):(parseFloat(st.reps)||0);
-        return a+w*r;
-      },0);
-      let best1RM=0, bestW=0, bestR=0;
-      logged.forEach(st=>{
-        const w=parseFloat(st.weight)||0;
-        const r=ex.unilateral?Math.max(parseFloat(st.repsL)||0,parseFloat(st.repsR)||0):parseFloat(st.reps)||0;
-        const rm=r>0?w*(1+r/30):0;
-        if(rm>best1RM){best1RM=rm;bestW=w;bestR=r;}
-      });
-      const startedAt=s.started_at||s.startedAt;
-      points.push({
-        dateStr:new Date(startedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-        volumeLoad:Math.round(totalVol),
-        est1RM:Math.round(best1RM*10)/10,
-        bestLabel:bestW>0?`${bestW}kg×${bestR}`:'',
-      });
-    });
-  });
-
-  if(!points.length){body.innerHTML=`<div style="color:#4b5563;font-size:12px;padding:12px 0;text-align:center;">No data for ${exName}.</div>`;return;}
-
-  if(points.length===1){
-    const p=points[0];
-    body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:4px;">
-      <div style="background:#0e0f11;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#00b4ff;">${p.est1RM}kg</div><div style="font-size:9px;color:#6b7280;margin-top:2px;">EST. 1RM</div></div>
-      <div style="background:#0e0f11;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#7c6aff;">${p.volumeLoad}kg</div><div style="font-size:9px;color:#6b7280;margin-top:2px;">VOL LOAD</div></div>
-      <div style="background:#0e0f11;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:14px;font-weight:800;color:#00ffcc;">${p.bestLabel}</div><div style="font-size:9px;color:#6b7280;margin-top:2px;">BEST SET</div></div>
-    </div><div style="font-size:10px;color:#4b5563;padding:10px 0;text-align:center;">Log more sessions to see trends</div>`;
-    return;
-  }
-
-  const first=points[0],last=points[points.length-1];
-  const rmChange=first.est1RM>0?((last.est1RM-first.est1RM)/first.est1RM*100):null;
-  const rmDiff=first.est1RM>0?(last.est1RM-first.est1RM).toFixed(1):null;
-  const trendDir=rmChange>2?'up':rmChange<-2?'down':'flat';
-  const trendIcon=trendDir==='up'?'↑':trendDir==='down'?'↓':'→';
-  const trendColor=trendDir==='up'?'#00ff96':trendDir==='down'?'#ff4466':'#6b7280';
-  const trendBg=trendDir==='up'?'rgba(0,255,150,0.1)':trendDir==='down'?'rgba(255,68,102,0.1)':'rgba(255,255,255,0.05)';
-
-  body.innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;padding-top:4px;">
-      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#00b4ff;">${last.est1RM}kg</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:2px;">Est. 1RM</div></div>
-      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:${trendColor}">${rmDiff!==null?(rmDiff>0?'+':'')+rmDiff+'kg':'—'}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:2px;">Change</div></div>
-      <div style="background:#0e0f11;border-radius:8px;padding:10px 8px;text-align:center;"><div style="font-size:18px;font-weight:800;color:#6b7280;">${points.length}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:2px;">Sessions</div></div>
-    </div>
-    <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600;margin-bottom:14px;background:${trendBg};color:${trendColor};">${trendIcon} ${trendDir==='up'?`Gaining +${rmChange.toFixed(1)}%`:trendDir==='down'?`Down ${Math.abs(rmChange).toFixed(1)}%`:'Stable'}</div>
-    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Est. 1RM over time</div>
-    <div style="position:relative;width:100%;height:160px;overflow:hidden;margin-bottom:16px;"><canvas id="sg-cal-chart-1rm" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>
-    <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Volume load per session</div>
-    <div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg-cal-chart-vol" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>`;
-
-  setTimeout(()=>{
-    const c1=document.getElementById('sg-cal-chart-1rm'); if(c1) drawSGLine(c1,points.map(p=>p.dateStr),points.map(p=>p.est1RM),'#00b4ff');
-    const c2=document.getElementById('sg-cal-chart-vol'); if(c2) drawSGLine(c2,points.map(p=>p.dateStr),points.map(p=>p.volumeLoad),'#7c6aff');
-  },100);
+  if (!exName) { body.innerHTML = ''; return; }
+  const points = buildExercisePoints(sessions, exName, null);
+  const equipment = points[0]?.equipment || null;
+  body.innerHTML = '';
+  renderExerciseAnalysis(body, points, exName, equipment);
 }
 
 function drawSGLine(canvas, labels, data, color) {
