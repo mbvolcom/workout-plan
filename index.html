@@ -687,8 +687,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #claude-send-btn:hover { background:#1d4ed8; }
 #claude-send-btn:disabled { background:#2a2a3e; color:#6b7280; cursor:not-allowed; }
 /* INTERVAL ANALYSIS */
-.ia-chart-wrap { width:100%; height:80px; margin-bottom:12px; background:var(--surface2); border-radius:8px; overflow:hidden; }
-.ia-chart-wrap canvas { width:100%; height:80px; display:block; }
+.ia-chart-wrap { width:100%; height:120px; margin-bottom:12px; background:var(--surface2); border-radius:8px; overflow:hidden; position:relative; }
+.ia-chart-wrap canvas { width:100%; height:120px; display:block; }
 .ia-found { font-size:11px; font-weight:600; color:#FC4C02; margin-bottom:8px; letter-spacing:0.05em; }
 .ia-table { width:100%; border-collapse:collapse; font-size:11px; }
 .ia-table th { text-align:left; padding:5px 8px; font-size:9px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:0.05em; }
@@ -708,21 +708,22 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #run-panel-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(100,80,140,0.15); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; }
 @media(min-width:600px){#run-panel-overlay{align-items:center;}}
 #run-panel-overlay.open { display:flex; }
-#run-panel { background:rgba(255,255,255,0.75); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border:0.5px solid rgba(255,255,255,0.6); border-radius:16px 16px 0 0; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; padding:20px; box-shadow:0 -4px 32px rgba(0,0,0,0.15); }
+#run-panel { background:#ffffff; border:0.5px solid rgba(0,0,0,0.08); border-radius:16px 16px 0 0; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; padding:20px; box-shadow:0 -8px 40px rgba(40,30,70,0.20); color:#1a1626; }
 @media(min-width:600px){#run-panel{border-radius:16px;max-height:85vh;}}
 #run-panel-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; gap:10px; }
-#run-panel-name { font-size:16px; font-weight:700; color:var(--text); margin-bottom:3px; }
-#run-panel-type { font-size:11px; color:var(--muted); }
-#run-panel-close { background:none; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:0; flex-shrink:0; }
-#run-panel-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px; }
-.run-tab-btn { background:none; border:none; padding:8px 16px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; font-family:inherit; transition:color 0.2s,border-color 0.2s; }
-.run-tab-btn.active { color:var(--text); border-bottom-color:var(--text); }
+#run-panel-name { font-size:16px; font-weight:700; color:#1a1626; margin-bottom:3px; }
+#run-panel-type { font-size:11px; color:#6b7280; }
+#run-panel-close { background:rgba(0,0,0,0.06); border:none; font-size:16px; color:#6b7280; cursor:pointer; padding:4px 8px; border-radius:8px; flex-shrink:0; line-height:1; }
+#run-panel-close:hover { background:rgba(0,0,0,0.1); }
+#run-panel-tabs { display:flex; gap:0; border-bottom:1.5px solid #e5e7eb; margin-bottom:16px; }
+.run-tab-btn { background:none; border:none; padding:8px 16px; font-size:13px; font-weight:500; color:#9ca3af; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1.5px; font-family:inherit; transition:color 0.2s,border-color 0.2s; }
+.run-tab-btn.active { color:#1a1626; border-bottom-color:#1a1626; font-weight:600; }
 .run-tab-panel { display:none; }
 .run-tab-panel.active { display:block; }
 .run-workout-section { margin-bottom:16px; }
-.run-workout-label { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
-.run-workout-value { font-size:13px; color:var(--text); line-height:1.6; }
-.run-workout-pace { display:inline-block; background:var(--qual-bg); color:var(--qual-c); border:0.5px solid var(--qual-b); border-radius:4px; padding:3px 8px; font-size:13px; font-weight:600; margin-top:4px; }
+.run-workout-label { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#9ca3af; margin-bottom:4px; }
+.run-workout-value { font-size:13px; color:#1a1626; line-height:1.6; }
+.run-workout-pace { display:inline-block; background:#fef3c7; color:#92400e; border:0.5px solid #fcd34d; border-radius:6px; padding:4px 10px; font-size:13px; font-weight:600; margin-top:4px; }
 
 /* LIBRARY MODAL */
 #lib-new-folder-row { display:flex; gap:8px; margin-bottom:14px; }
@@ -847,10 +848,12 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 }
 #strava-panel-overlay.open { display: flex; }
 #strava-panel {
-  background: rgba(255,255,255,0.80); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%); border-top:0.5px solid rgba(255,255,255,0.6); border-radius: 16px 16px 0 0;
+  background: #ffffff; border-radius: 16px 16px 0 0;
+  border: 0.5px solid rgba(0,0,0,0.06);
   width: 100%; max-width: 480px; max-height: 90vh;
   overflow-y: auto; padding: 20px;
-  box-shadow: 0 -4px 32px rgba(0,0,0,0.15);
+  box-shadow: 0 -8px 40px rgba(40,30,70,0.20);
+  color: #1a1626;
 }
 @media (min-width: 600px) {
   #strava-panel { border-radius: 16px; max-height: 85vh; }
@@ -860,13 +863,14 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   margin-bottom: 14px; gap: 10px;
 }
 #strava-panel-name {
-  font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px;
+  font-size: 15px; font-weight: 700; color: #1a1626; margin-bottom: 3px;
 }
-#strava-panel-date { font-size: 11px; color: var(--muted); }
+#strava-panel-date { font-size: 11px; color: #6b7280; }
 #strava-panel-close {
-  background: none; border: none; font-size: 18px; color: var(--muted);
-  cursor: pointer; padding: 0; flex-shrink: 0; line-height: 1;
+  background: rgba(0,0,0,0.06); border: none; font-size:16px; color: #6b7280;
+  cursor: pointer; padding: 4px 8px; border-radius:8px; flex-shrink: 0; line-height: 1;
 }
+#strava-panel-close:hover { background:rgba(0,0,0,0.1); }
 #strava-map {
   width: 100%; height: 140px; border-radius: 10px;
   background: #eef0f2; display: block; margin-bottom: 14px;
@@ -876,34 +880,34 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   gap: 8px; margin-bottom: 14px;
 }
 .strava-stat-card {
-  background: var(--bg); border-radius: 8px; padding: 10px 12px;
+  background: #f3f4f6; border-radius: 10px; padding: 10px 12px;
 }
-.strava-stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
-.strava-stat-val { font-size: 16px; font-weight: 700; color: var(--text); }
+.strava-stat-label { font-size: 10px; color: #9ca3af; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
+.strava-stat-val { font-size: 18px; font-weight: 800; color: #1a1626; }
 #strava-panel-link {
   display: inline-flex; align-items: center; gap: 5px;
-  color: #FC4C02; font-size: 12px; font-weight: 600;
+  color: #FC4C02; font-size: 13px; font-weight: 600;
   text-decoration: none; margin-bottom: 18px; display: block;
 }
 #strava-panel-link:hover { text-decoration: underline; }
 #strava-splits-title {
   font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  text-transform: uppercase; color: #9ca3af; margin-bottom: 8px;
 }
 #strava-splits-table {
   width: 100%; border-collapse: collapse; font-size: 12px;
 }
 #strava-splits-table th {
   text-align: left; padding: 5px 8px; font-size: 10px;
-  font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border);
+  font-weight: 700; color: #9ca3af; border-bottom: 1.5px solid #e5e7eb;
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 #strava-splits-table td {
-  padding: 6px 8px; border-bottom: 0.5px solid var(--border);
-  color: var(--text);
+  padding: 6px 8px; border-bottom: 0.5px solid #e5e7eb;
+  color: #1a1626;
 }
 #strava-splits-table tr:last-child td { border-bottom: none; }
-#strava-splits-table td:first-child { color: var(--muted); font-weight: 600; }
+#strava-splits-table td:first-child { color: #9ca3af; font-weight: 600; }
 .split-best { color: #1a8a1a !important; font-weight: 700 !important; }
 #strava-splits-loading { text-align: center; color: var(--muted); font-size: 12px; padding: 16px 0; }
 .pill.has-strava { white-space: normal; }
@@ -1097,10 +1101,11 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-days { display:flex; flex-direction:column; gap:8px; }
 .mob-day-card { background:rgba(255,255,255,0.45); backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%); border:0.5px solid rgba(255,255,255,0.55); border-radius:16px; overflow:hidden; box-shadow:0 4px 16px rgba(40,30,70,0.10); }
 .mob-day-card.mob-today { border-color:var(--text); border-width:2px; }
-.mob-day-header { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+.mob-day-header { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 .mob-day-name { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; min-width:28px; }
-.mob-day-num { font-size:22px; font-weight:700; color:var(--text); line-height:1; }
+.mob-day-num { font-size:22px; font-weight:700; color:var(--text); line-height:1; user-select:none; -webkit-user-select:none; }
 .mob-day-num.mob-today-num { color:#FC4C02; }
+.mob-day-name { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; user-select:none; -webkit-user-select:none; }
 .mob-day-weather { margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap; }
 .mob-day-pills { padding:10px 14px; display:flex; flex-direction:column; gap:5px; }
 .mob-pill { border-radius:8px; padding:8px 12px; font-size:13px; font-weight:500; line-height:1.4; }
@@ -1335,6 +1340,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div id="stats-title">Statistics</div>
       <div id="stats-tab-toggle">
         <button class="stats-tab-btn active" data-tab="running" onclick="setStatsTab('running')">🏃 Running</button>
+        <button class="stats-tab-btn" data-tab="intervals" onclick="setStatsTab('intervals')">⚡ Intervals</button>
         <button class="stats-tab-btn" data-tab="strength" onclick="setStatsTab('strength')">💪 Sterk Gutt</button>
       </div>
     </div>
@@ -3438,48 +3444,81 @@ async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, inte
 }
 
 function drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdMps) {
-  const W = canvas.offsetWidth * devicePixelRatio;
-  const H = 80 * devicePixelRatio;
+  const dpr = devicePixelRatio || 1;
+  const displayH = 120;
+  const W = canvas.offsetWidth * dpr;
+  const H = displayH * dpr;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
-  ctx.scale(devicePixelRatio, devicePixelRatio);
-  const w = canvas.offsetWidth, h = 80;
-  const pad = { top:8, right:8, bottom:8, left:8 };
+  ctx.scale(dpr, dpr);
+  const w = canvas.offsetWidth, h = displayH;
+  const pad = { top:10, right:8, bottom:18, left:42 };
   const cW = w - pad.left - pad.right;
   const cH = h - pad.top - pad.bottom;
 
-  // Smooth velocity to pace (m/s → min/km, inverted so faster = higher)
-  const validVel = velArr.filter(v=>v>0);
-  const maxVel = Math.max(...validVel, thresholdMps * 1.3);
-  const minVel = Math.max(0, Math.min(...validVel) * 0.9);
   const totalTime = timeArr[timeArr.length-1];
-
   const xScale = t => pad.left + (t/totalTime)*cW;
-  const yScale = v => pad.top + cH - ((v-minVel)/(maxVel-minVel))*cH;
+
+  // Use velocity for Y axis — faster pace = higher on chart
+  const validVel = velArr.filter(v=>v>0.5);
+  const maxVel = Math.max(...validVel, thresholdMps * 1.15);
+  const minVel = Math.max(0.5, Math.min(...validVel) * 0.88);
+  const yScale = v => pad.top + cH - ((Math.min(maxVel,Math.max(minVel,v))-minVel)/(maxVel-minVel))*cH;
 
   ctx.clearRect(0, 0, w, h);
 
-  // Interval highlight bands
-  intervals.forEach(iv => {
-    const x1 = xScale(timeArr[Math.round(iv.startDist/distArr[distArr.length-1]*timeArr.length)]||0);
-    const x2 = xScale(timeArr[Math.min(Math.round(iv.endDist/distArr[distArr.length-1]*timeArr.length), timeArr.length-1)]||totalTime);
-    ctx.fillStyle = 'rgba(252,76,2,0.15)';
+  // Gradient fill under line
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top+cH);
+  grad.addColorStop(0, 'rgba(110,184,240,0.3)');
+  grad.addColorStop(1, 'rgba(110,184,240,0.02)');
+
+  // Interval highlight bands — use startIdx/endIdx directly
+  intervals.forEach((iv, idx) => {
+    const x1 = xScale(timeArr[iv.startIdx]);
+    const x2 = xScale(timeArr[iv.endIdx]);
+    ctx.fillStyle = 'rgba(252,76,2,0.13)';
     ctx.fillRect(x1, pad.top, x2-x1, cH);
+    // Interval number label
+    ctx.fillStyle = 'rgba(252,76,2,0.7)';
+    ctx.font = `bold ${9*dpr/dpr}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(iv.num, (x1+x2)/2, pad.top+10);
   });
 
   // Threshold line
   const thY = yScale(thresholdMps);
-  ctx.strokeStyle = 'rgba(252,76,2,0.4)';
-  ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.strokeStyle = 'rgba(252,76,2,0.45)';
+  ctx.lineWidth = 1; ctx.setLineDash([5,4]);
   ctx.beginPath(); ctx.moveTo(pad.left, thY); ctx.lineTo(w-pad.right, thY); ctx.stroke();
   ctx.setLineDash([]);
 
-  // Pace line
+  // Y axis labels (pace)
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.textAlign = 'right'; ctx.font = '8px sans-serif';
+  [minVel, thresholdMps, maxVel].forEach(v => {
+    if (v <= 0) return;
+    const paceMin = Math.floor(1000/v/60);
+    const paceSec = Math.round(1000/v%60);
+    ctx.fillText(`${paceMin}:${String(paceSec).padStart(2,'0')}`, pad.left-3, yScale(v)+3);
+  });
+
+  // Pace line with gradient fill
+  ctx.beginPath();
+  velArr.forEach((v, i) => {
+    const x = xScale(timeArr[i]);
+    const y = yScale(v);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(xScale(totalTime), pad.top+cH);
+  ctx.lineTo(xScale(timeArr[0]), pad.top+cH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
   ctx.strokeStyle = '#6eb8f0'; ctx.lineWidth = 1.5;
   ctx.beginPath();
   velArr.forEach((v, i) => {
     const x = xScale(timeArr[i]);
-    const y = yScale(Math.max(minVel, Math.min(maxVel, v)));
+    const y = yScale(v);
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.stroke();
@@ -5372,8 +5411,226 @@ function setStatsTab(tab) {
 }
 
 function renderStats() {
-  if (statsTab === 'strength') { renderSGStats(); return; }
+  if (statsTab === 'strength')  { renderSGStats(); return; }
+  if (statsTab === 'intervals') { renderIntervalStats(); return; }
   renderRunningStats();
+}
+
+async function renderIntervalStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">Loading interval history…</div>';
+
+  try {
+    const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&order=activity_date.desc&limit=50', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error('Failed to load interval history');
+    const rows = await res.json();
+    container.innerHTML = '';
+
+    if (!rows.length) {
+      container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">No interval sessions saved yet. Run an interval analysis from a Strava activity to get started.</div>';
+      return;
+    }
+
+    // ── KPI summary ──────────────────────────────────────────────────────────
+    const totalSessions = rows.length;
+    const allIntervals  = rows.flatMap(r => r.intervals||[]);
+    const avgPaceAll    = allIntervals.filter(iv=>iv.avgPaceStr).map(iv => paceStrToSecs(iv.avgPaceStr));
+    const bestPaceSecs  = avgPaceAll.length ? Math.min(...avgPaceAll) : null;
+    const totalReps     = allIntervals.length;
+
+    const kpiGrid = document.createElement('div');
+    kpiGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px 8px;';
+    [
+      {val:totalSessions, lbl:'Sessions analysed', color:'#6eb8f0'},
+      {val:totalReps,     lbl:'Total intervals',   color:'#c8f06e'},
+      {val:bestPaceSecs ? secsToMinSec(bestPaceSecs)+'/km' : '—', lbl:'Best interval pace', color:'#FC4C02'},
+    ].forEach(({val,lbl,color}) => {
+      const c = document.createElement('div');
+      c.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;text-align:center;';
+      c.innerHTML = `<div style="font-size:24px;font-weight:800;color:${color};font-variant-numeric:tabular-nums;">${val}</div><div style="font-size:10px;color:#6b7280;margin-top:4px;letter-spacing:0.05em;">${lbl}</div>`;
+      kpiGrid.appendChild(c);
+    });
+    container.appendChild(kpiGrid);
+
+    // ── Pace trend chart ─────────────────────────────────────────────────────
+    // Show avg pace of all intervals per session over time
+    const sessionsWithPace = rows.slice().reverse().filter(r=>r.intervals?.length).map(r => {
+      const paces = (r.intervals||[]).map(iv=>paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+      const avgSecs = paces.length ? paces.reduce((a,b)=>a+b,0)/paces.length : null;
+      const bestSecs = paces.length ? Math.min(...paces) : null;
+      return { date: r.activity_date||r.created_at, avgSecs, bestSecs, n:r.intervals.length, name:r.activity_name||'Interval session', threshold:r.threshold_pace };
+    }).filter(s=>s.avgSecs);
+
+    if (sessionsWithPace.length > 1) {
+      const trendSection = document.createElement('div');
+      trendSection.style.cssText = 'padding:4px 20px 0;';
+      const trendTitle = document.createElement('div');
+      trendTitle.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:8px;';
+      trendTitle.textContent = 'Avg interval pace over time — are you getting faster?';
+      trendSection.appendChild(trendTitle);
+      const canWrap = document.createElement('div');
+      canWrap.style.cssText = 'position:relative;width:100%;height:140px;overflow:hidden;border-radius:10px;background:#16181c;';
+      const canvas = document.createElement('canvas');
+      canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;';
+      canWrap.appendChild(canvas); trendSection.appendChild(canWrap);
+      container.appendChild(trendSection);
+      setTimeout(() => {
+        if (!canvas.offsetWidth) return;
+        const labels = sessionsWithPace.map(s => new Date(s.date).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
+        const avgData  = sessionsWithPace.map(s => s.avgSecs);
+        const bestData = sessionsWithPace.map(s => s.bestSecs);
+        drawIntervalTrendChart(canvas, labels, avgData, bestData);
+      }, 80);
+    }
+
+    // ── Session list ─────────────────────────────────────────────────────────
+    const listTitle = document.createElement('div');
+    listTitle.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:16px 20px 8px;';
+    listTitle.textContent = 'Session history';
+    container.appendChild(listTitle);
+
+    rows.forEach(r => {
+      const intervals = r.intervals||[];
+      if (!intervals.length) return;
+      const paces = intervals.map(iv=>paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+      const avgSecs  = paces.length ? paces.reduce((a,b)=>a+b,0)/paces.length : null;
+      const bestSecs = paces.length ? Math.min(...paces) : null;
+      const date = r.activity_date ? new Date(r.activity_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;margin:0 20px 10px;overflow:hidden;cursor:pointer;transition:border-color 0.15s;';
+      card.addEventListener('mouseenter',()=>card.style.borderColor='rgba(255,255,255,0.15)');
+      card.addEventListener('mouseleave',()=>card.style.borderColor='rgba(255,255,255,0.07)');
+
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;';
+      header.innerHTML = `
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}</div>
+          <div style="font-size:11px;color:#4b5563;margin-top:2px;">${date} · ${r.threshold_pace||''} threshold</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:18px;font-weight:800;color:#FC4C02;">${intervals.length}×</div>
+          <div style="font-size:10px;color:#4b5563;">reps</div>
+        </div>`;
+
+      // Mini pace bar chart for this session
+      const body = document.createElement('div');
+      body.style.cssText = 'padding:0 16px 14px;';
+      const paceRow = document.createElement('div');
+      paceRow.style.cssText = 'display:flex;align-items:flex-end;gap:4px;height:48px;margin-bottom:6px;';
+      const minSecs = bestSecs * 0.98, maxSecs = Math.max(...paces) * 1.01;
+      intervals.forEach((iv,i) => {
+        const secs = paceStrToSecs(iv.avgPaceStr);
+        if (!secs) return;
+        // Invert: faster pace (lower secs) = taller bar
+        const pct = Math.round(((maxSecs-secs)/(maxSecs-minSecs||1))*100);
+        const barH = Math.max(20, Math.round(pct/100*40)+8);
+        const col = document.createElement('div');
+        col.style.cssText = `flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;`;
+        col.innerHTML = `<div style="width:100%;height:${barH}px;background:#FC4C02aa;border-radius:3px 3px 0 0;" title="Interval ${i+1}: ${iv.avgPaceStr}/km"></div><div style="font-size:8px;color:#4b5563;">${i+1}</div>`;
+        paceRow.appendChild(col);
+      });
+      body.appendChild(paceRow);
+
+      // Avg + best pace
+      const metaRow = document.createElement('div');
+      metaRow.style.cssText = 'display:flex;gap:16px;';
+      if (avgSecs)  metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Avg <span style="color:#d1d5db;font-weight:600;">${secsToMinSec(avgSecs)}/km</span></div>`;
+      if (bestSecs) metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Best <span style="color:#FC4C02;font-weight:600;">${secsToMinSec(bestSecs)}/km</span></div>`;
+      body.appendChild(metaRow);
+
+      // Toggle expand
+      let expanded = false;
+      const detail = document.createElement('div');
+      detail.style.cssText = 'display:none;border-top:1px solid rgba(255,255,255,0.05);padding:10px 16px;';
+      detail.innerHTML = intervals.map((iv,i)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="font-size:12px;color:#9ca3af;">${i+1}</div>
+          <div style="font-size:12px;color:#d1d5db;">${(iv.distance/1000).toFixed(2)} km</div>
+          <div style="font-size:12px;color:#d1d5db;">${Math.floor(iv.duration/60)}:${String(iv.duration%60).padStart(2,'0')}</div>
+          <div style="font-size:13px;font-weight:700;color:#FC4C02;">${iv.avgPaceStr}/km</div>
+          ${iv.avgHr?`<div style="font-size:11px;color:#6b7280;">${iv.avgHr} bpm</div>`:''}
+        </div>`).join('');
+      card.addEventListener('click', () => {
+        expanded = !expanded;
+        detail.style.display = expanded ? '' : 'none';
+        card.style.borderColor = expanded ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)';
+      });
+
+      card.appendChild(header); card.appendChild(body); card.appendChild(detail);
+      container.appendChild(card);
+    });
+
+  } catch(e) {
+    container.innerHTML = `<div style="padding:20px;color:#f06e6e;font-size:12px;">Error: ${e.message}</div>`;
+  }
+}
+
+// ── Helpers for pace string conversion ─────────────────────────────────────
+function paceStrToSecs(paceStr) {
+  if (!paceStr) return null;
+  const clean = paceStr.replace('/km','').replace('/km','').trim();
+  const parts = clean.split(':');
+  if (parts.length !== 2) return null;
+  const m = parseInt(parts[0]), s = parseInt(parts[1]);
+  if (isNaN(m)||isNaN(s)) return null;
+  return m*60+s;
+}
+function secsToMinSec(secs) {
+  const m=Math.floor(secs/60), s=Math.round(secs%60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function drawIntervalTrendChart(canvas, labels, avgData, bestData) {
+  const dpr = devicePixelRatio||1;
+  canvas.width  = canvas.offsetWidth  * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const w=canvas.offsetWidth, h=canvas.offsetHeight;
+  const pad={top:14,right:14,bottom:22,left:46};
+  const cW=w-pad.left-pad.right, cH=h-pad.top-pad.bottom;
+  const n=avgData.length;
+
+  // Invert Y: lower secs = higher on chart (faster = better)
+  const allVals=[...avgData,...bestData].filter(Boolean);
+  const minS=Math.min(...allVals)-5, maxS=Math.max(...allVals)+5;
+  const xS=i=>pad.left+(n===1?cW/2:i/(n-1)*cW);
+  const yS=v=>pad.top+((v-minS)/(maxS-minS))*cH; // faster = lower secs = lower y = higher on chart
+
+  // Grid lines
+  [0,0.5,1].forEach(t=>{
+    const v=minS+t*(maxS-minS);
+    const y=yS(v);
+    ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(w-pad.right,y);ctx.stroke();
+    ctx.fillStyle='#4b5563';ctx.font='8px sans-serif';ctx.textAlign='right';
+    ctx.fillText(secsToMinSec(v),pad.left-3,y+3);
+  });
+
+  // Draw avg line
+  const drawLine = (data, color, dash=[]) => {
+    ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.setLineDash(dash);
+    ctx.beginPath();
+    data.forEach((v,i)=>{ if(v) i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)); });
+    ctx.stroke(); ctx.setLineDash([]);
+    data.forEach((v,i)=>{ if(v){ctx.fillStyle=color;ctx.beginPath();ctx.arc(xS(i),yS(v),3,0,Math.PI*2);ctx.fill();}});
+  };
+
+  drawLine(avgData,  'rgba(110,184,240,0.8)');
+  drawLine(bestData, '#FC4C02', [3,3]);
+
+  // X labels
+  ctx.fillStyle='#4b5563';ctx.textAlign='center';ctx.font='8px sans-serif';
+  const step=Math.max(1,Math.ceil(n/6));
+  labels.forEach((l,i)=>{ if(i%step===0||i===n-1) ctx.fillText(l,xS(i),h-4); });
+
+  // Legend
+  ctx.fillStyle='rgba(110,184,240,0.8)';ctx.fillRect(pad.left,4,16,2);
+  ctx.fillStyle='#9ca3af';ctx.textAlign='left';ctx.font='8px sans-serif';ctx.fillText('Avg pace',pad.left+20,8);
+  ctx.strokeStyle='#FC4C02';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(pad.left+80,5);ctx.lineTo(pad.left+96,5);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#9ca3af';ctx.fillText('Best rep',pad.left+100,8);
 }
 
 function renderRunningStats() {
