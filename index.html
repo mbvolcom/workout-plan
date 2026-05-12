@@ -1180,7 +1180,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.2.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.5.0</div>
   </div>
   <div class="glass-soft hdr-weather" id="now-weather"></div>
   <div class="glass-soft hdr-count" id="countdown-banner">
@@ -1197,7 +1197,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 
 <div class="glass toolbar">
   <div class="tb-group">
-    <button class="btn is-primary" onclick="saveState()">💾 Save</button>
+    <div id="autosave-indicator" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:11px;background:rgba(255,255,255,0.45);border:0.5px solid rgba(255,255,255,0.55);font-size:12px;color:#6b7280;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;">✓ Saved</div>
     <button class="btn" id="edit-wife-btn" onclick="toggleWifeEdit()">✏️ Edit Work</button>
     <a class="btn" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
     <button class="btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
@@ -2517,6 +2517,17 @@ function planBanner(planName, raceName, raceDate, goal) {
   return el;
 }
 
+// ── AUTOSAVE HOOK ─────────────────────────────────────────────────────────
+// Trigger autosave whenever renderWeek is called (means state changed)
+const _origRenderWeek = renderWeek;
+let _renderWeekDepth = 0; // prevent recursive triggers during build()
+renderWeek = function(wi) {
+  _origRenderWeek(wi);
+  if (typeof triggerAutosave === 'function' && _renderWeekDepth === 0) {
+    triggerAutosave();
+  }
+};
+
 function build() {
   const cal = document.getElementById('cal'); cal.innerHTML = '';
   let lastPhase = null;
@@ -2634,9 +2645,24 @@ const SUPA_KEY  = 'sb_publishable_8VxnyYRzColh1JeV0aq9Lg_pm243hxR';
 const SUPA_HDR  = { 'Content-Type':'application/json', 'apikey':SUPA_KEY, 'Authorization':'Bearer '+SUPA_KEY };
 
 // ── SAVE USER STATE ────────────────────────────────────────────────────────
+let _autosaveTimer = null;
+
+function triggerAutosave() {
+  clearTimeout(_autosaveTimer);
+  showAutosaveStatus('pending');
+  _autosaveTimer = setTimeout(() => saveState(), 1200);
+}
+
+function showAutosaveStatus(status) {
+  const el = document.getElementById('autosave-indicator');
+  if (!el) return;
+  if (status === 'pending')  { el.textContent = '⏳ Saving…'; el.style.color = '#9ca3af'; }
+  if (status === 'saved')    { el.textContent = '✓ Saved';    el.style.color = '#6b7280'; }
+  if (status === 'error')    { el.textContent = '⚠ Local only'; el.style.color = '#f59e0b'; }
+}
+
 async function saveState() {
-  const btn = document.querySelector('.btn-save');
-  btn.textContent = '⏳ Saving…'; btn.disabled = true;
+  showAutosaveStatus('pending');
   const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi] }));
   localStorage.setItem('training-cal-2026', JSON.stringify(data));
   try {
@@ -2645,10 +2671,8 @@ async function saveState() {
       body:JSON.stringify({id:1, state:data})
     });
     if (!res.ok) throw new Error(await res.text());
-    btn.textContent = '✓ Saved!';
-  } catch(e) { console.error(e); btn.textContent = '⚠ Saved locally only'; }
-  btn.disabled = false;
-  setTimeout(() => { btn.textContent = '💾 Save changes'; }, 2000);
+    showAutosaveStatus('saved');
+  } catch(e) { console.error(e); showAutosaveStatus('error'); }
 }
 
 // ── LOAD USER STATE ────────────────────────────────────────────────────────
@@ -2831,8 +2855,10 @@ if (_local) applyState(JSON.parse(_local));
     localStorage.setItem('training-cal-2026', JSON.stringify(cloud));
   }
 
-  // 3. Build and render
+  // 3. Build and render (suppress autosave during initial load)
+  _renderWeekDepth++;
   build();
+  _renderWeekDepth--;
 
   // 4. Auto-collapse past weeks, highlight current week
   const today = new Date(); today.setHours(0,0,0,0);
@@ -4560,7 +4586,7 @@ function applyCalendarChanges(changes) {
   affectedWeeks.forEach(wi => { if(wi>=0&&wi<WEEKS.length) renderWeek(wi); });
   if (Object.keys(weatherData).length) addWeatherDots();
   if (Object.keys(gcalEvents).length) addGCalPills();
-  addClaudeMessage('assistant', `✓ ${changes.length} change${changes.length>1?'s':''} applied. Don't forget to hit 💾 Save changes to persist them.`);
+  addClaudeMessage('assistant', `✓ ${changes.length} change${changes.length>1?'s':''} applied.`);
 }
 let allPlans = [];
 let activePlanId = null;
@@ -4687,7 +4713,9 @@ async function selectPlan(planId) {
   applyWeekPlan({source:'plans', plans:[plan]});
   const saved = await loadCloudState();
   if (saved) applyCloudState(saved);
+  _renderWeekDepth++;
   build();
+  _renderWeekDepth--;
   updateCountdownForPlan(plan);
 }
 
