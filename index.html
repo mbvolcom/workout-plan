@@ -3263,85 +3263,111 @@ async function runIntervalAnalysis(activityId) {
 
     const timeArr = streams.time?.data;
     const distArr = streams.distance?.data;
-    const velArr  = streams.velocity_smooth?.data;
+    // Prefer raw velocity over velocity_smooth to avoid double-smoothing
+    const rawVelArr = streams.velocity_smooth?.data;
     const hrArr   = streams.heartrate?.data;
 
-    if (!timeArr || !velArr) throw new Error('No stream data returned');
-    const n = velArr.length;
+    if (!timeArr || !rawVelArr) throw new Error('No stream data returned');
+    const n = rawVelArr.length;
 
-    // Step 1: Rolling average smoothing (15-second window)
-    const smoothWindow = 15;
-    const smoothed = velArr.map((_, i) => {
+    // Step 1: Light smoothing — 5s window (Strava already smooths velocity_smooth)
+    // Use smaller window to preserve interval edges
+    const SMOOTH_WIN = 5;
+    const smoothed = rawVelArr.map((_, i) => {
       let sum = 0, count = 0;
-      for (let j = Math.max(0, i-smoothWindow); j <= Math.min(n-1, i+smoothWindow); j++) {
-        sum += velArr[j]; count++;
+      for (let j = Math.max(0, i-SMOOTH_WIN); j <= Math.min(n-1, i+SMOOTH_WIN); j++) {
+        sum += rawVelArr[j]; count++;
       }
       return sum / count;
     });
 
-    // Step 2: Detect with hysteresis — need 20 consecutive seconds below threshold to end interval
-    const HYSTERESIS_SECS = 20;
+    // Step 2: Build a per-second "fast" boolean array
+    // A point is "fast" if it's >= threshold
+    const isFast = smoothed.map(v => v >= thresholdMps);
+
+    // Step 3: Detect candidate intervals using a state machine
+    // Entry: need MIN_FAST_ENTRY consecutive fast seconds to start an interval
+    // Exit: need MIN_SLOW_EXIT consecutive slow seconds to end it
+    // This prevents brief speed blips from triggering and brief dips from ending
+    const MIN_FAST_ENTRY = 8;  // need 8s fast to start (filters noise)
+    const MIN_SLOW_EXIT  = 12; // need 12s slow to end (shorter than before to catch dips)
+
     const rawIntervals = [];
-    let inInterval = false, startIdx = 0, belowSince = -1;
+    let state = 'idle'; // idle | entering | active | exiting
+    let startIdx = 0;
+    let entryCount = 0;
+    let exitStart = -1;
 
     for (let i = 0; i < n; i++) {
-      const fast = smoothed[i] >= thresholdMps;
-      if (!inInterval && fast) {
-        inInterval = true; startIdx = i; belowSince = -1;
-      } else if (inInterval) {
-        if (!fast) {
-          if (belowSince < 0) belowSince = i;
-          const belowSecs = timeArr[i] - timeArr[belowSince];
-          if (belowSecs >= HYSTERESIS_SECS) {
-            rawIntervals.push({ startIdx, endIdx: belowSince });
-            inInterval = false; belowSince = -1;
-          }
-        } else {
-          belowSince = -1;
+      const fast = isFast[i];
+      if (state === 'idle') {
+        if (fast) { entryCount++; if (entryCount >= MIN_FAST_ENTRY) { state='active'; startIdx=i-entryCount+1; } }
+        else entryCount=0;
+      } else if (state === 'active') {
+        if (!fast) { exitStart=i; state='exiting'; }
+      } else if (state === 'exiting') {
+        const slowSecs = timeArr[i] - timeArr[exitStart];
+        if (fast) { state='active'; exitStart=-1; } // recovered — still in interval
+        else if (slowSecs >= MIN_SLOW_EXIT) {
+          rawIntervals.push({ startIdx, endIdx: exitStart });
+          state='idle'; entryCount=0; exitStart=-1;
         }
       }
     }
-    if (inInterval) rawIntervals.push({ startIdx, endIdx: n-1 });
+    if (state === 'active') rawIntervals.push({ startIdx, endIdx: n-1 });
+    if (state === 'exiting') rawIntervals.push({ startIdx, endIdx: exitStart });
 
-    // Step 3: Merge intervals closer than 30 seconds apart
-    const MERGE_GAP = 30;
+    // Step 4: Smart merge — merge intervals where gap < recovery_threshold
+    // For structured intervals, recovery is typically 1-3 min
+    // Use expected interval duration to set merge threshold:
+    // If user set expected=3min, don't merge gaps > 3min (that's a new set)
+    const maxMergeGap = expectedSecs
+      ? Math.min(expectedSecs * 1.5, 90)  // don't merge if gap > 90s
+      : 45;
+
     const merged = [];
     rawIntervals.forEach(iv => {
-      if (merged.length && (timeArr[iv.startIdx] - timeArr[merged[merged.length-1].endIdx]) < MERGE_GAP) {
-        merged[merged.length-1].endIdx = iv.endIdx;
+      if (!merged.length) { merged.push({...iv}); return; }
+      const prev = merged[merged.length-1];
+      const gapSecs = timeArr[iv.startIdx] - timeArr[prev.endIdx];
+      if (gapSecs < maxMergeGap) {
+        prev.endIdx = iv.endIdx; // merge
       } else {
         merged.push({...iv});
       }
     });
 
-    // Step 4: Filter by min duration and build objects
-    const intervals = merged
-      .filter(iv => (timeArr[iv.endIdx] - timeArr[iv.startIdx]) >= minDur)
-      .map((iv, i) => {
-        const duration = timeArr[iv.endIdx] - timeArr[iv.startIdx];
-        const distance = distArr[iv.endIdx] - distArr[iv.startIdx];
-        const slice = smoothed.slice(iv.startIdx, iv.endIdx+1);
-        const avgVel = slice.reduce((a,b)=>a+b,0)/slice.length;
-        const hrSlice = hrArr ? hrArr.slice(iv.startIdx, iv.endIdx+1) : null;
-        const avgHr = hrSlice ? Math.round(hrSlice.reduce((a,b)=>a+b,0)/hrSlice.length) : null;
-        return {
-          num: i+1,
-          startDist: distArr[iv.startIdx],
-          endDist: distArr[iv.endIdx],
-          distance, duration,
-          avgPaceStr: formatPace(avgVel*duration, duration),
-          avgHr,
-          startIdx: iv.startIdx,
-          endIdx: iv.endIdx,
-        };
-      })
-      .filter(iv => {
-        // If length hint provided, discard intervals outside ±TOLERANCE of expected
-        if (expectedSecs)   return iv.duration >= expectedSecs*(1-TOLERANCE) && iv.duration <= expectedSecs*(1+TOLERANCE);
-        if (expectedMetres) return iv.distance >= expectedMetres*(1-TOLERANCE) && iv.distance <= expectedMetres*(1+TOLERANCE);
-        return true;
-      })
-      .map((iv, i) => ({ ...iv, num: i+1 })); // renumber after filtering
+    // Step 5: Filter by min duration
+    const candidates = merged.filter(iv =>
+      (timeArr[iv.endIdx] - timeArr[iv.startIdx]) >= minDur
+    );
+
+    // Step 6: Build interval objects with stats
+    const built = candidates.map((iv, i) => {
+      const duration = timeArr[iv.endIdx] - timeArr[iv.startIdx];
+      const distance = distArr[iv.endIdx] - distArr[iv.startIdx];
+      const velSlice = smoothed.slice(iv.startIdx, iv.endIdx+1);
+      const avgVel = velSlice.reduce((a,b)=>a+b,0)/velSlice.length;
+      const hrSlice = hrArr ? hrArr.slice(iv.startIdx, iv.endIdx+1) : null;
+      const avgHr = hrSlice ? Math.round(hrSlice.reduce((a,b)=>a+b,0)/hrSlice.length) : null;
+      return { num:i+1, startDist:distArr[iv.startIdx], endDist:distArr[iv.endIdx],
+        distance, duration, avgPaceStr:formatPace(avgVel*duration, duration),
+        avgHr, startIdx:iv.startIdx, endIdx:iv.endIdx };
+    });
+
+    // Step 7: Length filter — widen tolerance to ±20% and only apply if hint given
+    // Also allow matching on EITHER duration OR distance
+    const TOLERANCE_WIDE = 0.22; // 22% — handles GPS drift and Strava smoothing
+    const intervals = built.filter(iv => {
+      if (!hasLenHint) return true;
+      const durOk = expectedSecs
+        ? iv.duration >= expectedSecs*(1-TOLERANCE_WIDE) && iv.duration <= expectedSecs*(1+TOLERANCE_WIDE)
+        : true;
+      const distOk = expectedMetres
+        ? iv.distance >= expectedMetres*(1-TOLERANCE_WIDE) && iv.distance <= expectedMetres*(1+TOLERANCE_WIDE)
+        : true;
+      return expectedSecs ? durOk : distOk;
+    }).map((iv, i) => ({ ...iv, num: i+1 }));
 
     if (!intervals.length) {
       const lenHint = hasLenHint ? ` with length ~${lenVal}${lenUnit}` : '';
@@ -5624,8 +5650,9 @@ function nextDBStep(currentKg) {
 }
 
 function prevDBStep(currentKg) {
-  const i = DB_STEPS.findLastIndex(s => s <= currentKg);
-  return i > 0 ? DB_STEPS[i-1] : null;
+  let idx = -1;
+  for (let i = 0; i < DB_STEPS.length; i++) { if (DB_STEPS[i] <= currentKg) idx = i; }
+  return idx > 0 ? DB_STEPS[idx-1] : null;
 }
 
 function linearTrend(values) {
