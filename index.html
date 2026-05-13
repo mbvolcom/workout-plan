@@ -1108,7 +1108,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-day-name { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; user-select:none; -webkit-user-select:none; }
 .mob-day-weather { margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap; }
 .mob-day-pills { padding:10px 14px; display:flex; flex-direction:column; gap:5px; }
-.mob-pill { border-radius:8px; padding:8px 12px; font-size:13px; font-weight:500; line-height:1.4; }
+.mob-pill { border-radius:8px; padding:8px 12px; font-size:13px; font-weight:500; line-height:1.4; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .mob-pill-sub { font-size:11px; opacity:0.8; display:block; margin-top:2px; }
 .mob-pill-target { font-size:11px; color:#0C447C; display:block; margin-top:1px; }
 .mob-rest { font-size:13px; color:var(--border-mid); font-style:italic; padding:4px 0; }
@@ -1180,7 +1180,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.5.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.6.0</div>
   </div>
   <div class="glass-soft hdr-weather" id="now-weather"></div>
   <div class="glass-soft hdr-count" id="countdown-banner">
@@ -2517,14 +2517,21 @@ function planBanner(planName, raceName, raceDate, goal) {
   return el;
 }
 
-// ── AUTOSAVE HOOK ─────────────────────────────────────────────────────────
-// Trigger autosave whenever renderWeek is called (means state changed)
+// ── AUTOSAVE + MOBILE SYNC HOOK ───────────────────────────────────────────
 const _origRenderWeek = renderWeek;
-let _renderWeekDepth = 0; // prevent recursive triggers during build()
+let _renderWeekDepth = 0;
+let _mobRefreshTimer = null;
 renderWeek = function(wi) {
   _origRenderWeek(wi);
-  if (typeof triggerAutosave === 'function' && _renderWeekDepth === 0) {
-    triggerAutosave();
+  if (_renderWeekDepth === 0) {
+    if (typeof triggerAutosave === 'function') triggerAutosave();
+    // Refresh mobile portrait view if active — debounced to batch rapid changes
+    if (typeof isMobilePortrait === 'function' && isMobilePortrait()) {
+      clearTimeout(_mobRefreshTimer);
+      _mobRefreshTimer = setTimeout(() => {
+        if (typeof renderMobileRaceWeek === 'function') renderMobileRaceWeek();
+      }, 80);
+    }
   }
 };
 
@@ -7332,8 +7339,10 @@ let showPastWeeks = false;
 
 function setCalMode(mode) {
   calMode = mode;
-  document.getElementById('view-btn-month').classList.toggle('active', mode === 'month');
-  document.getElementById('view-btn-race').classList.toggle('active',  mode === 'race');
+  // Update seg-tabs using 'on' class
+  document.getElementById('view-btn-month').classList.toggle('on', mode === 'month');
+  document.getElementById('view-btn-race').classList.toggle('on',  mode === 'race');
+  document.getElementById('view-btn-race').classList.toggle('race', true);
   document.getElementById('race-subtitle').style.display = mode === 'race' ? '' : 'none';
 
   if (mode === 'month') {
