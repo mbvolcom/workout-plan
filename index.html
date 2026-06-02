@@ -1708,10 +1708,10 @@ function typeToPrefix(type) {
   if (type === 'Kinder')  return 'kinder';
   return 'easy';
 }
-const STR_TYPES = [
+let STR_TYPES = [
   {key:'upper:Upper 1',cls:'upper'},{key:'upper:Upper 2',cls:'upper'},
   {key:'lower:Lower 1',cls:'lower'},{key:'lower:Lower 2',cls:'lower'},
-];
+]; // default fallback — repopulated live from Sterk Gutt routines in loadStrengthLibrary()
 const WIFE_TYPES = [
   {key:'early:Morning shift',         cls:'wife-early'},
   {key:'early:Morning shift (long)',  cls:'wife-early'},
@@ -2048,8 +2048,8 @@ function openAddModal(weekIdx, row, dayIdx) {
   });
   addLabelInput.oninput = () => {
     addLabelInput.dataset.auto = '0';
-    // Enable confirm as long as a type is selected
-    addConfirmBtn.disabled = !addSelectedKey;
+    // Enable confirm if a type is selected OR a custom label has been typed
+    addConfirmBtn.disabled = !addSelectedKey && !addLabelInput.value.trim();
   };
   addOverlay.classList.add('open');
   setTimeout(() => addLabelInput.focus(), 100);
@@ -2058,11 +2058,31 @@ function openAddModal(weekIdx, row, dayIdx) {
 }
 function closeAddModal() { addOverlay.classList.remove('open'); addTarget = null; addSelectedKey = null; }
 
+// Pick a sensible prefix (controls category + colour) for a custom label
+// when the user typed a name but didn't tap one of the type pills.
+function defaultPrefixForRow(row, label = '') {
+  const l = label.toLowerCase();
+  if (row === 'str' || row === 'str2') return l.includes('lower') ? 'lower' : 'upper';
+  if (row === 'runs') {
+    if (l.includes('long')) return 'long';
+    if (l.includes('race')) return 'race';
+    if (l.includes('kinder')) return 'kinder';
+    if (l.includes('threshold') || l.includes('interval') || l.includes('tempo') || l.includes('quality')) return 'quality';
+    return 'easy';
+  }
+  if (row === 'cross')  return 'cross';
+  if (row === 'kinder') return 'kgb';
+  if (row === 'wife')   return 'other';
+  return 'easy';
+}
+
 addConfirmBtn.addEventListener('click', e => {
   e.stopPropagation();
-  if (!addSelectedKey || !addTarget) return;
-  const prefix = addSelectedKey.split(':')[0];
-  const label  = addLabelInput.value.trim() || addSelectedKey.split(':')[1];
+  if (!addTarget) return;
+  const label = addLabelInput.value.trim() || (addSelectedKey ? addSelectedKey.split(':')[1] : '');
+  if (!label) return; // need at least a label
+  // Use the selected type's prefix, or derive one from the custom label
+  const prefix = addSelectedKey ? addSelectedKey.split(':')[0] : defaultPrefixForRow(addTarget.row, label);
   const { weekIdx, row, dayIdx } = addTarget;
   if (row === 'wife') wifeState[weekIdx][dayIdx] = prefix + ':' + label;
   else if (row === 'kinder') kinderState[weekIdx][dayIdx] = prefix + ':' + label;
@@ -3877,20 +3897,55 @@ function openWeather(dateStr) {
   weatherOverlay.classList.add('open');
 }
 
-// ── STRENGTH LIBRARY ───────────────────────────────────────────────────────
+// ── STRENGTH LIBRARY (live from Sterk Gutt) ────────────────────────────────
 let strengthLibrary = [];
+
+// Sterk Gutt is a separate Supabase project; the calendar reads its `routines`
+// table and uses them as the strength library. Routines are managed in the
+// Sterk Gutt app — here they are read-only. (SG_BASE / SG_KEY / SG_HDR are
+// already defined further down where the Sterk Gutt stats are fetched.)
+// Optional: set to your Sterk Gutt device id (localStorage 'sg_user_id') to scope
+// to just your routines. Leave null to load all routines (fine for a personal app).
+const SG_USER_ID = null;
+
+// Sterk Gutt routine exercises carry `sets` + `muscle` but no per-exercise reps
+// (reps are logged per set during a live session). Format accordingly.
+function fmtSetsReps(ex) {
+  if (ex.reps) return `${ex.sets}×${ex.reps}`;
+  if (ex.sets) return `${ex.sets} set${ex.sets == 1 ? '' : 's'}`;
+  return '';
+}
 
 async function loadStrengthLibrary() {
   try {
-    const res = await fetch(SUPA_BASE + 'strength_library?select=*&order=sort_order', { headers: SUPA_HDR });
-    if (!res.ok) throw new Error();
-    strengthLibrary = await res.json();
-    // Parse exercises if stored as string
-    strengthLibrary.forEach(e => {
-      if (typeof e.exercises === 'string') e.exercises = JSON.parse(e.exercises);
+    const filter = SG_USER_ID ? `&user_id=eq.${SG_USER_ID}` : '';
+    const res = await fetch(SG_BASE + `routines?select=*${filter}&order=created_at`, { headers: SG_HDR });
+    if (!res.ok) throw new Error('routines ' + res.status);
+    const routines = await res.json();
+    strengthLibrary = routines.map(r => {
+      let ex = r.exercises;
+      if (typeof ex === 'string') { try { ex = JSON.parse(ex); } catch { ex = []; } }
+      return {
+        id: r.id,
+        name: r.name,
+        exercises: (ex || []).map(x => ({
+          name: x.name,
+          sets: x.sets,
+          reps: x.reps != null ? x.reps : '',
+          muscle: x.muscle || '',
+        })),
+        _sg: true,
+      };
     });
-    console.log('Strength library loaded:', strengthLibrary.length, 'entries');
-  } catch(e) { console.warn('Failed to load strength library:', e); }
+    // Rebuild the add-modal / context-menu strength pills from the live routines
+    if (strengthLibrary.length) {
+      STR_TYPES = strengthLibrary.map(r => {
+        const isLower = r.name.toLowerCase().includes('lower');
+        return { key: (isLower ? 'lower' : 'upper') + ':' + r.name, cls: isLower ? 'lower' : 'upper' };
+      });
+    }
+    console.log('Strength routines loaded from Sterk Gutt:', strengthLibrary.length);
+  } catch(e) { console.warn('Failed to load Sterk Gutt routines:', e); }
 }
 
 function getStrengthEntry(label) {
@@ -3927,14 +3982,14 @@ function openStrPanel(label, wi, di) {
     const tagClass = isUpper ? 'upper' : '';
     workoutBody.innerHTML = `
       <table class="str-ex-table">
-        <thead><tr><th>#</th><th>Exercise</th><th>Sets</th><th>Reps</th></tr></thead>
+        <thead><tr><th>#</th><th>Exercise</th><th>Sets</th><th>${entry.exercises.some(x=>x.reps)?'Reps':'Muscle'}</th></tr></thead>
         <tbody>
           ${entry.exercises.map((ex, i) => `
             <tr>
               <td>${i+1}</td>
               <td>${ex.name}</td>
               <td><span class="str-ex-tag ${tagClass}">${ex.sets}×</span></td>
-              <td>${ex.reps}</td>
+              <td>${ex.reps || ex.muscle || ''}</td>
             </tr>`).join('')}
         </tbody>
       </table>`;
@@ -3974,18 +4029,21 @@ let editingStrId = null;
 
 function renderStrLibEntries() {
   const el = document.getElementById('str-lib-entries');
-  el.innerHTML = strengthLibrary.length
+  // Routines are sourced live from Sterk Gutt and are read-only here.
+  const note = '<div style="font-size:11px;color:var(--muted);padding:4px 0 10px;display:flex;gap:6px;align-items:center;">💪 Routines synced live from Sterk Gutt — edit them in that app.</div>';
+  el.innerHTML = note + (strengthLibrary.length
     ? strengthLibrary.map(e => `
-        <div class="lib-entry">
-          <span class="lib-entry-handle">⠿</span>
+        <div class="lib-entry" style="cursor:default;">
           <span class="lib-entry-name">${e.name}</span>
-          <span style="font-size:10px;color:var(--muted);margin-right:4px;">${e.exercises.length} exercises</span>
-          <div class="lib-entry-actions">
-            <button class="lib-entry-edit" onclick="editStrEntry('${e.id}')">✏️ Edit</button>
-            <button class="lib-entry-del" onclick="deleteStrEntry('${e.id}','${e.name.replace(/'/g,"\\'")}')">✕</button>
-          </div>
-        </div>`).join('')
-    : '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No strength workouts yet.</div>';
+          <span style="font-size:10px;color:var(--muted);margin-left:auto;">${(e.exercises||[]).length} exercises</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted2);padding:2px 0 8px 2px;">${(e.exercises||[]).map(x=>x.name).join(' · ')}</div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No routines found in Sterk Gutt.</div>');
+  // Hide the editor controls — strength is managed in Sterk Gutt now
+  const addBtn = document.getElementById('str-lib-add-btn');
+  if (addBtn) addBtn.style.display = 'none';
+  const form = document.getElementById('str-lib-form');
+  if (form) form.style.display = 'none';
 }
 
 function addStrExerciseRow(name='', sets='', reps='') {
@@ -7985,7 +8043,7 @@ function renderDayView() {
       html += `<div class="dv-card dv-str">
         <div class="dv-card-title">${sp.label}</div>`;
       if (entry && entry.exercises && entry.exercises.length) {
-        html += `<div class="dv-card-detail">${entry.exercises.map(ex=>`${ex.name} ${ex.sets}×${ex.reps}`).join(' · ')}</div>`;
+        html += `<div class="dv-card-detail">${entry.exercises.map(ex=>`${ex.name} ${fmtSetsReps(ex)}`).join(' · ')}</div>`;
       }
       html += `</div>`;
       // Strava strength
