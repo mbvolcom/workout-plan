@@ -1550,6 +1550,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .brief-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600; margin:1px 4px 1px 0; border:0.5px solid rgba(0,0,0,0.06); }
 .brief-alert { margin-top:12px; padding:9px 11px; border-radius:10px; background:#FFF3E0; color:#7B3200; font-size:12px; font-weight:600; display:flex; gap:7px; align-items:center; }
 .brief-empty { color:var(--muted); font-style:italic; font-size:12.5px; }
+.brief-row-tap { cursor:pointer; } .brief-row-tap:active { opacity:0.55; }
 
 /* ── SHOPPING LIST ───────────────────────────────────────────── */
 #shop-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
@@ -1559,6 +1560,7 @@ body.shop-mode #briefing-card { display:none !important; }
 .shop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; }
 .shop-head h2 { font-size:23px; font-weight:700; color:var(--ink-display); letter-spacing:-0.02em; }
 .shop-clear { background:none; border:0.5px solid var(--border-mid); border-radius:9px; padding:7px 13px; font-size:12px; color:var(--ink-sub); cursor:pointer; font-family:inherit; }
+.shop-clear.on { color:#fff; background:oklch(0.62 0.18 145); border-color:transparent; }
 .shop-add { display:flex; gap:8px; margin-bottom:16px; }
 .shop-add input { flex:1; height:44px; padding:0 15px; border-radius:13px; border:0.5px solid var(--border-mid); background:rgba(255,255,255,0.6); font:500 15px 'Inter Tight',system-ui,sans-serif; color:var(--text); }
 .shop-add input:focus { outline:none; border-color:var(--ink-sub); }
@@ -1592,7 +1594,10 @@ body.shop-mode #briefing-card { display:none !important; }
   <div class="shop-head">
     <button class="shop-clear" onclick="exitShop()">‹ Back</button>
     <h2>🛒 Shopping</h2>
-    <button class="shop-clear" onclick="clearBoughtItems()">Clear bought</button>
+    <div style="display:flex;gap:6px;">
+      <button class="shop-clear" id="shop-notif-btn" onclick="enableShoppingNotifications()">🔔 Notify</button>
+      <button class="shop-clear" onclick="clearBoughtItems()">Clear bought</button>
+    </div>
   </div>
   <div class="shop-add">
     <input id="shop-input" type="text" placeholder="Add item…" autocomplete="off" enterkeyhint="done"
@@ -7994,6 +7999,7 @@ function setView(view) {
   } else if (view === 'shop') {
     renderShoppingList();
     loadShoppingList();
+    updatePushButton();
   }
 }
 
@@ -8383,6 +8389,15 @@ function renderBriefing() {
     rows += briefRow('📅', 'Calendar', ev);
   }
 
+  // Shopping list reminder (shared, not day-specific) — tap to open the list
+  const pendingShop = (shoppingItems || []).filter(i => !i.done);
+  if (pendingShop.length) {
+    const preview = pendingShop.slice(0,3).map(i => escShop(i.item)).join(', ');
+    const more = pendingShop.length > 3 ? ` +${pendingShop.length-3}` : '';
+    const val = `${pendingShop.length} to buy<span style="color:var(--ink-meta);font-weight:400;"> · ${preview}${more}</span> ›`;
+    rows += `<div class="brief-row brief-row-tap" onclick="setView('shop')"><div class="ic">🛒</div><div class="bd"><div class="bl">Shopping</div><div class="bv">${val}</div></div></div>`;
+  }
+
   // Solo-evening heuristic (partner working evening / long / night)
   let alert = '';
   if (wifePrefix === 'eve' || wifePrefix === 'other') {
@@ -8429,6 +8444,7 @@ function renderShoppingList() {
   if (!el) return;
   if (!shoppingItems.length) {
     el.innerHTML = `<div class="shop-empty">List is empty — add something above.</div>`;
+    if (typeof renderBriefing === 'function') renderBriefing();
     return;
   }
   const pending = shoppingItems.filter(i => !i.done);
@@ -8442,6 +8458,7 @@ function renderShoppingList() {
   el.innerHTML =
     pending.map(row).join('') +
     (done.length ? `<div class="shop-count" style="margin:16px 0 7px;">${done.length} bought</div>` + done.map(row).join('') : '');
+  if (typeof renderBriefing === 'function') renderBriefing();
 }
 
 async function addShoppingItem() {
@@ -8489,6 +8506,81 @@ async function clearBoughtItems() {
   try {
     await fetch(SUPA_BASE + 'shopping_list?done=eq.true', { method:'DELETE', headers:SUPA_HDR });
   } catch(e) { console.warn('Clear failed:', e); loadShoppingList(); }
+}
+
+// ── PUSH NOTIFICATIONS (shopping list) ──────────────────────────────────────
+// Paste your VAPID public key here after generating the key pair (see setup guide).
+const VAPID_PUBLIC_KEY = 'BAwzeQiH_y267Wu4ZRuDtuhWq25T_rg6X17iaB3idKbuLRGGRT7ja7gfNTjNWjUAqdUy7PzOyI7hwcer9UARSUY';
+
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i=0; i<raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+function isStandalonePWA() {
+  return window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+
+async function pushStatus() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return sub ? 'on' : 'off';
+  } catch { return 'off'; }
+}
+
+async function updatePushButton(state) {
+  const btn = document.getElementById('shop-notif-btn');
+  if (!btn) return;
+  const s = state || await pushStatus();
+  if (s === 'unsupported') { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  btn.textContent = s === 'on' ? '🔔 On' : '🔔 Notify';
+  btn.classList.toggle('on', s === 'on');
+}
+
+async function enableShoppingNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('Push notifications aren\u2019t supported on this device or browser.'); return;
+  }
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !isStandalonePWA()) {
+    alert('On iPhone, first add this app to your Home Screen (Share \u2192 Add to Home Screen), then open it from there and tap \uD83D\uDD14 again.');
+    return;
+  }
+  if (VAPID_PUBLIC_KEY.startsWith('REPLACE')) {
+    alert('Notifications aren\u2019t set up yet \u2014 the VAPID key is missing.'); return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { alert('Notification permission was not granted.'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const subJson = sub.toJSON();
+    const res = await fetch(SUPA_BASE + 'push_subscriptions', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson })
+    });
+    if (!res.ok && res.status !== 409) throw new Error('save failed: ' + res.status);
+    updatePushButton('on');
+    alert('Notifications enabled \uD83C\uDF89 You\u2019ll get a heads-up when items are added to the list.');
+  } catch(e) {
+    console.warn('Enable notifications failed:', e);
+    alert('Could not enable notifications: ' + (e && e.message ? e.message : e));
+  }
 }
 
 // ── SERVICE WORKER ─────────────────────────────────────────────────────────
