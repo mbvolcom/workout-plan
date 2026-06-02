@@ -1215,6 +1215,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <button id="view-btn-calendar" onclick="setView('calendar')">☰ All</button>
     <button id="view-btn-week" onclick="setView('week')">📆 Week</button>
     <button id="view-btn-day" onclick="setView('day')">📋 Day</button>
+    <button id="view-btn-shop" onclick="setView('shop')">🛒 Shop</button>
   </div>
 </div>
 
@@ -1526,6 +1527,63 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       </table>
     </div>
   </div>
+</div>
+
+<style>
+/* ── FAMILY BRIEFING ─────────────────────────────────────────── */
+#briefing-card { margin:0 0 12px; padding:15px 17px; }
+.brief-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; }
+.brief-toggle { display:flex; gap:2px; padding:3px; border-radius:10px; background:rgba(255,255,255,0.3); border:0.5px solid rgba(255,255,255,0.4); }
+.brief-toggle button { appearance:none; border:0; background:transparent; cursor:pointer; padding:5px 13px; border-radius:8px; font:600 11px 'Inter Tight',system-ui,sans-serif; color:var(--ink-sub); }
+.brief-toggle button.on { background:rgba(255,255,255,0.72); color:var(--ink-display); box-shadow:0 1px 2px rgba(0,0,0,0.06); }
+.brief-date { font-size:13px; color:var(--ink-meta); font-weight:500; }
+.brief-grid { display:grid; gap:11px; }
+.brief-row { display:flex; align-items:flex-start; gap:11px; }
+.brief-row .ic { font-size:16px; line-height:1.3; flex-shrink:0; width:20px; text-align:center; }
+.brief-row .bd { flex:1; min-width:0; }
+.brief-row .bl { font-size:9.5px; letter-spacing:0.07em; text-transform:uppercase; color:var(--ink-meta); margin-bottom:2px; }
+.brief-row .bv { font-size:13px; color:var(--ink-display); font-weight:500; line-height:1.45; }
+.brief-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600; margin:1px 4px 1px 0; border:0.5px solid rgba(0,0,0,0.06); }
+.brief-alert { margin-top:12px; padding:9px 11px; border-radius:10px; background:#FFF3E0; color:#7B3200; font-size:12px; font-weight:600; display:flex; gap:7px; align-items:center; }
+.brief-empty { color:var(--muted); font-style:italic; font-size:12.5px; }
+
+/* ── SHOPPING LIST ───────────────────────────────────────────── */
+#shop-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
+body.shop-mode #desktop-cal-wrap, body.shop-mode #mobile-cal { display:none !important; }
+body.shop-mode #shop-view { display:block !important; }
+body.shop-mode #briefing-card { display:none !important; }
+.shop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; }
+.shop-head h2 { font-size:23px; font-weight:700; color:var(--ink-display); letter-spacing:-0.02em; }
+.shop-clear { background:none; border:0.5px solid var(--border-mid); border-radius:9px; padding:7px 13px; font-size:12px; color:var(--ink-sub); cursor:pointer; font-family:inherit; }
+.shop-add { display:flex; gap:8px; margin-bottom:16px; }
+.shop-add input { flex:1; height:44px; padding:0 15px; border-radius:13px; border:0.5px solid var(--border-mid); background:rgba(255,255,255,0.6); font:500 15px 'Inter Tight',system-ui,sans-serif; color:var(--text); }
+.shop-add input:focus { outline:none; border-color:var(--ink-sub); }
+.shop-add button { height:44px; padding:0 20px; border-radius:13px; border:0; background:linear-gradient(180deg,rgba(26,22,38,0.92),rgba(26,22,38,0.82)); color:#fff; font:600 15px 'Inter Tight',system-ui,sans-serif; cursor:pointer; }
+.shop-item { display:flex; align-items:center; gap:13px; padding:13px 15px; border-radius:13px; background:rgba(255,255,255,0.5); border:0.5px solid rgba(255,255,255,0.55); margin-bottom:8px; }
+.shop-item.done { opacity:0.55; }
+.shop-item .cb { width:26px; height:26px; border-radius:8px; border:1.5px solid var(--border-mid); flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:15px; background:rgba(255,255,255,0.5); color:#fff; }
+.shop-item.done .cb { background:oklch(0.62 0.18 145); border-color:transparent; }
+.shop-item .tx { flex:1; font-size:15px; color:var(--text); word-break:break-word; }
+.shop-item.done .tx { text-decoration:line-through; }
+.shop-item .rm { background:none; border:0; color:var(--muted2); font-size:22px; line-height:1; cursor:pointer; padding:2px 4px; flex-shrink:0; }
+.shop-count { font-size:12px; color:var(--ink-meta); letter-spacing:0.04em; }
+.shop-empty { text-align:center; color:var(--muted); padding:36px 0; font-size:14px; }
+</style>
+
+<div id="briefing-card" class="glass"></div>
+
+<div id="shop-view">
+  <div class="shop-head">
+    <button class="shop-clear" onclick="exitShop()">‹ Back</button>
+    <h2>🛒 Shopping</h2>
+    <button class="shop-clear" onclick="clearBoughtItems()">Clear bought</button>
+  </div>
+  <div class="shop-add">
+    <input id="shop-input" type="text" placeholder="Add item…" autocomplete="off" enterkeyhint="done"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();addShoppingItem();}"/>
+    <button onclick="addShoppingItem()">Add</button>
+  </div>
+  <div id="shop-list"></div>
 </div>
 
 <div id="desktop-cal-wrap">
@@ -2916,15 +2974,21 @@ if (_local) applyState(JSON.parse(_local));
   // 6. Fetch weather
   fetchWeather().then(() => {
     if (isMobilePortrait()) renderMobileRaceWeek();
+    renderBriefing();
   });
 
   // 7. Fetch Google Calendar events
   fetchGCal().then(() => {
     if (isMobilePortrait()) renderMobileRaceWeek();
+    renderBriefing();
   });
 
   // 8. Init mobile portrait view
   initMobileView();
+
+  // 9. Family briefing + shared shopping list
+  renderBriefing();
+  loadShoppingList();
 })();
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -7014,9 +7078,14 @@ function renderMobileView() {
     const btn = document.createElement('button');
     btn.className = 'mob-mode-btn' + (mobMode===m?' active':'');
     btn.textContent = m==='race' ? '🏃 Race' : '📅 Month';
-    btn.addEventListener('click', () => { mobMode=m; renderMobileView(); });
+    btn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode=m; renderMobileView(); });
     modeBar.appendChild(btn);
   });
+  const shopBtn = document.createElement('button');
+  shopBtn.className = 'mob-mode-btn';
+  shopBtn.textContent = '🛒 Shop';
+  shopBtn.addEventListener('click', () => setView('shop'));
+  modeBar.appendChild(shopBtn);
   mc.appendChild(modeBar);
 
   if (mobMode === 'race') renderMobileRaceWeek();
@@ -7397,6 +7466,8 @@ let showPastWeeks = false;
 
 function setCalMode(mode) {
   calMode = mode;
+  document.body.classList.remove('shop-mode');
+  const _shopBtn = document.getElementById('view-btn-shop'); if (_shopBtn) _shopBtn.classList.remove('active');
   // Update seg-tabs using 'on' class
   document.getElementById('view-btn-month').classList.toggle('on', mode === 'month');
   document.getElementById('view-btn-race').classList.toggle('on',  mode === 'race');
@@ -7767,13 +7838,14 @@ let dayViewDate = new Date(); // which day is shown in day view
 
 function setView(view) {
   currentView = view;
+  document.body.classList.toggle('shop-mode', view === 'shop');
   document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
-  document.getElementById('month-cal').style.display  = calMode === 'month' ? '' : 'none';
+  document.getElementById('month-cal').style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
   document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
   document.getElementById('day-view').style.display   = view === 'day'      ? '' : 'none';
-  ['calendar','week','day'].forEach(v => {
+  ['calendar','week','day','shop'].forEach(v => {
     const b = document.getElementById('view-btn-' + v);
-    if (b) b.classList.toggle('active', v === view && calMode !== 'month');
+    if (b) b.classList.toggle('active', v === view && (view === 'shop' || calMode !== 'month'));
   });
 
   if (view === 'week') {
@@ -7789,6 +7861,9 @@ function setView(view) {
   } else if (view === 'day') {
     dayViewDate = new Date();
     renderDayView();
+  } else if (view === 'shop') {
+    renderShoppingList();
+    loadShoppingList();
   }
 }
 
@@ -8074,6 +8149,202 @@ function renderDayView() {
   }
 
   container.innerHTML = html;
+}
+
+// ── FAMILY BRIEFING ─────────────────────────────────────────────────────────
+let briefingDay = 'today'; // 'today' | 'tomorrow'
+
+// Map a Date to its (week index, day index) in the plan grid
+function resolveWeekDay(dt) {
+  let wi = -1, di = -1;
+  WEEK_MONDAYS.forEach(([y,m,d], i) => {
+    DAYS.forEach((_, j) => {
+      const day = new Date(y,m-1,d+j);
+      if (day.toDateString() === dt.toDateString()) { wi=i; di=j; }
+    });
+  });
+  return { wi, di };
+}
+
+function kinderDutyLabel(val) {
+  if (!val) return null;
+  const map = { kgd:'Drop-off', kgp:'Pick-up', kgx:'Drop-off & pick-up', kgb:null };
+  const prefix = val.split(':')[0];
+  if (prefix in map) return map[prefix];
+  const p = parse(val); return p ? p.label : null;
+}
+
+const BRIEF_PILL_VAR = { easy:'easy', quality:'qual', long:'long', race:'race', kinder:'kind', upper:'upp', lower:'low', cross:'cross' };
+function briefTrainPill(val) {
+  const p = parse(val); if (!p) return '';
+  const stem = BRIEF_PILL_VAR[val.split(':')[0]] || 'easy';
+  return `<span class="brief-pill" style="background:var(--${stem}-bg);color:var(--${stem}-c);">${p.label}</span>`;
+}
+
+function briefRow(ic, label, val) {
+  return `<div class="brief-row"><div class="ic">${ic}</div><div class="bd"><div class="bl">${label}</div><div class="bv">${val}</div></div></div>`;
+}
+
+function renderBriefing() {
+  const card = document.getElementById('briefing-card');
+  if (!card) return;
+
+  const dt = new Date(); dt.setHours(12,0,0,0);
+  if (briefingDay === 'tomorrow') dt.setDate(dt.getDate()+1);
+  const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  const dayName = dt.toLocaleDateString('en-GB',{weekday:'long'});
+  const dateLabel = dt.toLocaleDateString('en-GB',{day:'numeric',month:'long'});
+  const { wi, di } = resolveWeekDay(dt);
+
+  let rows = '';
+
+  // Weather (midday window)
+  const dw = weatherData[dateStr];
+  if (dw && dw.length) {
+    const mid = dw.filter(e => e.hour>=10 && e.hour<=16);
+    const pick = mid.length ? mid : dw;
+    const temps = pick.map(e=>e.temp).filter(v=>v!=null);
+    const winds = pick.map(e=>e.wind).filter(v=>v!=null);
+    const sym = pick.find(e=>e.symbol)?.symbol;
+    const t = temps.length ? Math.round(temps.reduce((a,b)=>a+b,0)/temps.length) : null;
+    const w = winds.length ? Math.round(winds.reduce((a,b)=>a+b,0)/winds.length) : null;
+    if (t != null) rows += briefRow(yrSymbol(sym) || '🌡️', 'Weather', `${t}°${w!=null ? ` · ${w} m/s wind` : ''}`);
+  }
+
+  // Partner's shift
+  let wifePrefix = null;
+  if (wi>=0 && wifeState[wi][di]) {
+    const wp = parse(wifeState[wi][di]);
+    wifePrefix = wifeState[wi][di].split(':')[0];
+    if (wp) rows += briefRow('👩', 'Partner', translateShift(wp.label));
+  } else {
+    rows += briefRow('👩', 'Partner', '<span class="brief-empty">Not working</span>');
+  }
+
+  // Kindergarten duty
+  const kg = wi>=0 ? kinderDutyLabel(kinderState[wi][di]) : null;
+  if (kg) rows += briefRow('🎒', 'Kindergarten', kg);
+
+  // Your training
+  let pills = '';
+  if (wi>=0 && state[wi].runs[di]) pills += briefTrainPill(state[wi].runs[di]);
+  if (wi>=0 && state[wi].str[di])  pills += briefTrainPill(state[wi].str[di]);
+  if (wi>=0 && state[wi].cross && state[wi].cross[di]) pills += briefTrainPill(state[wi].cross[di]);
+  rows += briefRow('🏃', 'Your training', pills || '<span class="brief-empty">Rest day</span>');
+
+  // Calendar events
+  const evts = gcalEvents[dateStr] || [];
+  if (evts.length) {
+    const ev = evts.map(e => `${e.isAllDay ? '' : (e.startTime ? e.startTime+' · ' : '')}${e.summary}`).join('<br>');
+    rows += briefRow('📅', 'Calendar', ev);
+  }
+
+  // Solo-evening heuristic (partner working evening / long / night)
+  let alert = '';
+  if (wifePrefix === 'eve' || wifePrefix === 'other') {
+    alert = `<div class="brief-alert">🧒 You're likely on kids tonight — partner working late.</div>`;
+  }
+
+  card.innerHTML = `
+    <div class="brief-top">
+      <div class="brief-toggle">
+        <button class="${briefingDay==='today'?'on':''}" onclick="briefingDay='today';renderBriefing()">Today</button>
+        <button class="${briefingDay==='tomorrow'?'on':''}" onclick="briefingDay='tomorrow';renderBriefing()">Tomorrow</button>
+      </div>
+      <div class="brief-date">${dayName} ${dateLabel}</div>
+    </div>
+    <div class="brief-grid">${rows}</div>
+    ${alert}`;
+}
+
+// ── SHOPPING LIST (shared, synced via Supabase) ─────────────────────────────
+let shoppingItems = [];
+
+function exitShop() {
+  document.body.classList.remove('shop-mode');
+  const b = document.getElementById('view-btn-shop'); if (b) b.classList.remove('active');
+  if (isMobilePortrait()) renderMobileView();
+  else setView('calendar');
+}
+
+function escShop(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function loadShoppingList() {
+  try {
+    const res = await fetch(SUPA_BASE + 'shopping_list?select=*&order=created_at', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error('shopping_list ' + res.status);
+    shoppingItems = await res.json();
+    renderShoppingList();
+  } catch(e) { console.warn('Failed to load shopping list:', e); }
+}
+
+function renderShoppingList() {
+  const el = document.getElementById('shop-list');
+  if (!el) return;
+  if (!shoppingItems.length) {
+    el.innerHTML = `<div class="shop-empty">List is empty — add something above.</div>`;
+    return;
+  }
+  const pending = shoppingItems.filter(i => !i.done);
+  const done    = shoppingItems.filter(i => i.done);
+  const row = i => `
+    <div class="shop-item ${i.done?'done':''}">
+      <div class="cb" onclick="toggleShoppingItem('${i.id}',${!i.done})">${i.done?'✓':''}</div>
+      <div class="tx">${escShop(i.item)}</div>
+      <button class="rm" onclick="deleteShoppingItem('${i.id}')">×</button>
+    </div>`;
+  el.innerHTML =
+    pending.map(row).join('') +
+    (done.length ? `<div class="shop-count" style="margin:16px 0 7px;">${done.length} bought</div>` + done.map(row).join('') : '');
+}
+
+async function addShoppingItem() {
+  const input = document.getElementById('shop-input');
+  const text = (input.value || '').trim();
+  if (!text) return;
+  input.value = '';
+  const temp = { id:'tmp_'+Date.now(), item:text, done:false };
+  shoppingItems.push(temp); renderShoppingList();
+  try {
+    const res = await fetch(SUPA_BASE + 'shopping_list', {
+      method:'POST', headers:{...SUPA_HDR, 'Prefer':'return=representation'},
+      body: JSON.stringify({ item:text, done:false })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const saved = (await res.json())[0];
+    const idx = shoppingItems.findIndex(i => i.id === temp.id);
+    if (idx>=0 && saved) shoppingItems[idx] = saved;
+    renderShoppingList();
+  } catch(e) { console.warn('Add item failed:', e); loadShoppingList(); }
+}
+
+async function toggleShoppingItem(id, done) {
+  const it = shoppingItems.find(i => i.id === id); if (it) it.done = done;
+  renderShoppingList();
+  try {
+    await fetch(SUPA_BASE + 'shopping_list?id=eq.' + id, {
+      method:'PATCH', headers:SUPA_HDR, body: JSON.stringify({ done })
+    });
+  } catch(e) { console.warn('Toggle failed:', e); loadShoppingList(); }
+}
+
+async function deleteShoppingItem(id) {
+  shoppingItems = shoppingItems.filter(i => i.id !== id);
+  renderShoppingList();
+  try {
+    await fetch(SUPA_BASE + 'shopping_list?id=eq.' + id, { method:'DELETE', headers:SUPA_HDR });
+  } catch(e) { console.warn('Delete failed:', e); loadShoppingList(); }
+}
+
+async function clearBoughtItems() {
+  if (!shoppingItems.some(i => i.done)) return;
+  shoppingItems = shoppingItems.filter(i => !i.done);
+  renderShoppingList();
+  try {
+    await fetch(SUPA_BASE + 'shopping_list?done=eq.true', { method:'DELETE', headers:SUPA_HDR });
+  } catch(e) { console.warn('Clear failed:', e); loadShoppingList(); }
 }
 
 // ── SERVICE WORKER ─────────────────────────────────────────────────────────
