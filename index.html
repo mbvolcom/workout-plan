@@ -1180,7 +1180,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.7.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.8.0</div>
   </div>
   <div class="glass-soft hdr-weather" id="now-weather"></div>
   <div class="glass-soft hdr-count" id="countdown-banner">
@@ -1412,6 +1412,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <div id="lib-tabs">
       <button class="lib-tab-btn active" data-tab="run">🏃 Run</button>
       <button class="lib-tab-btn" data-tab="strength">💪 Strength</button>
+      <button class="lib-tab-btn" data-tab="recipes">🍽 Recipes</button>
     </div>
 
     <!-- RUN TAB -->
@@ -1452,6 +1453,45 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
           <button id="slf-save">Save</button>
         </div>
       </div>
+    </div>
+
+    <!-- RECIPES TAB -->
+    <div id="lib-tab-recipes" class="lib-tab-panel">
+      <div id="recipe-lib-entries"></div>
+      <button id="recipe-lib-add-btn" style="background:var(--text);color:var(--bg);border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px;">＋ Add recipe</button>
+      <div id="recipe-lib-form" style="display:none;background:var(--bg);border-radius:10px;padding:14px;margin-top:12px;">
+        <div class="lib-form-row"><label>Recipe name</label><input id="rlf-name" type="text" placeholder="e.g. Chicken tikka masala"/></div>
+        <div class="lib-form-row">
+          <label>Ingredients <span style="font-weight:400;color:var(--muted2);">(one per line)</span></label>
+          <textarea id="rlf-ingredients" class="recipe-ing-input" placeholder="Chicken breast&#10;Coconut milk&#10;Tinned tomatoes&#10;Garam masala"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+          <button id="rlf-cancel" style="border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(0,0,0,0.06);">Cancel</button>
+          <button id="rlf-save"   style="border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--text);color:var(--bg);">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MEAL MODAL -->
+<div id="meal-modal-overlay">
+  <div id="meal-modal">
+    <div class="meal-modal-header">
+      <div class="meal-modal-title" id="meal-modal-date">Plan dinner</div>
+      <button class="meal-modal-close" id="meal-modal-close">✕</button>
+    </div>
+    <div class="meal-section">
+      <div class="meal-section-label">Free text</div>
+      <input id="meal-text-input" class="meal-text-input" type="text" placeholder="e.g. Frozen pizza, Leftovers, Takeaway…" autocomplete="off" enterkeyhint="done"/>
+    </div>
+    <div class="meal-divider">or pick a recipe</div>
+    <div class="meal-section">
+      <div id="meal-recipe-list"></div>
+    </div>
+    <div class="meal-modal-actions">
+      <button id="meal-clear-btn">🗑 Clear</button>
+      <button id="meal-save-btn">Save</button>
     </div>
   </div>
 </div>
@@ -1586,6 +1626,51 @@ body.shop-mode #briefing-card { display:none !important; }
 .str-logged-ex-name { font-size:14px; font-weight:600; color:var(--ink-display); }
 .str-logged-sets { display:flex; flex-wrap:wrap; gap:6px; }
 .str-set-chip { background:rgba(0,0,0,0.05); border:0.5px solid var(--border-mid); border-radius:7px; padding:3px 8px; font-size:11px; color:var(--ink-sub); }
+
+/* ── MEAL PLANNING ───────────────────────────────────────────── */
+.row-lbl.m { background:linear-gradient(135deg,#FFF3E0,#FFE0B2); color:#7B3200; }
+.pill.meal-text   { background:linear-gradient(180deg,#FFF8E1,#FFE082); color:#7A4100; border-color:#F0B429; }
+.pill.meal-recipe { background:linear-gradient(180deg,#FFF3E0,#FFCC80); color:#7B3200; border-color:#FB8C00; }
+.meal-zone { cursor:pointer; min-height:28px; display:flex; align-items:center; }
+.mob-pill-meal { background:#FFF8E1; color:#7A4100; border:0.5px solid #F0B429; border-radius:8px; padding:8px 12px; cursor:pointer; }
+
+/* Meal modal */
+#meal-modal-overlay { display:none; position:fixed; inset:0; z-index:15000; background:rgba(0,0,0,0.45); align-items:flex-end; justify-content:center; padding:0; }
+#meal-modal-overlay.open { display:flex; }
+#meal-modal { background:#fff; color:var(--text); width:100%; max-width:520px; max-height:80vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:20px 20px 36px; }
+.meal-modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.meal-modal-title { font-size:15px; font-weight:700; color:var(--ink-display); }
+.meal-modal-close { background:none; border:none; font-size:20px; color:var(--muted); cursor:pointer; }
+.meal-section { margin-bottom:16px; }
+.meal-section-label { font-size:11px; letter-spacing:0.07em; text-transform:uppercase; color:var(--ink-meta); margin-bottom:6px; }
+.meal-text-input { width:100%; padding:10px 12px; border-radius:10px; border:0.5px solid var(--border-mid); font:500 14px inherit; color:var(--text); background:rgba(0,0,0,0.03); }
+.meal-text-input:focus { outline:none; border-color:#FB8C00; }
+.meal-divider { text-align:center; color:var(--muted2); font-size:12px; margin:14px 0; position:relative; }
+.meal-divider::before,.meal-divider::after { content:''; position:absolute; top:50%; width:42%; height:1px; background:var(--border-mid); }
+.meal-divider::before { left:0; } .meal-divider::after { right:0; }
+.meal-recipe-row { display:flex; align-items:center; padding:10px 12px; border-radius:10px; cursor:pointer; border:0.5px solid var(--border-mid); margin-bottom:7px; background:rgba(255,243,224,0.4); gap:10px; }
+.meal-recipe-row:active,.meal-recipe-row.selected { background:#FFF3E0; border-color:#FB8C00; }
+.meal-recipe-row .rr-name { font-size:14px; font-weight:600; color:var(--ink-display); flex:1; }
+.meal-recipe-row .rr-ing { font-size:11px; color:var(--ink-meta); }
+.meal-modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+.meal-modal-actions button { padding:9px 20px; border-radius:10px; border:none; font:600 14px inherit; cursor:pointer; }
+#meal-clear-btn { background:var(--red-dim,#FFE5E5); color:var(--red,#C00); }
+#meal-save-btn  { background:linear-gradient(180deg,rgba(26,22,38,0.92),rgba(26,22,38,0.82)); color:#fff; }
+.meal-no-recipes { color:var(--muted); font-size:13px; padding:4px 0; }
+
+/* Day view meal card */
+.dv-meal { border-left:3px solid #FB8C00; }
+.dv-add-ingredients-btn { margin-top:8px; padding:7px 14px; border-radius:10px; border:none; background:#FFF3E0; color:#7B3200; font:600 12px inherit; cursor:pointer; }
+
+/* Recipe library */
+.recipe-ing-input { width:100%; padding:8px 10px; border-radius:8px; border:0.5px solid var(--border-mid); font:14px inherit; color:var(--text); background:rgba(0,0,0,0.03); min-height:80px; resize:vertical; }
+.recipe-entry { padding:10px 0; border-bottom:0.5px solid var(--border-mid); }
+.recipe-entry:last-child { border-bottom:none; }
+.recipe-entry-head { display:flex; align-items:center; gap:8px; }
+.recipe-entry-name { font-size:14px; font-weight:600; color:var(--ink-display); flex:1; }
+.recipe-entry-ing { font-size:11px; color:var(--ink-meta); margin-top:2px; }
+.recipe-entry-actions { display:flex; gap:6px; }
+.recipe-entry-actions button { background:none; border:0.5px solid var(--border-mid); border-radius:7px; padding:4px 10px; font-size:11px; color:var(--ink-sub); cursor:pointer; font-family:inherit; }
 </style>
 
 <div id="briefing-card" class="glass"></div>
@@ -1724,6 +1809,9 @@ const state     = WEEKS.map(w => ({ runs:[...w.runs], str:[...w.str], str2:Array
 const wifeState  = WEEKS.map(w => [...w.wife]);
 // kinderState: null = auto-derive from wife, otherwise manual override string
 const kinderState = WEEKS.map(() => [null,null,null,null,null,null,null]);
+
+// mealState: null = no meal planned, 'text:Name' = free text, 'recipe:UUID:Name' = recipe-linked
+const mealState = WEEKS.map(() => Array(7).fill(null));
 
 // Derive kindergarten value from a wife shift code (Mon-Fri only)
 function kinderFromWife(wifeVal, dayIdx) {
@@ -2349,7 +2437,7 @@ function renderWeek(wi) {
   container.innerHTML = '';
   const isCollapsed = collapsedWeeks.has(wi);
 
-  ['date','gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
+  ['date','gcal','wife','kinder','meal','runs','str','cross'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + ((ri > 0 && isCollapsed) ? ' collapsed-row' : '');
 
@@ -2403,8 +2491,8 @@ function renderWeek(wi) {
     } else {
       rowEl.appendChild(document.createElement('div')); // meta spacer
       const lbl = document.createElement('div');
-      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
-      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':'Cross';
+      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':row==='meal'?'m':'x');
+      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':row==='meal'?'Dinner':'Cross';
       rowEl.appendChild(lbl);
 
       if (row === 'gcal') {
@@ -2463,6 +2551,21 @@ function renderWeek(wi) {
             zone.addEventListener('dragover', onDragOver);
             zone.addEventListener('dragleave', onDragLeave);
             zone.addEventListener('drop', onDrop);
+          }
+          rowEl.appendChild(zone);
+        } else if (row === 'meal') {
+          const zone = document.createElement('div');
+          zone.className = 'drop-zone meal-zone';
+          const m = parseMeal(mealState[wi][di]);
+          if (m) {
+            const el = document.createElement('span');
+            el.className = 'pill ' + (m.type==='recipe' ? 'meal-recipe' : 'meal-text');
+            el.textContent = (m.type==='recipe' ? '🍽 ' : '🍴 ') + m.name;
+            el.title = m.name;
+            el.addEventListener('click', e => { e.stopPropagation(); openMealModal(wi, di); });
+            zone.appendChild(el);
+          } else {
+            zone.addEventListener('click', () => openMealModal(wi, di));
           }
           rowEl.appendChild(zone);
         } else {
@@ -2769,7 +2872,7 @@ function showAutosaveStatus(status) {
 
 async function saveState() {
   showAutosaveStatus('pending');
-  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi] }));
+  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi], meal:mealState[wi] }));
   localStorage.setItem('training-cal-2026', JSON.stringify(data));
   try {
     const res = await fetch(SUPA_BASE+'calendar_state?on_conflict=id', {
@@ -2802,6 +2905,7 @@ function applyState(saved) {
       if (s.cross)  state[wi].cross = s.cross;
       if (s.wife)   wifeState[wi]   = s.wife;
       if (s.kinder) kinderState[wi] = s.kinder;
+      if (s.meal)   mealState[wi]   = s.meal;
     }
   });
 }
@@ -3012,9 +3116,10 @@ if (_local) applyState(JSON.parse(_local));
   // 8. Init mobile portrait view
   initMobileView();
 
-  // 9. Family briefing + shared shopping list
+  // 9. Family briefing + shared shopping list + recipe library
   renderBriefing();
   loadShoppingList();
+  loadRecipeLibrary();
 })();
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -5230,6 +5335,7 @@ async function openLibModal() {
   libFolders.forEach(f => collapsedFolders.add(f));
   renderLibEntries();
   renderStrLibEntries();
+  loadRecipeLibrary().then(renderRecipeLibEntries);
   document.getElementById('lib-form').style.display = 'none';
   document.getElementById('str-lib-form').style.display = 'none';
 }
@@ -7442,6 +7548,21 @@ function renderMobileRaceWeek() {
       pills.appendChild(kinderP);
     }
 
+    // Dinner
+    const mealVal = mealState[wi] && mealState[wi][di];
+    const mobMeal = parseMeal(mealVal);
+    if (mobMeal) {
+      const mealP = document.createElement('div'); mealP.className='mob-pill mob-pill-meal';
+      mealP.textContent = (mobMeal.type==='recipe'?'🍽 ':'🍴 ') + mobMeal.name;
+      mealP.addEventListener('click', () => openMealModal(wi, di));
+      pills.appendChild(mealP);
+    } else {
+      const mealP = document.createElement('div'); mealP.className='mob-pill mob-pill-meal';
+      mealP.innerHTML=`<span style="color:var(--border-mid);">🍴 Tap to plan dinner</span>`;
+      mealP.addEventListener('click', () => openMealModal(wi, di));
+      pills.appendChild(mealP);
+    }
+
     // Run
     const run=s.runs[di];
     const runP = document.createElement('div');
@@ -7856,14 +7977,14 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
   container.appendChild(sumWrap);
 
   // All rows — blank out days not in this month
-  ['gcal','wife','kinder','runs','str','cross'].forEach((row, ri) => {
+  ['gcal','wife','kinder','meal','runs','str','cross'].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + (isCollapsed ? ' collapsed-row' : '');
     rowEl.appendChild(document.createElement('div')); // meta spacer
 
     const lbl = document.createElement('div');
-    lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':'x');
-    lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':'Cross';
+    lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':row==='meal'?'m':'x');
+    lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':row==='meal'?'Dinner':'Cross';
     rowEl.appendChild(lbl);
 
     days.forEach((dt, di) => {
@@ -7934,6 +8055,21 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
           zone.addEventListener('dragleave', onDragLeave);
           zone.addEventListener('drop', onDrop);
           addEmptyZoneListeners(zone, wi, 'kinder');
+        }
+        rowEl.appendChild(zone);
+      } else if (row === 'meal') {
+        const zone = document.createElement('div');
+        zone.className = 'drop-zone meal-zone';
+        const m = parseMeal(mealState[wi] && mealState[wi][di]);
+        if (m) {
+          const el = document.createElement('span');
+          el.className = 'pill ' + (m.type==='recipe' ? 'meal-recipe' : 'meal-text');
+          el.textContent = (m.type==='recipe' ? '🍽 ' : '🍴 ') + m.name;
+          el.title = m.name;
+          el.addEventListener('click', e => { e.stopPropagation(); openMealModal(wi, di); });
+          zone.appendChild(el);
+        } else {
+          zone.addEventListener('click', () => openMealModal(wi, di));
         }
         rowEl.appendChild(zone);
       } else {
@@ -8244,8 +8380,22 @@ function renderDayView() {
   }
   html += `</div>`;
 
-  // Strength
-  html += `<div class="dv-section"><div class="dv-section-title">Strength</div>`;
+  // Dinner
+  const dvMeal = wi>=0 && di>=0 ? parseMeal(mealState[wi][di]) : null;
+  if (dvMeal) {
+    html += `<div class="dv-section"><div class="dv-section-title">Dinner</div>`;
+    html += `<div class="dv-card dv-meal">
+      <div class="dv-card-title">${dvMeal.type==='recipe'?'🍽 ':'🍴 '}${dvMeal.name}</div>`;
+    if (dvMeal.type === 'recipe') {
+      const dvRecipe = recipeLibrary.find(r => r.id === dvMeal.id);
+      if (dvRecipe && dvRecipe.ingredients && dvRecipe.ingredients.length) {
+        const ingList = dvRecipe.ingredients.join(', ');
+        html += `<div class="dv-card-detail">${ingList}</div>
+          <button class="dv-add-ingredients-btn" onclick="addIngredientsToList('${dvMeal.id}')">🛒 Add ingredients to shopping list</button>`;
+      }
+    }
+    html += `</div></div>`;
+  }
   let strInner = '';
   if (wi >= 0 && di >= 0 && state[wi].str[di]) {
     const sp = parse(state[wi].str[di]);
@@ -8404,6 +8554,16 @@ function renderBriefing() {
     alert = `<div class="brief-alert">🧒 You're likely on kids tonight — partner working late.</div>`;
   }
 
+  // Dinner plan
+  const bMeal = wi>=0 ? parseMeal(mealState[wi][di]) : null;
+  if (bMeal) {
+    let mealVal = `${bMeal.type==='recipe'?'🍽 ':'🍴 '}${bMeal.name}`;
+    if (bMeal.type === 'recipe') {
+      mealVal += ` <span class="brief-row-tap" onclick="addIngredientsToList('${bMeal.id}')" style="font-size:11px;margin-left:4px;">🛒 Add</span>`;
+    }
+    rows += briefRow('🍽', 'Dinner', mealVal);
+  }
+
   card.innerHTML = `
     <div class="brief-top">
       <div class="brief-toggle">
@@ -8506,6 +8666,221 @@ async function clearBoughtItems() {
   try {
     await fetch(SUPA_BASE + 'shopping_list?done=eq.true', { method:'DELETE', headers:SUPA_HDR });
   } catch(e) { console.warn('Clear failed:', e); loadShoppingList(); }
+}
+
+// ── MEAL PLANNING ──────────────────────────────────────────────────────────
+function parseMeal(val) {
+  if (!val) return null;
+  if (val.startsWith('recipe:')) {
+    const rest = val.slice(7);
+    const colon = rest.indexOf(':');
+    if (colon < 0) return null;
+    return { type:'recipe', id: rest.slice(0, colon), name: rest.slice(colon+1) };
+  }
+  return { type:'text', name: val.startsWith('text:') ? val.slice(5) : val };
+}
+
+let _mealTarget = null;
+let _mealSelectedRecipe = null; // {id, name}
+
+function openMealModal(wi, di) {
+  _mealTarget = { wi, di };
+  _mealSelectedRecipe = null;
+  const [y,m,d] = WEEK_MONDAYS[wi];
+  const dt = new Date(y,m-1,d+di);
+  document.getElementById('meal-modal-date').textContent =
+    'Dinner — ' + dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+
+  // Pre-fill from existing value
+  const existing = parseMeal(mealState[wi][di]);
+  const textInput = document.getElementById('meal-text-input');
+  textInput.value = '';
+  if (existing) {
+    if (existing.type === 'text') textInput.value = existing.name;
+    else _mealSelectedRecipe = { id: existing.id, name: existing.name };
+  }
+  textInput.oninput = () => { if (textInput.value.trim()) _mealSelectedRecipe = null; renderMealRecipeList(); };
+
+  renderMealRecipeList();
+  document.getElementById('meal-modal-overlay').classList.add('open');
+  setTimeout(() => textInput.focus(), 80);
+}
+
+function renderMealRecipeList() {
+  const list = document.getElementById('meal-recipe-list');
+  if (!list) return;
+  if (!recipeLibrary.length) {
+    list.innerHTML = `<div class="meal-no-recipes">No recipes yet — add some in Library → 🍽 Recipes.</div>`;
+    return;
+  }
+  list.innerHTML = recipeLibrary.map(r => {
+    const ingPreview = (r.ingredients||[]).slice(0,4).join(', ') + (r.ingredients&&r.ingredients.length>4?' +more':'');
+    const sel = _mealSelectedRecipe && _mealSelectedRecipe.id === r.id ? ' selected' : '';
+    return `<div class="meal-recipe-row${sel}" onclick="selectMealRecipe('${r.id}','${escShop(r.name)}')">
+      <div>
+        <div class="rr-name">🍽 ${r.name}</div>
+        <div class="rr-ing">${ingPreview}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectMealRecipe(id, name) {
+  _mealSelectedRecipe = { id, name };
+  document.getElementById('meal-text-input').value = '';
+  renderMealRecipeList();
+}
+
+document.getElementById('meal-modal-close').addEventListener('click', () => {
+  document.getElementById('meal-modal-overlay').classList.remove('open');
+});
+document.getElementById('meal-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('meal-modal-overlay'))
+    document.getElementById('meal-modal-overlay').classList.remove('open');
+});
+
+document.getElementById('meal-clear-btn').addEventListener('click', () => {
+  if (!_mealTarget) return;
+  const { wi, di } = _mealTarget;
+  mealState[wi][di] = null;
+  renderWeek(wi); triggerAutosave();
+  document.getElementById('meal-modal-overlay').classList.remove('open');
+  renderBriefing();
+});
+
+document.getElementById('meal-save-btn').addEventListener('click', () => {
+  if (!_mealTarget) return;
+  const { wi, di } = _mealTarget;
+  const text = document.getElementById('meal-text-input').value.trim();
+  if (_mealSelectedRecipe) {
+    mealState[wi][di] = `recipe:${_mealSelectedRecipe.id}:${_mealSelectedRecipe.name}`;
+  } else if (text) {
+    mealState[wi][di] = `text:${text}`;
+  } else {
+    mealState[wi][di] = null;
+  }
+  renderWeek(wi); triggerAutosave();
+  document.getElementById('meal-modal-overlay').classList.remove('open');
+  renderBriefing();
+  if (currentView === 'day') renderDayView();
+});
+
+// ── RECIPE LIBRARY ──────────────────────────────────────────────────────────
+let recipeLibrary = [];
+let _editingRecipeId = null;
+
+async function loadRecipeLibrary() {
+  try {
+    const res = await fetch(SUPA_BASE + 'recipes?select=*&order=name', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error('recipes ' + res.status);
+    const rows = await res.json();
+    recipeLibrary = rows.map(r => ({
+      ...r,
+      ingredients: Array.isArray(r.ingredients) ? r.ingredients : (typeof r.ingredients === 'string' ? r.ingredients.split('\n').map(s=>s.trim()).filter(Boolean) : [])
+    }));
+  } catch(e) { console.warn('Recipe library load failed:', e); }
+}
+
+function renderRecipeLibEntries() {
+  const el = document.getElementById('recipe-lib-entries');
+  if (!el) return;
+  if (!recipeLibrary.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No recipes yet. Add your first one below.</div>';
+    return;
+  }
+  el.innerHTML = recipeLibrary.map(r => `
+    <div class="recipe-entry">
+      <div class="recipe-entry-head">
+        <span class="recipe-entry-name">🍽 ${r.name}</span>
+        <div class="recipe-entry-actions">
+          <button onclick="editRecipeEntry('${r.id}')">✏️ Edit</button>
+          <button onclick="deleteRecipeEntry('${r.id}','${escShop(r.name)}')">✕</button>
+        </div>
+      </div>
+      <div class="recipe-entry-ing">${(r.ingredients||[]).join(' · ')}</div>
+    </div>`).join('');
+}
+
+document.getElementById('recipe-lib-add-btn').addEventListener('click', () => {
+  _editingRecipeId = null;
+  document.getElementById('rlf-name').value = '';
+  document.getElementById('rlf-ingredients').value = '';
+  document.getElementById('recipe-lib-form').style.display = 'block';
+  document.getElementById('recipe-lib-add-btn').style.display = 'none';
+  document.getElementById('rlf-name').focus();
+});
+document.getElementById('rlf-cancel').addEventListener('click', () => {
+  document.getElementById('recipe-lib-form').style.display = 'none';
+  document.getElementById('recipe-lib-add-btn').style.display = '';
+});
+document.getElementById('rlf-save').addEventListener('click', async () => {
+  const name = document.getElementById('rlf-name').value.trim();
+  if (!name) { alert('Please enter a recipe name.'); return; }
+  const ingredients = document.getElementById('rlf-ingredients').value
+    .split('\n').map(s=>s.trim()).filter(Boolean);
+  const btn = document.getElementById('rlf-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (_editingRecipeId) {
+      await fetch(SUPA_BASE + 'recipes?id=eq.' + _editingRecipeId, {
+        method:'PATCH', headers: SUPA_HDR, body: JSON.stringify({ name, ingredients })
+      });
+    } else {
+      await fetch(SUPA_BASE + 'recipes', {
+        method:'POST', headers: SUPA_HDR, body: JSON.stringify({ name, ingredients })
+      });
+    }
+    await loadRecipeLibrary();
+    renderRecipeLibEntries();
+    document.getElementById('recipe-lib-form').style.display = 'none';
+    document.getElementById('recipe-lib-add-btn').style.display = '';
+  } catch(e) { alert('Save failed: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Save';
+});
+
+function editRecipeEntry(id) {
+  const r = recipeLibrary.find(x => x.id === id);
+  if (!r) return;
+  _editingRecipeId = id;
+  document.getElementById('rlf-name').value = r.name;
+  document.getElementById('rlf-ingredients').value = (r.ingredients||[]).join('\n');
+  document.getElementById('recipe-lib-form').style.display = 'block';
+  document.getElementById('recipe-lib-add-btn').style.display = 'none';
+  document.getElementById('rlf-name').focus();
+}
+
+async function deleteRecipeEntry(id, name) {
+  if (!confirm(`Delete recipe "${name}"?`)) return;
+  await fetch(SUPA_BASE + 'recipes?id=eq.' + id, { method:'DELETE', headers: SUPA_HDR });
+  await loadRecipeLibrary();
+  renderRecipeLibEntries();
+}
+
+async function addIngredientsToList(recipeId) {
+  const recipe = recipeLibrary.find(r => r.id === recipeId);
+  if (!recipe || !recipe.ingredients || !recipe.ingredients.length) {
+    alert('No ingredients found for this recipe.'); return;
+  }
+  const existing = (shoppingItems || []).map(i => i.item.toLowerCase().trim());
+  const toAdd = recipe.ingredients.filter(ing => ing && !existing.includes(ing.toLowerCase().trim()));
+  if (!toAdd.length) { alert('All ingredients are already on the shopping list!'); return; }
+  for (const item of toAdd) {
+    const temp = { id:'tmp_'+Date.now()+'_'+Math.random(), item, done:false };
+    shoppingItems.push(temp); renderShoppingList();
+    try {
+      const res = await fetch(SUPA_BASE + 'shopping_list', {
+        method:'POST', headers:{...SUPA_HDR,'Prefer':'return=representation'},
+        body: JSON.stringify({ item, done:false })
+      });
+      if (res.ok) {
+        const saved = (await res.json())[0];
+        const idx = shoppingItems.findIndex(i=>i.id===temp.id);
+        if (idx>=0 && saved) shoppingItems[idx] = saved;
+      }
+    } catch(e) { console.warn('Add ingredient failed:', e); }
+  }
+  renderShoppingList();
+  alert(`Added ${toAdd.length} ingredient${toAdd.length>1?'s':''} to the shopping list ✓`);
 }
 
 // ── PUSH NOTIFICATIONS (shopping list) ──────────────────────────────────────
