@@ -1487,7 +1487,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     </div>
     <div class="meal-divider">or pick a recipe</div>
     <div class="meal-section">
-      <div id="meal-recipe-list"></div>
+      <input id="meal-recipe-search" class="meal-text-input" type="search" placeholder="Search recipes…" autocomplete="off" style="margin-bottom:8px;" oninput="renderMealRecipeList()"/>
+      <div id="meal-recipe-list" style="max-height:200px;overflow-y:auto;padding-right:2px;"></div>
     </div>
     <div class="meal-modal-actions">
       <button id="meal-clear-btn">🗑 Clear</button>
@@ -3127,6 +3128,17 @@ if (_local) applyState(JSON.parse(_local));
   renderBriefing();
   loadShoppingList();
   loadRecipeLibrary();
+
+  // Auto-refresh recipes when switching back to the app (e.g. added on another device)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      loadRecipeLibrary().then(() => { renderRecipeLibEntries(); renderMealRecipeList(); });
+    }
+  });
+  // Also poll every 60 seconds while the app is open
+  setInterval(() => {
+    loadRecipeLibrary().then(() => { renderRecipeLibEntries(); renderMealRecipeList(); });
+  }, 60000);
 })();
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -8708,7 +8720,9 @@ function openMealModal(wi, di) {
   // Pre-fill from existing value
   const existing = parseMeal(mealState[wi][di]);
   const textInput = document.getElementById('meal-text-input');
+  const searchInput = document.getElementById('meal-recipe-search');
   textInput.value = '';
+  searchInput.value = '';
   if (existing) {
     if (existing.type === 'text') textInput.value = existing.name;
     else _mealSelectedRecipe = { id: existing.id, name: existing.name };
@@ -8727,7 +8741,13 @@ function renderMealRecipeList() {
     list.innerHTML = `<div class="meal-no-recipes">No recipes yet — add some in Library → 🍽 Recipes.</div>`;
     return;
   }
-  list.innerHTML = recipeLibrary.map(r => {
+  const q = (document.getElementById('meal-recipe-search')?.value || '').toLowerCase().trim();
+  const filtered = q ? recipeLibrary.filter(r => r.name.toLowerCase().includes(q) || (r.ingredients||[]).some(i=>i.toLowerCase().includes(q))) : recipeLibrary;
+  if (!filtered.length) {
+    list.innerHTML = `<div class="meal-no-recipes">No recipes match "${q}".</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(r => {
     const ingPreview = (r.ingredients||[]).slice(0,4).join(', ') + (r.ingredients&&r.ingredients.length>4?' +more':'');
     const sel = _mealSelectedRecipe && _mealSelectedRecipe.id === r.id ? ' selected' : '';
     return `<div class="meal-recipe-row${sel}" onclick="selectMealRecipe('${r.id}','${escShop(r.name)}')">
