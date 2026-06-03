@@ -1633,6 +1633,8 @@ body.shop-mode #briefing-card { display:none !important; }
 .pill.meal-recipe { background:linear-gradient(180deg,#FFF3E0,#FFCC80); color:#7B3200; border-color:#FB8C00; }
 .meal-zone { cursor:pointer; min-height:28px; display:flex; align-items:center; }
 .mob-pill-meal { background:#FFF8E1; color:#7A4100; border:0.5px solid #F0B429; border-radius:8px; padding:8px 12px; cursor:pointer; }
+.meal-pill-add { margin-left:5px; font-size:12px; opacity:0.7; cursor:pointer; padding:1px 3px; border-radius:4px; }
+.meal-pill-add:active { opacity:1; background:rgba(0,0,0,0.08); }
 
 /* Meal modal */
 #meal-modal-overlay { display:none; position:fixed; inset:0; z-index:15000; background:rgba(0,0,0,0.45); align-items:flex-end; justify-content:center; padding:0; }
@@ -2560,8 +2562,13 @@ function renderWeek(wi) {
           if (m) {
             const el = document.createElement('span');
             el.className = 'pill ' + (m.type==='recipe' ? 'meal-recipe' : 'meal-text');
-            el.textContent = (m.type==='recipe' ? '🍽 ' : '🍴 ') + m.name;
             el.title = m.name;
+            if (m.type === 'recipe') {
+              el.innerHTML = `🍽 ${escShop(m.name)} <span class="meal-pill-add" title="Add ingredients to shopping list">🛒</span>`;
+              el.querySelector('.meal-pill-add').addEventListener('click', e => { e.stopPropagation(); addIngredientsToList(m.id); });
+            } else {
+              el.textContent = '🍴 ' + m.name;
+            }
             el.addEventListener('click', e => { e.stopPropagation(); openMealModal(wi, di); });
             zone.appendChild(el);
           } else {
@@ -7553,8 +7560,14 @@ function renderMobileRaceWeek() {
     const mobMeal = parseMeal(mealVal);
     if (mobMeal) {
       const mealP = document.createElement('div'); mealP.className='mob-pill mob-pill-meal';
-      mealP.textContent = (mobMeal.type==='recipe'?'🍽 ':'🍴 ') + mobMeal.name;
-      mealP.addEventListener('click', () => openMealModal(wi, di));
+      if (mobMeal.type === 'recipe') {
+        mealP.innerHTML = `<span class="mob-pill-label">🍽 ${escShop(mobMeal.name)}</span><span class="meal-pill-add" style="float:right;">🛒</span>`;
+        mealP.querySelector('.meal-pill-add').addEventListener('click', e => { e.stopPropagation(); addIngredientsToList(mobMeal.id); });
+        mealP.addEventListener('click', () => openMealModal(wi, di));
+      } else {
+        mealP.textContent = '🍴 ' + mobMeal.name;
+        mealP.addEventListener('click', () => openMealModal(wi, di));
+      }
       pills.appendChild(mealP);
     } else {
       const mealP = document.createElement('div'); mealP.className='mob-pill mob-pill-meal';
@@ -8064,8 +8077,13 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
         if (m) {
           const el = document.createElement('span');
           el.className = 'pill ' + (m.type==='recipe' ? 'meal-recipe' : 'meal-text');
-          el.textContent = (m.type==='recipe' ? '🍽 ' : '🍴 ') + m.name;
           el.title = m.name;
+          if (m.type === 'recipe') {
+            el.innerHTML = `🍽 ${escShop(m.name)} <span class="meal-pill-add" title="Add ingredients to shopping list">🛒</span>`;
+            el.querySelector('.meal-pill-add').addEventListener('click', e => { e.stopPropagation(); addIngredientsToList(m.id); });
+          } else {
+            el.textContent = '🍴 ' + m.name;
+          }
           el.addEventListener('click', e => { e.stopPropagation(); openMealModal(wi, di); });
           zone.appendChild(el);
         } else {
@@ -8390,8 +8408,7 @@ function renderDayView() {
       const dvRecipe = recipeLibrary.find(r => r.id === dvMeal.id);
       if (dvRecipe && dvRecipe.ingredients && dvRecipe.ingredients.length) {
         const ingList = dvRecipe.ingredients.join(', ');
-        html += `<div class="dv-card-detail">${ingList}</div>
-          <button class="dv-add-ingredients-btn" onclick="addIngredientsToList('${dvMeal.id}')">🛒 Add ingredients to shopping list</button>`;
+        html += `<div class="dv-card-detail">${ingList}</div>`;
       }
     }
     html += `</div></div>`;
@@ -8557,10 +8574,7 @@ function renderBriefing() {
   // Dinner plan
   const bMeal = wi>=0 ? parseMeal(mealState[wi][di]) : null;
   if (bMeal) {
-    let mealVal = `${bMeal.type==='recipe'?'🍽 ':'🍴 '}${bMeal.name}`;
-    if (bMeal.type === 'recipe') {
-      mealVal += ` <span class="brief-row-tap" onclick="addIngredientsToList('${bMeal.id}')" style="font-size:11px;margin-left:4px;">🛒 Add</span>`;
-    }
+    const mealVal = (bMeal.type==='recipe'?'🍽 ':'🍴 ') + bMeal.name;
     rows += briefRow('🍽', 'Dinner', mealVal);
   }
 
