@@ -45,9 +45,9 @@ self.addEventListener('push', e => {
     data = { body: e.data ? e.data.text() : 'New items added' };
   }
 
-  const title = data.title || '🛒 Shopping list';
+  const title = data.title || 'Items added to shopping list';
   const options = {
-    body:  data.body  || 'New items were added to the list',
+    body:  data.body  || '',
     icon:  data.icon  || '/icon-192.png',
     badge: data.badge || '/icon-192.png',
     tag:   data.tag   || 'shopping-update', // same tag → replaces, doesn't stack
