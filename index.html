@@ -7745,7 +7745,7 @@ function renderMobileRaceWeek() {
 
   const wi = mobWeekIndex;
   const w  = WEEKS[wi];
-  const s  = state[wi];
+  const s  = ats(wi);  // active profile's training state (Marius or Vilde)
   if (!w) return;
 
   const [y,m,d] = WEEK_MONDAYS[wi];
