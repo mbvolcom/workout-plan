@@ -2604,13 +2604,15 @@ function weekSummary(wi) {
     const t = runTargets[`${wi}-${di}`];
     if (t != null) targetKm += parseFloat(t);
 
-    const acts = getStravaForDay(wi, di, 'runs');
-    const strActs = getStravaForDay(wi, di, 'str');
-    const crossActs = getStravaForDay(wi, di, 'cross');
-
-    if (acts)      { doneRuns++;  acts.forEach(a => { totalKm += (a.distance||0)/1000; totalSecs += a.moving_time||0; }); }
-    if (strActs)   { doneStr++;   strActs.forEach(a => { totalSecs += a.moving_time||0; }); }
-    if (crossActs) { doneCross++; crossActs.forEach(a => { totalSecs += a.moving_time||0; }); }
+    // Only include Strava actuals for Marius's profile — Strava is his account
+    if (activeProfile === 'marius') {
+      const acts = getStravaForDay(wi, di, 'runs');
+      const strActs = getStravaForDay(wi, di, 'str');
+      const crossActs = getStravaForDay(wi, di, 'cross');
+      if (acts)      { doneRuns++;  acts.forEach(a => { totalKm += (a.distance||0)/1000; totalSecs += a.moving_time||0; }); }
+      if (strActs)   { doneStr++;   strActs.forEach(a => { totalSecs += a.moving_time||0; }); }
+      if (crossActs) { doneCross++; crossActs.forEach(a => { totalSecs += a.moving_time||0; }); }
+    }
   });
 
   const planned = plannedRuns + plannedStr + plannedCross;
@@ -7934,8 +7936,10 @@ function renderMobileRaceWeek() {
       let html=`<span class="mob-pill-label">${rp.label}</span>`;
       const tkm=runTargets[`${wi}-${di}`];
       if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
-      const acts=getStravaForDay(wi,di,'runs');
-      if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
+      if (activeProfile === 'marius') {
+        const acts=getStravaForDay(wi,di,'runs');
+        if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${(a.distance/1000).toFixed(1)}km · ${formatPace(a.distance,a.moving_time)}</span>`;});
+      }
       runP.innerHTML=html;
       // Tap → open run panel; long-press → edit/delete menu
       addMobPillHandlers(runP, ()=>openRunPanel(rp.label,wi,di), wi,'runs',di);
@@ -7953,8 +7957,10 @@ function renderMobileRaceWeek() {
       const sp=parse(str); const isUpper=str.startsWith('upper');
       strP.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}`; strP.style.cursor='pointer';
       let html=`<span class="mob-pill-label">${sp.label}</span>`;
-      const acts=getStravaForDay(wi,di,'str');
-      if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
+      if (activeProfile === 'marius') {
+        const acts=getStravaForDay(wi,di,'str');
+        if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
+      }
       strP.innerHTML=html;
       addMobPillHandlers(strP, ()=>openStrPanel(sp.label,wi,di), wi,'str',di);
     } else {
@@ -7966,7 +7972,7 @@ function renderMobileRaceWeek() {
 
     // Cross
     const cross=s.cross&&s.cross[di];
-    const crossActs=getStravaForDay(wi,di,'cross');
+    const crossActs = activeProfile === 'marius' ? getStravaForDay(wi,di,'cross') : null;
     const crossP = document.createElement('div');
     if (cross) {
       const cp=parse(cross);
@@ -8796,7 +8802,8 @@ function renderDayView() {
   const activeS  = wi>=0&&di>=0 ? ats(wi) : null;
   const partnerS = wi>=0&&di>=0 ? pts(wi) : null;
   const partnerName = activeProfile === 'marius' ? 'Vilde' : 'Marius';
-  html += dvTraining(activeS,  'Your Training', true);
+  const showStrava = activeProfile === 'marius'; // Strava is Marius's account
+  html += dvTraining(activeS,  'Your Training', showStrava);
   html += dvTraining(partnerS, `${partnerName}'s Training`, false);
 
   // Dinner
