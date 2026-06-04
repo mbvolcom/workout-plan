@@ -1180,7 +1180,15 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.9.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.1.0</div>
+    <div class="profile-switcher">
+      <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
+        <span class="avatar">M</span> Marius
+      </button>
+      <button class="profile-btn p-vilde" id="profile-btn-vilde" onclick="setProfile('vilde')">
+        <span class="avatar">V</span> Vilde
+      </button>
+    </div>
   </div>
   <div class="glass-soft hdr-weather" id="now-weather"></div>
   <div class="glass-soft hdr-count" id="countdown-banner">
@@ -1203,6 +1211,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <button class="btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
     <button class="btn" onclick="openLibModal().catch(console.error)">📚 Library</button>
     <button class="btn" onclick="openStatsPage()">📊 Stats</button>
+    <button class="btn" id="partner-toggle-btn" onclick="togglePartnerTraining()">👁 Partner</button>
     <button class="btn is-violet" onclick="openClaudePanel()">✦ Claude</button>
   </div>
   <div class="tb-spacer"></div>
@@ -1696,6 +1705,20 @@ body.shop-mode #briefing-card { display:none !important; }
 .str-logged-sets { display:flex; flex-wrap:wrap; gap:6px; }
 .str-set-chip { background:rgba(0,0,0,0.05); border:0.5px solid var(--border-mid); border-radius:7px; padding:3px 8px; font-size:11px; color:var(--ink-sub); }
 
+/* ── PROFILE SWITCHER ────────────────────────────────────────── */
+.profile-switcher { display:flex; gap:5px; margin-top:6px; }
+.profile-btn { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; border:1.5px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.15); cursor:pointer; font:600 11px 'Inter Tight',system-ui,sans-serif; color:var(--ink-sub); transition:all 0.15s; }
+.profile-btn.active { background:rgba(255,255,255,0.7); border-color:rgba(255,255,255,0.6); color:var(--ink-display); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.profile-btn .avatar { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:700 9px 'Inter Tight',system-ui,sans-serif; flex-shrink:0; }
+.profile-btn.p-marius .avatar { background:#3b82f6; color:#fff; }
+.profile-btn.p-vilde  .avatar { background:#ec4899; color:#fff; }
+.profile-banner { font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted2); margin-top:2px; }
+/* Partner training pills in grid */
+.pill.partner-run  { opacity:0.5; font-size:9px; padding:2px 6px; }
+.pill.partner-str  { opacity:0.5; font-size:9px; padding:2px 6px; }
+.pill.partner-cross{ opacity:0.5; font-size:9px; padding:2px 6px; }
+.partner-row-label { font-size:9px; color:var(--muted2); font-weight:600; margin-top:1px; }
+
 /* ── GCAL EVENT CREATION ─────────────────────────────────────── */
 #gcal-create-overlay { display:none; position:fixed; inset:0; z-index:16000; background:rgba(0,0,0,0.5); align-items:flex-end; justify-content:center; padding:0; }
 #gcal-create-overlay.open { display:flex; }
@@ -1909,6 +1932,58 @@ const kinderState = WEEKS.map(() => [null,null,null,null,null,null,null]);
 
 // mealState: null = no meal planned, 'text:Name' = free text, 'recipe:UUID:Name' = recipe-linked
 const mealState = WEEKS.map(() => Array(7).fill(null));
+
+// Vilde's training state — same structure as state[]
+const vState = WEEKS.map(() => ({
+  runs:  Array(7).fill(null),
+  str:   Array(7).fill(null),
+  str2:  Array(7).fill(null),
+  cross: Array(7).fill(null),
+}));
+
+// ── PROFILE ─────────────────────────────────────────────────────────────────
+let activeProfile = localStorage.getItem('cal_profile') || 'marius'; // 'marius' | 'vilde'
+let showPartnerTraining = false;
+
+// Returns the active profile's training state for week wi
+function ats(wi) { return activeProfile === 'vilde' ? vState[wi] : state[wi]; }
+
+// Partner's training state for week wi
+function pts(wi) { return activeProfile === 'vilde' ? state[wi] : vState[wi]; }
+
+function setProfile(p) {
+  activeProfile = p;
+  localStorage.setItem('cal_profile', p);
+  document.getElementById('profile-btn-marius').classList.toggle('active', p === 'marius');
+  document.getElementById('profile-btn-vilde').classList.toggle('active', p === 'vilde');
+  WEEKS.forEach((_,wi) => renderWeek(wi));
+  renderBriefing();
+  if (typeof renderMobileView === 'function') { if (isMobilePortrait()) renderMobileView(); }
+}
+
+function togglePartnerTraining() {
+  showPartnerTraining = !showPartnerTraining;
+  const btn = document.getElementById('partner-toggle-btn');
+  if (btn) btn.classList.toggle('active', showPartnerTraining);
+  WEEKS.forEach((_,wi) => renderWeek(wi));
+}
+
+// Profile-aware kinder: flips perspective for Vilde
+function getKinderForProfile(wi, di) {
+  const raw = kinderState[wi][di] || (typeof getKinder === 'function' ? getKinder(wi, di) : null);
+  if (activeProfile === 'marius') return raw;
+  // Vilde's perspective
+  const wifeShift = wifeState[wi] && wifeState[wi][di];
+  const wifePrefix = wifeShift ? wifeShift.split(':')[0] : '';
+  // If she has a day off she does both legs
+  if (wifePrefix === 'off' || wifePrefix === 'vac') return 'kgx:Deliver & pick up';
+  if (!raw) return null;
+  const prefix = raw.split(':')[0];
+  if (prefix === 'kgd') return 'kgp:Pick up';       // Marius delivers → Vilde picks up
+  if (prefix === 'kgp') return 'kgd:Deliver';        // Marius picks up → Vilde delivers
+  if (prefix === 'kgx') return 'kgb:—';              // Marius does both → Vilde is off
+  return raw; // kgb stays blank
+}
 
 // Derive kindergarten value from a wife shift code (Mon-Fri only)
 function kinderFromWife(wifeVal, dayIdx) {
@@ -2497,7 +2572,7 @@ function makeDropZone(weekIdx, row, dayIdx, isWife) {
 }
 
 function weekSummary(wi) {
-  const s = state[wi];
+  const s = ats(wi);
   let plannedRuns = 0, plannedStr = 0, plannedCross = 0;
   let doneRuns = 0, doneStr = 0, doneCross = 0;
   let totalKm = 0, totalSecs = 0, targetKm = 0;
@@ -2528,13 +2603,15 @@ function weekSummary(wi) {
 
 // ── RENDER ─────────────────────────────────────────────────────────────────
 function renderWeek(wi) {
-  const w = WEEKS[wi], s = state[wi];
+  const w = WEEKS[wi], s = ats(wi);  // active profile's training state
   const container = document.getElementById('week-' + wi);
   if (!container) return;
   container.innerHTML = '';
   const isCollapsed = collapsedWeeks.has(wi);
 
-  ['date','gcal','wife','kinder','meal','runs','str','cross'].forEach((row, ri) => {
+  ['date','gcal','wife','kinder','meal','runs','str','cross',
+    ...(showPartnerTraining ? ['p_runs','p_str','p_cross'] : [])
+  ].forEach((row, ri) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'week-row' + ((ri > 0 && isCollapsed) ? ' collapsed-row' : '');
 
@@ -2587,10 +2664,16 @@ function renderWeek(wi) {
 
     } else {
       rowEl.appendChild(document.createElement('div')); // meta spacer
+      const isPartnerRow = row.startsWith('p_');
+      const baseRow = isPartnerRow ? row.slice(2) : row; // 'p_runs' → 'runs'
+      const partnerName = activeProfile === 'marius' ? 'Vilde' : 'Marius';
       const lbl = document.createElement('div');
-      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'?'r':row==='str'?'s':row==='kinder'?'k':row==='gcal'?'g':row==='meal'?'m':'x');
-      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':row==='meal'?'Dinner':'Cross';
+      lbl.className = 'row-lbl ' + (row==='wife'?'w':row==='runs'||row==='p_runs'?'r':row==='str'||row==='p_str'?'s':row==='kinder'?'k':row==='gcal'?'g':row==='meal'?'m':'x')
+        + (isPartnerRow ? ' partner-row-lbl' : '');
+      lbl.textContent = row==='wife'?'Wife':row==='kinder'?'Kinder':row==='runs'?'Run':row==='str'?'Strength':row==='gcal'?'GCal':row==='meal'?'Dinner':row==='p_runs'?`${partnerName} Run`:row==='p_str'?`${partnerName} Str`:row==='p_cross'?`${partnerName} Cross`:'Cross';
+      if (isPartnerRow) lbl.style.cssText += 'opacity:0.6;font-size:9px;';
       rowEl.appendChild(lbl);
+      if (isPartnerRow) rowEl.style.opacity = '0.65';
 
       if (row === 'gcal') {
         rowEl.className = 'week-row gcal-row' + (isCollapsed ? ' collapsed-row' : '');
@@ -2623,7 +2706,7 @@ function renderWeek(wi) {
           zone.className = 'drop-zone' + (di < 5 ? ' droppable' : '');
           zone.dataset.week = wi; zone.dataset.row = 'kinder'; zone.dataset.day = di;
           if (di < 5) {
-            const val = getKinder(wi, di);
+            const val = getKinderForProfile(wi, di);
             if (val) {
               const p = parse(val);
               if (p) {
@@ -2672,7 +2755,8 @@ function renderWeek(wi) {
           rowEl.appendChild(zone);
         } else {
           const zone = makeDropZone(wi, row, di, false);
-          const el = pillEl(s[row][di], wi, row, di);
+          const rowData = isPartnerRow ? pts(wi) : s;
+          const el = pillEl(rowData[baseRow] && rowData[baseRow][di], wi, isPartnerRow ? baseRow : row, di);
           if (el) {
             if (['runs','str','cross'].includes(row)) {
               const acts = getStravaForDay(wi, di, row);
@@ -2974,7 +3058,7 @@ function showAutosaveStatus(status) {
 
 async function saveState() {
   showAutosaveStatus('pending');
-  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi], meal:mealState[wi] }));
+  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi], meal:mealState[wi], v_runs:vState[wi].runs, v_str:vState[wi].str, v_cross:vState[wi].cross }));
   localStorage.setItem('training-cal-2026', JSON.stringify(data));
   try {
     const res = await fetch(SUPA_BASE+'calendar_state?on_conflict=id', {
@@ -3008,6 +3092,9 @@ function applyState(saved) {
       if (s.wife)   wifeState[wi]   = s.wife;
       if (s.kinder) kinderState[wi] = s.kinder;
       if (s.meal)   mealState[wi]   = s.meal;
+      if (s.v_runs)  vState[wi].runs  = s.v_runs;
+      if (s.v_str)   vState[wi].str   = s.v_str;
+      if (s.v_cross) vState[wi].cross = s.v_cross;
     }
   });
 }
@@ -4726,7 +4813,7 @@ function buildCalendarContext() {
   const today = new Date().toISOString().slice(0,10);
   const activePlan = getActivePlan();
   const weekSummaries = WEEKS.slice(0,20).map((w,wi) => {
-    const s = state[wi];
+    const s = ats(wi);
     const mon = WEEK_MONDAYS[wi];
     const monDate = mon ? `${mon[0]}-${String(mon[1]).padStart(2,'0')}-${String(mon[2]).padStart(2,'0')}` : '';
     return {
@@ -7327,7 +7414,7 @@ function buildStatsWeeks() {
 
   return WEEKS.map((w, wi) => {
     const [y,m,d] = WEEK_MONDAYS[wi];
-    const s = state[wi];
+    const s = ats(wi);
     const monDate = new Date(y,m-1,d);
     const isCurrent = today >= monDate && today <= new Date(y,m-1,d+6);
 
@@ -7900,7 +7987,7 @@ function renderMobileMonth() {
   // Render each week as a mini row
   weeksInMonth.forEach(wi=>{
     const w=WEEKS[wi]; if(!w) return;
-    const s=state[wi];
+    const s=ats(wi);
     const [y2,m2,d2]=WEEK_MONDAYS[wi];
 
     const row=document.createElement('div'); row.className='mob-mini-week';
@@ -8255,7 +8342,7 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
         zone.className = 'drop-zone' + (di < 5 ? ' droppable' : '');
         zone.dataset.week = wi; zone.dataset.row = 'kinder'; zone.dataset.day = di;
         if (di < 5) {
-          const val = getKinder(wi, di);
+          const val = getKinderForProfile(wi, di);
           if (val) {
             const p = parse(val);
             if (p && p.cls !== 'kinder-blank') {
@@ -8384,7 +8471,7 @@ function renderWeekView() {
   const container = document.getElementById('week-view');
   const wi = weekViewIndex;
   const w = WEEKS[wi];
-  const s = state[wi];
+  const s = ats(wi);
   const [y,m,d] = WEEK_MONDAYS[wi];
 
   const today = new Date(); today.setHours(0,0,0,0);
@@ -8442,7 +8529,7 @@ function renderWeekView() {
     }
 
     // Kinder
-    const kinder = getKinder(wi, di);
+    const kinder = getKinderForProfile(wi, di);
     if (kinder && di < 5) {
       const kp = parse(kinder);
       if (kp && kp.cls !== 'kinder-blank') {
@@ -8749,15 +8836,16 @@ function renderBriefing() {
   }
 
   // Kindergarten duty
-  const kg = wi>=0 ? kinderDutyLabel(kinderState[wi][di]) : null;
+  const kg = wi>=0 ? kinderDutyLabel(getKinderForProfile(wi, di)) : null;
   if (kg) rows += briefRow('🎒', 'Kindergarten', kg);
 
-  // Your training
+  // Your training (active profile)
+  const as = wi>=0 ? ats(wi) : null;
   let pills = '';
-  if (wi>=0 && state[wi].runs[di]) pills += briefTrainPill(state[wi].runs[di]);
-  if (wi>=0 && state[wi].str[di])  pills += briefTrainPill(state[wi].str[di]);
-  if (wi>=0 && state[wi].cross && state[wi].cross[di]) pills += briefTrainPill(state[wi].cross[di]);
-  rows += briefRow('🏃', 'Your training', pills || '<span class="brief-empty">Rest day</span>');
+  if (as && as.runs[di]) pills += briefTrainPill(as.runs[di]);
+  if (as && as.str[di])  pills += briefTrainPill(as.str[di]);
+  if (as && as.cross && as.cross[di]) pills += briefTrainPill(as.cross[di]);
+  rows += briefRow('🏃', activeProfile === 'vilde' ? 'Vilde\'s training' : 'Your training', pills || '<span class="brief-empty">Rest day</span>');
 
   // Calendar events
   const evts = gcalEvents[dateStr] || [];
