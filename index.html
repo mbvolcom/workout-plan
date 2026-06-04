@@ -1180,7 +1180,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.8.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v1.9.0</div>
   </div>
   <div class="glass-soft hdr-weather" id="now-weather"></div>
   <div class="glass-soft hdr-count" id="countdown-banner">
@@ -1535,6 +1535,74 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <button id="gcal-close">✕</button>
     </div>
     <div id="gcal-events"></div>
+    <button class="gcal-panel-create-btn" id="gcal-panel-create-btn">＋ Create event</button>
+  </div>
+</div>
+
+<!-- GCAL CREATE EVENT -->
+<div id="gcal-create-overlay">
+  <div id="gcal-create-modal">
+    <div class="gcal-create-header">
+      <div class="gcal-create-title">📅 New event</div>
+      <button class="gcal-create-close" id="gcal-create-close">✕</button>
+    </div>
+
+    <div class="gcal-form-group">
+      <label class="gcal-form-label">Title</label>
+      <input id="gcf-title" class="gcal-form-input" type="text" placeholder="Event title" autocomplete="off"/>
+    </div>
+
+    <div class="gcal-allday-row">
+      <span class="gcal-allday-label">All day</span>
+      <label class="gcal-toggle">
+        <input type="checkbox" id="gcf-allday"/>
+        <span class="gcal-toggle-slider"></span>
+      </label>
+    </div>
+
+    <div id="gcf-datetime-fields">
+      <div class="gcal-form-group">
+        <label class="gcal-form-label">Start</label>
+        <div class="gcal-date-row">
+          <input id="gcf-start-date" class="gcal-form-input" type="date"/>
+          <input id="gcf-start-time" class="gcal-form-input" type="time" value="09:00"/>
+        </div>
+      </div>
+      <div class="gcal-form-group">
+        <label class="gcal-form-label">End</label>
+        <div class="gcal-date-row">
+          <input id="gcf-end-date" class="gcal-form-input" type="date"/>
+          <input id="gcf-end-time" class="gcal-form-input" type="time" value="10:00"/>
+        </div>
+      </div>
+    </div>
+
+    <div id="gcf-allday-fields" style="display:none;">
+      <div class="gcal-form-group">
+        <label class="gcal-form-label">Start date</label>
+        <input id="gcf-allday-start" class="gcal-form-input" type="date"/>
+      </div>
+      <div class="gcal-form-group">
+        <label class="gcal-form-label">End date</label>
+        <input id="gcf-allday-end" class="gcal-form-input" type="date"/>
+      </div>
+    </div>
+
+    <div class="gcal-form-group">
+      <label class="gcal-form-label">Location</label>
+      <input id="gcf-location" class="gcal-form-input" type="text" placeholder="Add address or place"/>
+    </div>
+
+    <div class="gcal-form-group">
+      <label class="gcal-form-label">Guests <span style="font-weight:400;color:var(--muted2);">(comma-separated emails)</span></label>
+      <input id="gcf-guests" class="gcal-form-input" type="text" placeholder="email@example.com, another@example.com"/>
+    </div>
+
+    <div class="gcal-create-error" id="gcal-create-error"></div>
+    <div class="gcal-create-actions">
+      <button id="gcal-create-cancel">Cancel</button>
+      <button id="gcal-create-save">Create event</button>
+    </div>
   </div>
 </div>
 
@@ -1628,7 +1696,36 @@ body.shop-mode #briefing-card { display:none !important; }
 .str-logged-sets { display:flex; flex-wrap:wrap; gap:6px; }
 .str-set-chip { background:rgba(0,0,0,0.05); border:0.5px solid var(--border-mid); border-radius:7px; padding:3px 8px; font-size:11px; color:var(--ink-sub); }
 
-/* ── MEAL PLANNING ───────────────────────────────────────────── */
+/* ── GCAL EVENT CREATION ─────────────────────────────────────── */
+#gcal-create-overlay { display:none; position:fixed; inset:0; z-index:16000; background:rgba(0,0,0,0.5); align-items:flex-end; justify-content:center; padding:0; }
+#gcal-create-overlay.open { display:flex; }
+#gcal-create-modal { background:#fff; color:var(--text); width:100%; max-width:520px; max-height:90vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:20px 20px 40px; }
+.gcal-create-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.gcal-create-title { font-size:16px; font-weight:700; color:var(--ink-display); }
+.gcal-create-close { background:none; border:none; font-size:20px; color:var(--muted); cursor:pointer; }
+.gcal-form-group { margin-bottom:14px; }
+.gcal-form-label { font-size:10.5px; letter-spacing:0.07em; text-transform:uppercase; color:var(--ink-meta); margin-bottom:5px; display:block; }
+.gcal-form-input { width:100%; padding:10px 12px; border-radius:10px; border:0.5px solid var(--border-mid); font:500 14px inherit; color:var(--text); background:rgba(0,0,0,0.03); box-sizing:border-box; }
+.gcal-form-input:focus { outline:none; border-color:#1a73e8; }
+.gcal-date-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.gcal-allday-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:10px; border:0.5px solid var(--border-mid); background:rgba(0,0,0,0.03); margin-bottom:14px; }
+.gcal-allday-label { font-size:14px; font-weight:500; color:var(--ink-display); }
+.gcal-toggle { position:relative; width:44px; height:26px; flex-shrink:0; }
+.gcal-toggle input { opacity:0; width:0; height:0; }
+.gcal-toggle-slider { position:absolute; inset:0; background:#ccc; border-radius:26px; cursor:pointer; transition:0.2s; }
+.gcal-toggle-slider::before { content:''; position:absolute; width:20px; height:20px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.2s; }
+.gcal-toggle input:checked + .gcal-toggle-slider { background:#1a73e8; }
+.gcal-toggle input:checked + .gcal-toggle-slider::before { transform:translateX(18px); }
+.gcal-create-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+.gcal-create-actions button { padding:10px 22px; border-radius:10px; border:none; font:600 14px inherit; cursor:pointer; }
+#gcal-create-cancel { background:rgba(0,0,0,0.06); color:var(--ink-display); }
+#gcal-create-save   { background:#1a73e8; color:#fff; }
+#gcal-create-save:disabled { opacity:0.5; cursor:default; }
+.gcal-create-error  { color:#c00; font-size:12px; margin-top:8px; display:none; }
+.gcal-panel-create-btn { width:100%; margin-top:14px; padding:10px; border-radius:10px; border:0.5px solid #1a73e8; background:#E8F0FE; color:#1a73e8; font:600 14px inherit; cursor:pointer; }
+</style>
+
+<div id="briefing-card" class="glass"></div>
 .row-lbl.m { background:linear-gradient(135deg,#FFF3E0,#FFE0B2); color:#7B3200; }
 .pill.meal-text   { background:linear-gradient(180deg,#FFF8E1,#FFE082); color:#7A4100; border-color:#F0B429; }
 .pill.meal-recipe { background:linear-gradient(180deg,#FFF3E0,#FFCC80); color:#7B3200; border-color:#FB8C00; }
@@ -5661,7 +5758,111 @@ const gcalOverlay = document.getElementById('gcal-overlay');
 document.getElementById('gcal-close').addEventListener('click', () => gcalOverlay.classList.remove('open'));
 gcalOverlay.addEventListener('click', e => { if (e.target === gcalOverlay) gcalOverlay.classList.remove('open'); });
 
+// ── GCAL CREATE EVENT ───────────────────────────────────────────────────────
+const GCAL_CREATE_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/gcal-create-event';
+let _gcalCreateDateStr = null;
+
+function openGCalCreate(dateStr) {
+  _gcalCreateDateStr = dateStr;
+  const d = document;
+  d.getElementById('gcf-title').value = '';
+  d.getElementById('gcf-allday').checked = false;
+  d.getElementById('gcf-start-date').value = dateStr;
+  d.getElementById('gcf-start-time').value = '09:00';
+  d.getElementById('gcf-end-date').value = dateStr;
+  d.getElementById('gcf-end-time').value = '10:00';
+  d.getElementById('gcf-allday-start').value = dateStr;
+  d.getElementById('gcf-allday-end').value = dateStr;
+  d.getElementById('gcf-location').value = '';
+  d.getElementById('gcf-guests').value = '';
+  d.getElementById('gcal-create-error').style.display = 'none';
+  d.getElementById('gcal-create-save').disabled = false;
+  d.getElementById('gcal-create-save').textContent = 'Create event';
+  gcalOverlay.classList.remove('open');
+  d.getElementById('gcf-datetime-fields').style.display = '';
+  d.getElementById('gcf-allday-fields').style.display = 'none';
+  document.getElementById('gcal-create-overlay').classList.add('open');
+  setTimeout(() => d.getElementById('gcf-title').focus(), 80);
+}
+
+document.getElementById('gcf-allday').addEventListener('change', function() {
+  const allDay = this.checked;
+  document.getElementById('gcf-datetime-fields').style.display = allDay ? 'none' : '';
+  document.getElementById('gcf-allday-fields').style.display  = allDay ? '' : 'none';
+});
+
+document.getElementById('gcal-create-close').addEventListener('click', () => {
+  document.getElementById('gcal-create-overlay').classList.remove('open');
+});
+document.getElementById('gcal-create-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('gcal-create-overlay'))
+    document.getElementById('gcal-create-overlay').classList.remove('open');
+});
+document.getElementById('gcal-create-cancel').addEventListener('click', () => {
+  document.getElementById('gcal-create-overlay').classList.remove('open');
+});
+
+document.getElementById('gcal-panel-create-btn').addEventListener('click', () => {
+  const dateStr = document.getElementById('gcf-start-date').value || _gcalCreateDateStr || getDateStr(0,0);
+  openGCalCreate(dateStr);
+});
+
+document.getElementById('gcal-create-save').addEventListener('click', async () => {
+  const d = document;
+  const title = d.getElementById('gcf-title').value.trim();
+  if (!title) { showGCalError('Please enter a title.'); return; }
+  const allDay = d.getElementById('gcf-allday').checked;
+  let startDate, endDate, startTime, endTime;
+  if (allDay) {
+    startDate = d.getElementById('gcf-allday-start').value;
+    endDate   = d.getElementById('gcf-allday-end').value || startDate;
+    if (!startDate) { showGCalError('Please enter a start date.'); return; }
+  } else {
+    startDate = d.getElementById('gcf-start-date').value;
+    startTime = d.getElementById('gcf-start-time').value;
+    endDate   = d.getElementById('gcf-end-date').value;
+    endTime   = d.getElementById('gcf-end-time').value;
+    if (!startDate || !startTime) { showGCalError('Please enter a start date and time.'); return; }
+    if (!endDate) endDate = startDate;
+    if (!endTime) endTime = startTime;
+  }
+  const guestsRaw = d.getElementById('gcf-guests').value.trim();
+  const guests = guestsRaw ? guestsRaw.split(/[,\n]+/).map(e=>e.trim()).filter(Boolean) : [];
+  const location = d.getElementById('gcf-location').value.trim();
+
+  const btn = d.getElementById('gcal-create-save');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  d.getElementById('gcal-create-error').style.display = 'none';
+
+  try {
+    const res = await fetch(GCAL_CREATE_FN, {
+      method: 'POST',
+      headers: { ...SUPA_HDR },
+      body: JSON.stringify({ title, allDay, startDate, startTime, endDate, endTime, guests, location })
+    });
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || ('HTTP ' + res.status));
+    }
+    d.getElementById('gcal-create-overlay').classList.remove('open');
+    fetchGCal(); // refresh calendar events
+  } catch(e) {
+    showGCalError('Could not create event: ' + (e.message || e));
+    btn.disabled = false; btn.textContent = 'Create event';
+  }
+});
+
+function showGCalError(msg) {
+  const el = document.getElementById('gcal-create-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
 function openGCal(dateStr) {
+  _gcalCreateDateStr = dateStr;
+  document.getElementById('gcf-start-date').value = dateStr;
+  document.getElementById('gcf-end-date').value = dateStr;
+  document.getElementById('gcf-allday-start').value = dateStr;
+  document.getElementById('gcf-allday-end').value = dateStr;
   const dt = new Date(dateStr + 'T12:00:00');
   document.getElementById('gcal-date').textContent =
     dt.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
