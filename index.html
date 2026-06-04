@@ -1960,6 +1960,13 @@ function ats(wi) { return activeProfile === 'vilde' ? vState[wi] : state[wi]; }
 // Partner's training state for week wi
 function pts(wi) { return activeProfile === 'vilde' ? state[wi] : vState[wi]; }
 
+// Write training to the active profile's state
+function writeTraining(wi, row, di, val) {
+  if (!['runs','str','str2','cross'].includes(row)) return;
+  if (activeProfile === 'vilde') vState[wi][row][di] = val;
+  else state[wi][row][di] = val;
+}
+
 function setProfile(p) {
   activeProfile = p;
   localStorage.setItem('cal_profile', p);
@@ -2115,7 +2122,8 @@ function onDrop(e) {
   if (srcRow === 'wife') {
     const tmp = wifeState[weekIdx][srcDay]; wifeState[weekIdx][srcDay] = wifeState[weekIdx][targetDay]; wifeState[weekIdx][targetDay] = tmp;
   } else {
-    const tmp = state[weekIdx][srcRow][srcDay]; state[weekIdx][srcRow][srcDay] = state[weekIdx][targetRow][targetDay]; state[weekIdx][targetRow][targetDay] = tmp;
+    const src = activeProfile === 'vilde' ? vState[weekIdx] : state[weekIdx];
+    const tmp = src[srcRow][srcDay]; src[srcRow][srcDay] = src[targetRow][targetDay]; src[targetRow][targetDay] = tmp;
   }
   renderWeek(weekIdx); dragging = null;
 }
@@ -2199,7 +2207,7 @@ function openCtxMenuAt(x, y, weekIdx, row, dayIdx) {
     opt.addEventListener('click', () => {
       if (row === 'wife') wifeState[weekIdx][dayIdx] = key;
       else if (row === 'kinder') { kinderState[weekIdx][dayIdx] = key; }
-      else state[weekIdx][row][dayIdx] = key;
+      else { writeTraining(weekIdx, row, dayIdx, key); }
       renderWeek(weekIdx); closeCtxMenu();    });
     ctxTypesEl.appendChild(opt);
   });
@@ -2227,7 +2235,7 @@ document.getElementById('ctx-delete').addEventListener('click', () => {
   const { weekIdx, row, dayIdx } = ctxTarget;
   if (row === 'wife') wifeState[weekIdx][dayIdx] = '';
   else if (row === 'kinder') kinderState[weekIdx][dayIdx] = null;
-  else state[weekIdx][row][dayIdx] = null;
+  else writeTraining(weekIdx, row, dayIdx, null);
   renderWeek(weekIdx); closeCtxMenu();
 });
 
@@ -2434,7 +2442,7 @@ addConfirmBtn.addEventListener('click', e => {
   const { weekIdx, row, dayIdx } = addTarget;
   if (row === 'wife') wifeState[weekIdx][dayIdx] = prefix + ':' + label;
   else if (row === 'kinder') kinderState[weekIdx][dayIdx] = prefix + ':' + label;
-  else state[weekIdx][row][dayIdx] = prefix + ':' + label;
+  else writeTraining(weekIdx, row, dayIdx, prefix + ':' + label);
   renderWeek(weekIdx); closeAddModal();
 });
 document.getElementById('add-cancel-btn').addEventListener('click', e => { e.stopPropagation(); closeAddModal(); });
@@ -8704,96 +8712,105 @@ function renderDayView() {
   }
   html += `</div>`;
 
-  // Run
-  html += `<div class="dv-section"><div class="dv-section-title">Run</div>`;
-  if (wi >= 0 && di >= 0 && state[wi].runs[di]) {
-    const rp = parse(state[wi].runs[di]);
-    if (rp) {
-      const entry = getLibraryEntry(rp.label);
-      const prefix = state[wi].runs[di].split(':')[0];
-      const cls = prefix==='long'?'dv-long':prefix==='quality'?'dv-quality':'dv-run';
-      html += `<div class="dv-card ${cls}">
-        <div class="dv-card-title">${rp.label}</div>`;
-      if (entry) {
-        if (entry.structure) html += `<div class="dv-card-detail">${entry.structure}</div>`;
-        if (entry.pace_target) html += `<span class="dv-card-pace">${entry.pace_target}</span>`;
-      }
-      html += `</div>`;
-      // Strava
-      if (wi >= 0) {
-        const acts = getStravaForDay(wi, di, 'runs');
-        if (acts) acts.forEach(a => {
-          const km = a.distance ? (a.distance/1000).toFixed(2)+' km' : '';
-          const pace = formatPace(a.distance, a.moving_time);
-          const dur = formatDuration(a.moving_time);
-          html += `<div class="dv-card dv-strava">
-            <div class="dv-card-title">⚡ ${a.name}</div>
-            <div class="dv-card-detail">${[km,pace,dur].filter(Boolean).join(' · ')}</div>
-          </div>`;
-        });
+  // Training sections — active profile first, then partner
+  function dvTraining(s, label, isOwn) {
+    if (!s) return '';
+    const runVal   = s.runs  && s.runs[di];
+    const strVal   = s.str   && s.str[di];
+    const crossVal = s.cross && s.cross[di];
+    let inner = '';
+
+    // Run
+    if (runVal) {
+      const rp = parse(runVal);
+      if (rp) {
+        const entry = getLibraryEntry(rp.label);
+        const prefix = runVal.split(':')[0];
+        const cls = prefix==='long'?'dv-long':prefix==='quality'?'dv-quality':'dv-run';
+        inner += `<div class="dv-card ${cls}"><div class="dv-card-title">${rp.label}</div>`;
+        if (entry) {
+          if (entry.structure)   inner += `<div class="dv-card-detail">${entry.structure}</div>`;
+          if (entry.pace_target) inner += `<span class="dv-card-pace">${entry.pace_target}</span>`;
+        }
+        inner += `</div>`;
+        if (isOwn && wi >= 0) {
+          (getStravaForDay(wi, di, 'runs') || []).forEach(a => {
+            const km = a.distance ? (a.distance/1000).toFixed(2)+' km' : '';
+            const pace = formatPace(a.distance, a.moving_time);
+            const dur = formatDuration(a.moving_time);
+            inner += `<div class="dv-card dv-strava"><div class="dv-card-title">⚡ ${a.name}</div><div class="dv-card-detail">${[km,pace,dur].filter(Boolean).join(' · ')}</div></div>`;
+          });
+        }
       }
     }
-  } else {
-    html += `<div class="dv-empty">Rest day</div>`;
+
+    // Strength
+    if (strVal) {
+      const sp = parse(strVal);
+      if (sp) {
+        const entry = getStrengthEntry(sp.label);
+        inner += `<div class="dv-card dv-str"><div class="dv-card-title">${sp.label}</div>`;
+        if (entry && entry.exercises && entry.exercises.length)
+          inner += `<div class="dv-card-detail">${entry.exercises.map(ex=>`${ex.name} ${fmtSetsReps(ex)}`).join(' · ')}</div>`;
+        inner += `</div>`;
+        if (isOwn) {
+          (getStravaForDay(wi, di, 'str') || []).forEach(a => {
+            inner += `<div class="dv-card dv-strava"><div class="dv-card-title">⚡ ${a.name}</div><div class="dv-card-detail">${formatDuration(a.moving_time)}</div></div>`;
+          });
+        }
+      }
+    }
+
+    // Cross
+    if (crossVal) {
+      const xp = parse(crossVal);
+      if (xp) {
+        inner += `<div class="dv-card dv-cross"><div class="dv-card-title">${xp.label}</div></div>`;
+        if (isOwn) {
+          (getStravaForDay(wi, di, 'cross') || []).forEach(a => {
+            inner += `<div class="dv-card dv-strava"><div class="dv-card-title">⚡ ${a.name}</div><div class="dv-card-detail">${formatDuration(a.moving_time)}</div></div>`;
+          });
+        }
+      }
+    }
+
+    // Sterk Gutt logged session (own profile only)
+    if (isOwn) {
+      const sgSess = getSGSessionForDate(dateStr);
+      if (sgSess) {
+        const vol = Math.round(sgCalcVolume(sgSess));
+        const totalSets = (sgSess.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
+        const exLines = (sgSess.exercises||[]).map(ex => {
+          const sum = sgExerciseSummary(ex); if (!sum.sets) return '';
+          const top = sum.topWeight ? `${sum.topWeight}kg×${sum.topReps}` : `${sum.sets} sets`;
+          return `<div class="dv-logged-row"><span>${ex.name}</span><span class="mono">${top} · ${sum.sets}×</span></div>`;
+        }).filter(Boolean).join('');
+        inner += `<div class="dv-card dv-str-logged"><div class="dv-card-title">💪 ${sgSess.routine_name||'Logged session'}</div><div class="dv-card-detail">${totalSets} sets · ${vol.toLocaleString()} kg volume</div><div class="dv-logged-ex">${exLines}</div></div>`;
+      }
+    }
+
+    if (!inner) inner = `<div class="dv-empty">Rest day</div>`;
+    return `<div class="dv-section"><div class="dv-section-title">${label}</div>${inner}</div>`;
   }
-  html += `</div>`;
+
+  const activeS  = wi>=0&&di>=0 ? ats(wi) : null;
+  const partnerS = wi>=0&&di>=0 ? pts(wi) : null;
+  const partnerName = activeProfile === 'marius' ? 'Vilde' : 'Marius';
+  html += dvTraining(activeS,  'Your Training', true);
+  html += dvTraining(partnerS, `${partnerName}'s Training`, false);
 
   // Dinner
   const dvMeal = wi>=0 && di>=0 ? parseMeal(mealState[wi][di]) : null;
   if (dvMeal) {
     html += `<div class="dv-section"><div class="dv-section-title">Dinner</div>`;
-    html += `<div class="dv-card dv-meal">
-      <div class="dv-card-title">${dvMeal.type==='recipe'?'🍽 ':'🍴 '}${dvMeal.name}</div>`;
+    html += `<div class="dv-card dv-meal"><div class="dv-card-title">${dvMeal.type==='recipe'?'🍽 ':'🍴 '}${dvMeal.name}</div>`;
     if (dvMeal.type === 'recipe') {
       const dvRecipe = recipeLibrary.find(r => r.id === dvMeal.id);
-      if (dvRecipe && dvRecipe.ingredients && dvRecipe.ingredients.length) {
-        const ingList = dvRecipe.ingredients.join(', ');
-        html += `<div class="dv-card-detail">${ingList}</div>`;
-      }
+      if (dvRecipe && dvRecipe.ingredients && dvRecipe.ingredients.length)
+        html += `<div class="dv-card-detail">${dvRecipe.ingredients.join(', ')}</div>`;
     }
     html += `</div></div>`;
   }
-  let strInner = '';
-  if (wi >= 0 && di >= 0 && state[wi].str[di]) {
-    const sp = parse(state[wi].str[di]);
-    if (sp) {
-      const entry = getStrengthEntry(sp.label);
-      strInner += `<div class="dv-card dv-str">
-        <div class="dv-card-title">${sp.label}</div>`;
-      if (entry && entry.exercises && entry.exercises.length) {
-        strInner += `<div class="dv-card-detail">${entry.exercises.map(ex=>`${ex.name} ${fmtSetsReps(ex)}`).join(' · ')}</div>`;
-      }
-      strInner += `</div>`;
-      // Strava strength
-      const acts = getStravaForDay(wi, di, 'str');
-      if (acts) acts.forEach(a => {
-        const dur = formatDuration(a.moving_time);
-        strInner += `<div class="dv-card dv-strava">
-          <div class="dv-card-title">⚡ ${a.name}</div>
-          <div class="dv-card-detail">${dur}</div>
-        </div>`;
-      });
-    }
-  }
-  // Actual logged Sterk Gutt session (shows even on unplanned days)
-  const sgSess = getSGSessionForDate(dateStr);
-  if (sgSess) {
-    const vol = Math.round(sgCalcVolume(sgSess));
-    const totalSets = (sgSess.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
-    const exLines = (sgSess.exercises||[]).map(ex => {
-      const sum = sgExerciseSummary(ex);
-      if (!sum.sets) return '';
-      const top = sum.topWeight ? `${sum.topWeight}kg×${sum.topReps}` : `${sum.sets} sets`;
-      return `<div class="dv-logged-row"><span>${ex.name}</span><span class="mono">${top} · ${sum.sets}×</span></div>`;
-    }).filter(Boolean).join('');
-    strInner += `<div class="dv-card dv-str-logged">
-      <div class="dv-card-title">💪 ${sgSess.routine_name || 'Logged session'}</div>
-      <div class="dv-card-detail">${totalSets} sets · ${vol.toLocaleString()} kg volume</div>
-      <div class="dv-logged-ex">${exLines}</div>
-    </div>`;
-  }
-  html += strInner || `<div class="dv-empty">No strength session</div>`;
-  html += `</div>`;
 
   // Wife shifts
   if (wi >= 0 && di >= 0 && wifeState[wi][di]) {
