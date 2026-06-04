@@ -5856,10 +5856,10 @@ function showGCalError(msg) {
 
 function openGCal(dateStr) {
   _gcalCreateDateStr = dateStr;
-  document.getElementById('gcf-start-date').value = dateStr;
-  document.getElementById('gcf-end-date').value = dateStr;
-  document.getElementById('gcf-allday-start').value = dateStr;
-  document.getElementById('gcf-allday-end').value = dateStr;
+  // Pre-fill the create form with this day so the + button is ready
+  ['gcf-start-date','gcf-end-date','gcf-allday-start','gcf-allday-end'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = dateStr;
+  });
   const dt = new Date(dateStr + 'T12:00:00');
   document.getElementById('gcal-date').textContent =
     dt.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
