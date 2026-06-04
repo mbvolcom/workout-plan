@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -1093,7 +1093,16 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-week-num { font-size:15px; font-weight:700; color:var(--text); }
 .mob-week-dates { font-size:11px; color:var(--muted); margin-top:1px; }
 .mob-week-km { font-size:10px; color:var(--muted); }
-.mob-summary { display:flex; gap:8px; margin-bottom:14px; }
+.mob-summary { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.mob-summary-bar-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+.mob-summary-bar-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.mob-summary-bar-km { font-size:15px; font-weight:700; color:var(--text); }
+.mob-summary-bar-km .actual { color:#FC4C02; }
+.mob-summary-bar-km .planned { color:var(--muted); font-size:12px; font-weight:500; }
+.mob-summary-bar-pct { font-size:11px; font-weight:600; color:var(--muted2); }
+.mob-summary-bar-track { height:7px; background:var(--border); border-radius:999px; overflow:hidden; }
+.mob-summary-bar-fill  { height:100%; background:linear-gradient(90deg,#FC4C02,#ff7849); border-radius:999px; transition:width 0.4s ease; }
+.mob-summary-stats { display:flex; gap:8px; }
 .mob-summary-card { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 8px; text-align:center; }
 .mob-summary-val { font-size:16px; font-weight:700; color:var(--text); display:block; }
 .mob-summary-val.strava { color:#FC4C02; }
@@ -3314,12 +3323,17 @@ if (_local) applyState(JSON.parse(_local));
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       loadRecipeLibrary().then(() => { renderRecipeLibEntries(); renderMealRecipeList(); });
+      fetchGCal().then(() => { if (isMobilePortrait()) renderMobileRaceWeek(); });
     }
   });
   // Also poll every 60 seconds while the app is open
   setInterval(() => {
     loadRecipeLibrary().then(() => { renderRecipeLibEntries(); renderMealRecipeList(); });
   }, 60000);
+  // Poll GCal every 5 minutes
+  setInterval(() => {
+    fetchGCal().then(() => { if (isMobilePortrait()) renderMobileRaceWeek(); });
+  }, 5 * 60 * 1000);
 })();
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -5943,17 +5957,26 @@ function showGCalError(msg) {
 
 function openGCal(dateStr) {
   _gcalCreateDateStr = dateStr;
-  // Pre-fill the create form with this day so the + button is ready
   ['gcf-start-date','gcf-end-date','gcf-allday-start','gcf-allday-end'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = dateStr;
   });
   const dt = new Date(dateStr + 'T12:00:00');
   document.getElementById('gcal-date').textContent =
     dt.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+  // Render with current data immediately, then silently refresh
+  renderGCalEvents(dateStr);
+  gcalOverlay.classList.add('open');
+  fetchGCal().then(() => {
+    if (gcalOverlay.classList.contains('open') && _gcalCreateDateStr === dateStr) {
+      renderGCalEvents(dateStr);
+      if (isMobilePortrait()) renderMobileRaceWeek();
+    }
+  });
+}
 
+function renderGCalEvents(dateStr) {
   const events = gcalEvents[dateStr] || [];
   const eventsEl = document.getElementById('gcal-events');
-
   if (!events.length) {
     eventsEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No events this day.</div>';
   } else {
@@ -5963,7 +5986,6 @@ function openGCal(dateStr) {
         <span class="gcal-event-name">${e.summary}</span>
       </div>`).join('');
   }
-  gcalOverlay.classList.add('open');
 }
 
 // ── STERK GUTT ─────────────────────────────────────────────────────────────
@@ -7732,28 +7754,49 @@ function renderMobileRaceWeek() {
   nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
   mc.appendChild(nav);
 
-  // Week summary strip
+  // Week summary strip — redesigned
   const sum = weekSummary(wi);
   const sumRow = document.createElement('div'); sumRow.className='mob-summary';
-  const sessVal = `${sum.done}/${sum.planned}`;
-  const kmVal = sum.totalKm > 0 ? sum.totalKm.toFixed(1)+'km' : '—';
-  const durVal = sum.totalSecs > 0 ? formatDuration(sum.totalSecs) : '—';
-  [
-    {val:sessVal, lbl:'Sessions', strava:sum.done>0},
-    {val:kmVal,   lbl:'Distance', strava:sum.totalKm>0},
-    {val:durVal,  lbl:'Duration', strava:sum.totalSecs>0},
-  ].forEach(({val,lbl,strava})=>{
-    const card=document.createElement('div'); card.className='mob-summary-card';
-    card.innerHTML=`<span class="mob-summary-val${strava?' strava':''}">${val}</span><span class="mob-summary-lbl">${lbl}</span>`;
-    sumRow.appendChild(card);
+
+  const plannedKm = w.km || 0;
+  const actualKm  = sum.totalKm;
+  const pct = plannedKm > 0 ? Math.min(100, Math.round((actualKm / plannedKm) * 100)) : 0;
+
+  // Per-day session dots (M T W T F S S)
+  const dotDays = DAYS.map((dayLabel, di) => {
+    const aS = ats(wi);
+    const hasSession = !!(aS.runs[di] || aS.str[di] || (aS.cross && aS.cross[di]));
+    const stravaActs = getStravaForDay(wi, di, 'runs') || getStravaForDay(wi, di, 'str') || getStravaForDay(wi, di, 'cross');
+    const done = !!stravaActs;
+    return { dayLabel: dayLabel.slice(0,1), hasSession, done };
   });
-  // Progress bar if targets set
-  if (sum.targetKm > 0) {
-    const pct = Math.min(100, Math.round((sum.totalKm/sum.targetKm)*100));
-    const targetCard = document.createElement('div'); targetCard.className='mob-summary-card';
-    targetCard.innerHTML=`<span class="mob-summary-val${sum.totalKm>0?' strava':''}">${pct}%</span><span class="mob-summary-lbl">${sum.totalKm.toFixed(1)}/${sum.targetKm}km</span>`;
-    sumRow.appendChild(targetCard);
-  }
+
+  const dotsHTML = dotDays.map(({dayLabel, hasSession, done}) => {
+    const color = done ? '#FC4C02' : hasSession ? 'var(--border2)' : 'var(--border)';
+    const dot = done ? '●' : hasSession ? '○' : '·';
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;">
+      <span style="font-size:8px;color:var(--muted2);letter-spacing:0.04em;">${dayLabel}</span>
+      <span style="font-size:12px;color:${color};">${dot}</span>
+    </div>`;
+  }).join('');
+
+  const barWrap = document.createElement('div'); barWrap.className='mob-summary-bar-wrap';
+  barWrap.innerHTML = `
+    <div class="mob-summary-bar-header">
+      <div class="mob-summary-bar-km">
+        ${actualKm > 0
+          ? `<span class="actual">${actualKm.toFixed(1)} km</span>`
+          : `<span style="color:var(--muted2);">0 km</span>`}
+        ${plannedKm > 0 ? `<span class="planned"> / ${plannedKm} km</span>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${sum.totalSecs > 0 ? `<span style="font-size:11px;color:var(--muted2);">⏱ ${formatDuration(sum.totalSecs)}</span>` : ''}
+        ${plannedKm > 0 ? `<span class="mob-summary-bar-pct">${pct}%</span>` : ''}
+      </div>
+    </div>
+    ${plannedKm > 0 ? `<div class="mob-summary-bar-track" style="margin-bottom:10px;"><div class="mob-summary-bar-fill" style="width:${pct}%"></div></div>` : '<div style="height:6px;"></div>'}
+    <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
+  sumRow.appendChild(barWrap);
   mc.appendChild(sumRow);
 
   // Day cards — one per day
@@ -7827,13 +7870,13 @@ function renderMobileRaceWeek() {
     const gcalEvts = gcalEvents[dateStr]||[];
     const gcalP = document.createElement('div');
     gcalP.className='mob-pill mob-pill-gcal';
+    gcalP.style.cursor='pointer';
     if (gcalEvts.length) {
-      gcalP.style.cursor='pointer';
       gcalP.innerHTML=`<span class="mob-pill-label">📅 ${gcalEvts.length} event${gcalEvts.length>1?'s':''}</span><span class="mob-pill-sub">${gcalEvts.slice(0,2).map(e=>`${e.isAllDay?'All day':e.startTime} ${e.summary}`).join(' · ')}</span>`;
-      gcalP.addEventListener('click',()=>openGCal(dateStr));
     } else {
-      gcalP.innerHTML=`<span class="mob-pill-label" style="color:var(--border-mid);">📅 No events</span>`;
+      gcalP.innerHTML=`<span class="mob-pill-label" style="color:var(--border-mid);">📅 No events · tap to add</span>`;
     }
+    gcalP.addEventListener('click', e => { e.stopPropagation(); openGCal(dateStr); });
     pills.appendChild(gcalP);
 
     // Wife
@@ -7845,7 +7888,7 @@ function renderMobileRaceWeek() {
 
     // Kinder (only weekdays)
     if (di < 5) {
-      const kinder=getKinder(wi,di);
+      const kinder=getKinderForProfile(wi,di);
       const kinderP = document.createElement('div'); kinderP.className='mob-pill mob-pill-kinder';
       if (kinder) { const kp=parse(kinder); if(kp&&kp.cls!=='kinder-blank') kinderP.textContent=kp.label; else kinderP.innerHTML=`<span style="color:var(--border-mid);">—</span>`; }
       else kinderP.innerHTML=`<span style="color:var(--border-mid);">—</span>`;
