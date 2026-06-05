@@ -1189,7 +1189,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.1.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.1.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1200,7 +1200,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div class="options-wrap">
         <button class="profile-btn options-btn" id="options-btn" onclick="toggleOptionsMenu()">⋯ Options</button>
         <div class="options-menu glass" id="options-menu">
-          <button class="options-item" id="opt-edit-work" onclick="toggleWifeEdit();closeOptionsMenu()">✏️ Edit Work</button>
+          <button class="options-item" id="opt-edit-work" onclick="toggleWifeEdit();document.getElementById('opt-edit-work').textContent=wifeEditMode?'🔒 Lock Work':'✏️ Edit Work';">✏️ Edit Work</button>
           <button class="options-item" onclick="openLibModal().catch(console.error);closeOptionsMenu()">📚 Library</button>
           <button class="options-item" onclick="openStatsPage();closeOptionsMenu()">📊 Stats</button>
           <button class="options-item violet" onclick="openClaudePanel();closeOptionsMenu()">✦ Claude</button>
@@ -2003,14 +2003,26 @@ function toggleOptionsMenu() {
   const menu = document.getElementById('options-menu');
   const btn  = document.getElementById('options-btn');
   const isOpen = menu.classList.contains('open');
-  if (!isOpen) {
-    const rect = btn.getBoundingClientRect();
-    menu.style.top   = (rect.bottom + 6) + 'px';
-    menu.style.right = (window.innerWidth - rect.right) + 'px';
-    const opt = document.getElementById('opt-edit-work');
-    if (opt) opt.textContent = wifeEditMode ? '🔒 Lock Work' : '✏️ Edit Work';
+
+  if (isOpen) {
+    menu.classList.remove('open');
+    return;
   }
-  menu.classList.toggle('open', !isOpen);
+
+  // Move to <body> so it's completely outside any parent stacking context
+  if (menu.parentNode !== document.body) document.body.appendChild(menu);
+
+  // Always recalculate position fresh
+  const rect = btn.getBoundingClientRect();
+  menu.style.top   = (rect.bottom + 8) + 'px';
+  menu.style.right = (window.innerWidth - rect.right) + 'px';
+  menu.style.left  = 'auto';
+  menu.style.width = 'auto';
+
+  const opt = document.getElementById('opt-edit-work');
+  if (opt) opt.textContent = wifeEditMode ? '🔒 Lock Work' : '✏️ Edit Work';
+
+  menu.classList.add('open');
 }
 function closeOptionsMenu() {
   document.getElementById('options-menu')?.classList.remove('open');
@@ -7967,9 +7979,10 @@ function renderMobileRaceWeek() {
 
     // Wife
     const wife=wifeState[wi]&&wifeState[wi][di];
-    const wifeP = document.createElement('div'); wifeP.className='mob-pill mob-pill-wife';
+    const wifeP = document.createElement('div'); wifeP.className='mob-pill mob-pill-wife'; wifeP.style.cursor='pointer';
     if (wife) { const wp=parse(wife); if(wp) wifeP.textContent=translateShift(wp.label); else wifeP.innerHTML=`<span style="color:var(--border-mid);">—</span>`; }
     else wifeP.innerHTML=`<span style="color:var(--border-mid);">—</span>`;
+    wifeP.addEventListener('click', e => { e.stopPropagation(); openAddModal(wi,'wife',di); });
     pills.appendChild(wifeP);
 
     // Kinder (only weekdays)
