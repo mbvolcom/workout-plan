@@ -1942,6 +1942,9 @@ const kinderState = WEEKS.map(() => [null,null,null,null,null,null,null]);
 // mealState: null = no meal planned, 'text:Name' = free text, 'recipe:UUID:Name' = recipe-linked
 const mealState = WEEKS.map(() => Array(7).fill(null));
 
+// vildeTargets: weekly training goal in hours for Vilde's profile (null = not set)
+const vildeTargets = WEEKS.map(() => null);
+
 // Vilde's training state — same structure as state[]
 const vState = WEEKS.map(() => ({
   runs:  Array(7).fill(null),
@@ -1984,6 +1987,19 @@ function togglePartnerTraining() {
   WEEKS.forEach((_,wi) => renderWeek(wi));
 }
 
+function setVildeWeekGoal(wi) {
+  const [y,m,d] = WEEK_MONDAYS[wi];
+  const dt = new Date(y,m-1,d);
+  const weekLabel = dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const current = vildeTargets[wi] || '';
+  const input = prompt(`Weekly training goal for week of ${weekLabel} (hours, e.g. 5.5):`, current);
+  if (input === null) return; // cancelled
+  const hrs = parseFloat(input);
+  vildeTargets[wi] = isNaN(hrs) || hrs <= 0 ? null : hrs;
+  triggerAutosave();
+  if (isMobilePortrait()) renderMobileView();
+}
+
 // Profile-aware kinder: flips perspective for Vilde
 function getKinderForProfile(wi, di) {
   const raw = kinderState[wi][di] || (typeof getKinder === 'function' ? getKinder(wi, di) : null);
@@ -2003,19 +2019,22 @@ function getKinderForProfile(wi, di) {
 
 // Derive kindergarten value from a wife shift code (Mon-Fri only)
 function kinderFromWife(wifeVal, dayIdx) {
-  // Sat (5) and Sun (6) always empty
-  if (dayIdx >= 5) return null;
-  if (!wifeVal) return 'kgb:—'; // blank wife = blank kinder (but show box)
+  if (dayIdx >= 5) return null; // Sat/Sun — no kinder
+  if (!wifeVal) return null;
+  const prefix = wifeVal.split(':')[0];
+  // Prefix-based logic (most reliable):
+  // Morning shift  → Marius delivers (she's gone early)
+  if (prefix === 'early') return 'kgd:Deliver';
+  // Evening/long/night shift → Marius picks up (she's gone by afternoon)
+  if (prefix === 'eve' || prefix === 'other') return 'kgp:Pick up';
+  // Day off / vacation → Vilde covers both (Marius perspective = blank)
+  if (prefix === 'off' || prefix === 'vac') return 'kgb:—';
+  // Fall back to specific shift codes for unlabelled entries
   const code = wifeVal.includes(':') ? wifeVal.split(':')[1] : wifeVal;
-  // Empty / F-prefix / N2 / vacation = empty
-  if (!code || code.startsWith('F') || code === 'N2' || code === 'N2 (night)' || code === 'Vacation' || code === '!') return null;
-  // Deliver
+  if (!code || code === '!') return null;
   if (['OD4','ODR4','D2','OD4L'].includes(code)) return 'kgd:Deliver';
-  // Pick up
-  if (['OK4','OKR4','OK4L','K2'].includes(code)) return 'kgp:Pick up';
-  // Deliver & pick up
-  if (code === 'D2L') return 'kgx:Deliver & pick up';
-  // Anything else on a weekday = blank box
+  if (['OK4','OKR4','OK4L','K2'].includes(code))  return 'kgp:Pick up';
+  if (code === 'D2L')                              return 'kgx:Deliver & pick up';
   return 'kgb:—';
 }
 
@@ -2734,19 +2753,15 @@ function renderWeek(wi) {
                 el.textContent = p.label; el.title = p.label;
                 if (p.cls !== 'kinder-blank') {
                   makeDraggablePill(el, wi, 'kinder', di);
-                } else {
-                  el.addEventListener('contextmenu', e => openCtxMenu(e, wi, 'kinder', di));
-                  el.addEventListener('touchstart', e => {
-                    let lp = setTimeout(() => { lp = null; openCtxMenuAt(e.touches[0].clientX, e.touches[0].clientY, wi, 'kinder', di); }, 500);
-                    el.addEventListener('touchend',    () => clearTimeout(lp), {once:true});
-                    el.addEventListener('touchcancel', () => clearTimeout(lp), {once:true});
-                    el.addEventListener('touchmove',   () => clearTimeout(lp), {once:true});
-                  }, {passive:true});
                 }
+                // Always tappable to edit
+                el.addEventListener('click', e => { e.stopPropagation(); openAddModal(wi, 'kinder', di); });
                 zone.appendChild(el);
               }
             }
-            zone.addEventListener('contextmenu', e => { if(e.target===zone) { e.preventDefault(); openCtxMenuAt(e.clientX, e.clientY, wi, 'kinder', di); } });
+            // Zone click always opens editor
+            zone.addEventListener('click', e => { if (e.target === zone) openAddModal(wi, 'kinder', di); });
+            zone.addEventListener('contextmenu', e => { e.preventDefault(); openCtxMenuAt(e.clientX, e.clientY, wi, 'kinder', di); });
             zone.addEventListener('dragover', onDragOver);
             zone.addEventListener('dragleave', onDragLeave);
             zone.addEventListener('drop', onDrop);
@@ -3077,7 +3092,7 @@ function showAutosaveStatus(status) {
 
 async function saveState() {
   showAutosaveStatus('pending');
-  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi], meal:mealState[wi], v_runs:vState[wi].runs, v_str:vState[wi].str, v_cross:vState[wi].cross }));
+  const data = state.map((s,wi) => ({ runs:s.runs, str:s.str, str2:s.str2||Array(7).fill(null), cross:s.cross, wife:wifeState[wi], kinder:kinderState[wi], meal:mealState[wi], v_runs:vState[wi].runs, v_str:vState[wi].str, v_cross:vState[wi].cross, v_target:vildeTargets[wi] }));
   localStorage.setItem('training-cal-2026', JSON.stringify(data));
   try {
     const res = await fetch(SUPA_BASE+'calendar_state?on_conflict=id', {
@@ -3111,9 +3126,10 @@ function applyState(saved) {
       if (s.wife)   wifeState[wi]   = s.wife;
       if (s.kinder) kinderState[wi] = s.kinder;
       if (s.meal)   mealState[wi]   = s.meal;
-      if (s.v_runs)  vState[wi].runs  = s.v_runs;
-      if (s.v_str)   vState[wi].str   = s.v_str;
-      if (s.v_cross) vState[wi].cross = s.v_cross;
+      if (s.v_runs)   vState[wi].runs  = s.v_runs;
+      if (s.v_str)    vState[wi].str   = s.v_str;
+      if (s.v_cross)  vState[wi].cross = s.v_cross;
+      if (s.v_target != null) vildeTargets[wi] = s.v_target;
     }
   });
 }
@@ -7768,15 +7784,13 @@ function renderMobileRaceWeek() {
   const sum = weekSummary(wi);
   const sumRow = document.createElement('div'); sumRow.className='mob-summary';
 
-  const plannedKm = w.km || 0;
-  const actualKm  = sum.totalKm;
-  const pct = plannedKm > 0 ? Math.min(100, Math.round((actualKm / plannedKm) * 100)) : 0;
+  const isVilde = activeProfile === 'vilde';
 
   // Per-day session dots (M T W T F S S)
   const dotDays = DAYS.map((dayLabel, di) => {
     const aS = ats(wi);
     const hasSession = !!(aS.runs[di] || aS.str[di] || (aS.cross && aS.cross[di]));
-    const stravaActs = getStravaForDay(wi, di, 'runs') || getStravaForDay(wi, di, 'str') || getStravaForDay(wi, di, 'cross');
+    const stravaActs = activeProfile === 'marius' && (getStravaForDay(wi, di, 'runs') || getStravaForDay(wi, di, 'str') || getStravaForDay(wi, di, 'cross'));
     const done = !!stravaActs;
     return { dayLabel: dayLabel.slice(0,1), hasSession, done };
   });
@@ -7791,21 +7805,42 @@ function renderMobileRaceWeek() {
   }).join('');
 
   const barWrap = document.createElement('div'); barWrap.className='mob-summary-bar-wrap';
-  barWrap.innerHTML = `
-    <div class="mob-summary-bar-header">
-      <div class="mob-summary-bar-km">
-        ${actualKm > 0
-          ? `<span class="actual">${actualKm.toFixed(1)} km</span>`
-          : `<span style="color:var(--muted2);">0 km</span>`}
-        ${plannedKm > 0 ? `<span class="planned"> / ${plannedKm} km</span>` : ''}
+
+  if (isVilde) {
+    // Vilde: show hours goal instead of km
+    const goalHrs = vildeTargets[wi] || 0;
+    const tapHint = goalHrs ? `${goalHrs} hrs goal` : 'Tap to set weekly goal';
+    barWrap.innerHTML = `
+      <div class="mob-summary-bar-header" style="cursor:pointer;" onclick="setVildeWeekGoal(${wi})">
+        <div class="mob-summary-bar-km">
+          <span style="color:var(--muted2);">⏱ ${tapHint}</span>
+        </div>
+        <span style="font-size:11px;color:var(--neon);">✎ Edit</span>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        ${sum.totalSecs > 0 ? `<span style="font-size:11px;color:var(--muted2);">⏱ ${formatDuration(sum.totalSecs)}</span>` : ''}
-        ${plannedKm > 0 ? `<span class="mob-summary-bar-pct">${pct}%</span>` : ''}
+      <div style="height:6px;"></div>
+      <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
+  } else {
+    // Marius: show km progress bar
+    const plannedKm = w.km || 0;
+    const actualKm  = sum.totalKm;
+    const pct = plannedKm > 0 ? Math.min(100, Math.round((actualKm / plannedKm) * 100)) : 0;
+    barWrap.innerHTML = `
+      <div class="mob-summary-bar-header">
+        <div class="mob-summary-bar-km">
+          ${actualKm > 0
+            ? `<span class="actual">${actualKm.toFixed(1)} km</span>`
+            : `<span style="color:var(--muted2);">0 km</span>`}
+          ${plannedKm > 0 ? `<span class="planned"> / ${plannedKm} km</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${sum.totalSecs > 0 ? `<span style="font-size:11px;color:var(--muted2);">⏱ ${formatDuration(sum.totalSecs)}</span>` : ''}
+          ${plannedKm > 0 ? `<span class="mob-summary-bar-pct">${pct}%</span>` : ''}
+        </div>
       </div>
-    </div>
-    ${plannedKm > 0 ? `<div class="mob-summary-bar-track" style="margin-bottom:10px;"><div class="mob-summary-bar-fill" style="width:${pct}%"></div></div>` : '<div style="height:6px;"></div>'}
-    <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
+      ${plannedKm > 0 ? `<div class="mob-summary-bar-track" style="margin-bottom:10px;"><div class="mob-summary-bar-fill" style="width:${pct}%"></div></div>` : '<div style="height:6px;"></div>'}
+      <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
+  }
+
   sumRow.appendChild(barWrap);
   mc.appendChild(sumRow);
 
@@ -7899,9 +7934,10 @@ function renderMobileRaceWeek() {
     // Kinder (only weekdays)
     if (di < 5) {
       const kinder=getKinderForProfile(wi,di);
-      const kinderP = document.createElement('div'); kinderP.className='mob-pill mob-pill-kinder';
+      const kinderP = document.createElement('div'); kinderP.className='mob-pill mob-pill-kinder'; kinderP.style.cursor='pointer';
       if (kinder) { const kp=parse(kinder); if(kp&&kp.cls!=='kinder-blank') kinderP.textContent=kp.label; else kinderP.innerHTML=`<span style="color:var(--border-mid);">—</span>`; }
       else kinderP.innerHTML=`<span style="color:var(--border-mid);">—</span>`;
+      kinderP.addEventListener('click', e => { e.stopPropagation(); openAddModal(wi,'kinder',di); });
       pills.appendChild(kinderP);
     }
 
@@ -8897,9 +8933,11 @@ function renderBriefing() {
   if (wi>=0 && wifeState[wi][di]) {
     const wp = parse(wifeState[wi][di]);
     wifePrefix = wifeState[wi][di].split(':')[0];
-    if (wp) rows += briefRow('👩', 'Partner', translateShift(wp.label));
+    const wifeLabel = activeProfile === 'marius' ? 'Vilde\'s shift' : 'My shift';
+    if (wp) rows += briefRow('👩', wifeLabel, translateShift(wp.label));
   } else {
-    rows += briefRow('👩', 'Partner', '<span class="brief-empty">Not working</span>');
+    const wifeLabel = activeProfile === 'marius' ? 'Vilde\'s shift' : 'My shift';
+    rows += briefRow('👩', wifeLabel, '<span class="brief-empty">Not working</span>');
   }
 
   // Kindergarten duty
