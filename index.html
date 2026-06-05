@@ -1189,7 +1189,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.1.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.1.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -5016,7 +5016,7 @@ Be concise and friendly. Marius is training for a marathon. Always confirm befor
       method: 'POST',
       headers: { ...SUPA_HDR },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1000,
         system: systemPrompt,
         messages: claudeHistory,
@@ -5024,7 +5024,18 @@ Be concise and friendly. Marius is training for a marathon. Always confirm befor
     });
 
     const data = await res.json();
-    const responseText = data.content?.map(c => c.text || '').join('') || 'Sorry, I could not process that.';
+
+    // Surface actual error from proxy or Anthropic
+    if (!res.ok || data.error || !data.content) {
+      const errMsg = data.error?.message || data.error || `HTTP ${res.status}`;
+      removeTypingIndicator();
+      addClaudeMessage('assistant', `⚠️ Error: ${errMsg}`);
+      console.error('Claude proxy error:', data);
+      document.getElementById('claude-send-btn').disabled = false;
+      return;
+    }
+
+    const responseText = data.content.map(c => c.text || '').join('');
     claudeHistory.push({ role: 'assistant', content: responseText });
 
     removeTypingIndicator();
