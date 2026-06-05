@@ -439,7 +439,8 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .week-summary-row .sum-dash { color: var(--border-mid); }
 /* DATE NUMBER ROW */
 .date-num-row { margin-bottom: 1px; }
-.date-num-cell { font-size:10px; font-weight:600; color:var(--muted); text-align:center; line-height:1; padding:4px 0 2px; display:flex; align-items:center; justify-content:center; gap:3px; }
+.date-num-cell { font-size:10px; font-weight:600; color:var(--muted); text-align:center; line-height:1.2; padding:2px 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.date-mo { font-size:7.5px; font-weight:500; color:var(--muted2); letter-spacing:0.04em; opacity:0.8; }
 
 /* COLLAPSE TOGGLE */
 .week-toggle { background:none; border:none; cursor:pointer; font-size:11px; color:var(--muted); padding:0 0 2px; line-height:1; font-family:inherit; font-weight:600; display:inline-flex; align-items:center; gap:4px; }
@@ -1189,7 +1190,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.1.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.2.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1234,12 +1235,10 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   </div>
   <div class="tb-spacer"></div>
   <div class="seg-tabs" id="view-seg-tabs">
-    <button id="view-btn-month" onclick="setCalMode('month')">📅 Month</button>
-    <button class="on race" id="view-btn-race"
-      onclick="setCalMode('race')"
+    <button class="on race" id="view-btn-calendar"
+      onclick="setView('calendar')"
       oncontextmenu="showPlanDropdown(event)"
-      ontouchstart="startPlanLongPress(event)">🏃 Race</button>
-    <button id="view-btn-calendar" onclick="setView('calendar')">☰ All</button>
+      ontouchstart="startPlanLongPress(event)">📅 Plan</button>
     <button id="view-btn-week" onclick="setView('week')">📆 Week</button>
     <button id="view-btn-day" onclick="setView('day')">📋 Day</button>
     <button id="view-btn-shop" onclick="setView('shop')">🛒 Shop</button>
@@ -1842,7 +1841,6 @@ body.shop-mode #briefing-card { display:none !important; }
 
 <div id="desktop-cal-wrap">
 <div id="cal"></div>
-<div id="month-cal" style="display:none;"></div>
 <div id="week-view" style="display:none;"></div>
 <div id="day-view" style="display:none;"></div>
 </div>
@@ -1951,6 +1949,42 @@ const WEEKS = [
     runs:["easy:Easy 8 km + strides","easy-pm:Easy 5 km (PM)","easy-pm:Easy 3 km (PM)",null,"easy:Easy 4 km shake-out",null,"race:RACE DAY — Stavanger Marathon"],
     str:[null,null,null,null,null,null,null]},
 ];
+
+// ── PERPETUAL WEEK GENERATION ───────────────────────────────────────────────
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function getISOWeek(date) {
+  const d = new Date(date); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 3 - ((d.getDay()+6)%7));
+  const w1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d-w1)/86400000 - 3 + ((w1.getDay()+6)%7)) / 7);
+}
+
+(function generateFutureWeeks() {
+  const lastMon = WEEK_MONDAYS[WEEK_MONDAYS.length - 1];
+  let cursor = new Date(lastMon[0], lastMon[1]-1, lastMon[2] + 7);
+  for (let i = 0; i < 104; i++) { // 2 years ahead
+    const y = cursor.getFullYear(), mo = cursor.getMonth(), d = cursor.getDate();
+    WEEK_MONDAYS.push([y, mo+1, d]);
+    WEEK_DATES.push(Array.from({length:7}, (_, di) => new Date(y,mo,d+di).getDate()));
+    const sun = new Date(y, mo, d+6);
+    const iso = getISOWeek(new Date(y, mo, d));
+    const startStr = `${d} ${MONTHS_SHORT[mo]}`;
+    const endStr   = `${sun.getDate()} ${MONTHS_SHORT[sun.getMonth()]}`;
+    WEEKS.push({
+      _generic: true, phase: null,
+      num: `Week ${iso}`,
+      dates: `${startStr}–${endStr}`,
+      km: null, moved: false,
+      wife:  Array(7).fill(''),
+      runs:  Array(7).fill(null),
+      str:   Array(7).fill(null),
+      str2:  Array(7).fill(null),
+      cross: Array(7).fill(null),
+    });
+    cursor = new Date(y, mo, d + 7);
+  }
+})();
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 const state     = WEEKS.map(w => ({ runs:[...w.runs], str:[...w.str], str2:Array(7).fill(null), cross:[null,null,null,null,null,null,null] }));
@@ -2714,21 +2748,28 @@ function renderWeek(wi) {
       btn.className = 'week-toggle';
       btn.textContent = (isCollapsed ? '＋' : '－') + ' ' + w.num;
       btn.addEventListener('click', () => toggleCollapse(wi));
-      const wDates = document.createElement('span');
-  wDates.className='week-dates';
-  wDates.textContent=w.dates;
-  wDates.style.cssText='cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;';
-  wDates.title='View running plan for this week';
-  wDates.addEventListener('click', e => { e.stopPropagation(); openWeekPlan(w.num); });
-      const wKm    = document.createElement('span'); wKm.className='week-km'; wKm.textContent=w.km+' km';
-      meta.appendChild(btn); meta.appendChild(wDates); meta.appendChild(wKm);
-      if (w.moved) { const t=document.createElement('span'); t.className='moved-tag'; t.textContent='long→Fri'; meta.appendChild(t); }
+      meta.appendChild(btn);
+      if (w.km || w.dates) {
+        const wDates = document.createElement('span');
+        wDates.className='week-dates';
+        wDates.textContent=w.dates||'';
+        if (w.km) {
+          wDates.style.cssText='cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;';
+          wDates.title='View running plan for this week';
+          wDates.addEventListener('click', e => { e.stopPropagation(); openWeekPlan(w.num); });
+        }
+        meta.appendChild(wDates);
+        if (w.km) { const wKm = document.createElement('span'); wKm.className='week-km'; wKm.textContent=w.km+' km'; meta.appendChild(wKm); }
+        if (w.moved) { const t=document.createElement('span'); t.className='moved-tag'; t.textContent='long→Fri'; meta.appendChild(t); }
+      }
       rowEl.appendChild(meta);
       rowEl.appendChild(document.createElement('div')); // label spacer
       DAYS.forEach((_, di) => {
         const c = document.createElement('div');
+        const [wy,wm,wd] = WEEK_MONDAYS[wi];
+        const cellDt = new Date(wy,wm-1,wd+di);
         c.className = 'date-num-cell';
-        c.textContent = WEEK_DATES[wi][di];
+        c.innerHTML = `${cellDt.getDate()}<span class="date-mo">${MONTHS_SHORT[cellDt.getMonth()]}</span>`;
         c.dataset.wi = wi;
         c.dataset.di = di;
         // Right-click → flag menu
@@ -7731,13 +7772,11 @@ function renderMobileView() {
 
   // Mode toggle
   const modeBar = document.createElement('div'); modeBar.className = 'mob-mode-bar';
-  ['month','race'].forEach(m => {
-    const btn = document.createElement('button');
-    btn.className = 'mob-mode-btn' + (mobMode===m?' active':'');
-    btn.textContent = m==='race' ? '🏃 Race' : '📅 Month';
-    btn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode=m; renderMobileView(); });
-    modeBar.appendChild(btn);
-  });
+  const raceBtn = document.createElement('button');
+  raceBtn.className = 'mob-mode-btn active';
+  raceBtn.textContent = '🏃 Plan';
+  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
+  modeBar.appendChild(raceBtn);
   const shopBtn = document.createElement('button');
   shopBtn.className = 'mob-mode-btn';
   shopBtn.textContent = '🛒 Shop';
@@ -7838,7 +7877,7 @@ function renderMobileRaceWeek() {
   const prev = document.createElement('button'); prev.className='mob-week-nav-btn'; prev.textContent='‹';
   prev.addEventListener('click', ()=>{ mobWeekIndex=Math.max(0,mobWeekIndex-1); renderMobileRaceWeek(); });
   const info = document.createElement('div'); info.className='mob-week-info';
-  info.innerHTML=`<div class="mob-week-num">${w.num}</div><div class="mob-week-dates">${w.dates}</div><div class="mob-week-km">${w.km} km planned</div>`;
+  info.innerHTML=`<div class="mob-week-num">${w.num}</div><div class="mob-week-dates">${w.dates||''}</div>${w.km?`<div class="mob-week-km">${w.km} km planned</div>`:''}`;
   const next = document.createElement('button'); next.className='mob-week-nav-btn'; next.textContent='›';
   next.addEventListener('click', ()=>{ mobWeekIndex=Math.min(WEEKS.length-1,mobWeekIndex+1); renderMobileRaceWeek(); });
   nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
@@ -7930,7 +7969,7 @@ function renderMobileRaceWeek() {
     const weatherHTML = best
       ? `<span class="mob-day-weather" style="cursor:pointer;">${yrSymbol(best.symbol)} ${Math.round(best.temp)}°</span>`
       : '';
-    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()}</span>${flagHTML}${weatherHTML}`;
+    hdr.innerHTML=`<span class="mob-day-name">${dayName}</span><span class="mob-day-num${isToday?' mob-today-num':''}">${dt.getDate()} <span style="font-size:9px;opacity:0.65;font-weight:500;">${MONTHS_SHORT[dt.getMonth()]}</span></span>${flagHTML}${weatherHTML}`;
 
     // Click date/day → open week plan
     hdr.querySelector('.mob-day-name').style.cursor='pointer';
@@ -8189,31 +8228,9 @@ let calMode = 'race'; // 'race' or 'month'
 let showPastWeeks = false;
 
 function setCalMode(mode) {
-  calMode = mode;
   document.body.classList.remove('shop-mode');
   const _shopBtn = document.getElementById('view-btn-shop'); if (_shopBtn) _shopBtn.classList.remove('active');
-  // Update seg-tabs using 'on' class
-  document.getElementById('view-btn-month').classList.toggle('on', mode === 'month');
-  document.getElementById('view-btn-race').classList.toggle('on',  mode === 'race');
-  document.getElementById('view-btn-race').classList.toggle('race', true);
-  document.getElementById('race-subtitle').style.display = mode === 'race' ? '' : 'none';
-
-  if (mode === 'month') {
-    document.getElementById('cal').style.display       = 'none';
-    document.getElementById('month-cal').style.display = '';
-    document.getElementById('week-view').style.display = 'none';
-    document.getElementById('day-view').style.display  = 'none';
-    // Reset view-btn states — month mode doesn't use All/Week/Day
-    document.querySelectorAll('.view-btn[id^="view-btn-"]').forEach(b => {
-      if (!['view-btn-month','view-btn-race'].includes(b.id)) b.classList.remove('active');
-    });
-    buildMonthView();
-  } else {
-    document.getElementById('month-cal').style.display = 'none';
-    // Restore race/calendar view
-    setView('calendar');
-    document.getElementById('view-btn-calendar').classList.add('active');
-  }
+  setView('calendar');
 }
 
 function getISOWeekNumber(date) {
