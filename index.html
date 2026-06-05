@@ -1197,6 +1197,15 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <button class="profile-btn p-vilde" id="profile-btn-vilde" onclick="setProfile('vilde')">
         <span class="avatar">V</span> Vilde
       </button>
+      <div class="options-wrap">
+        <button class="profile-btn options-btn" id="options-btn" onclick="toggleOptionsMenu()">⋯ Options</button>
+        <div class="options-menu glass" id="options-menu">
+          <button class="options-item" id="opt-edit-work" onclick="toggleWifeEdit();closeOptionsMenu()">✏️ Edit Work</button>
+          <button class="options-item" onclick="openLibModal().catch(console.error);closeOptionsMenu()">📚 Library</button>
+          <button class="options-item" onclick="openStatsPage();closeOptionsMenu()">📊 Stats</button>
+          <button class="options-item violet" onclick="openClaudePanel();closeOptionsMenu()">✦ Claude</button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="glass-soft hdr-weather" id="now-weather"></div>
@@ -1721,6 +1730,13 @@ body.shop-mode #briefing-card { display:none !important; }
 .profile-btn .avatar { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:700 9px 'Inter Tight',system-ui,sans-serif; flex-shrink:0; }
 .profile-btn.p-marius .avatar { background:#3b82f6; color:#fff; }
 .profile-btn.p-vilde  .avatar { background:#ec4899; color:#fff; }
+.options-wrap { position:relative; }
+.options-btn { padding:4px 11px; letter-spacing:0.02em; }
+.options-menu { display:none; position:absolute; top:calc(100% + 8px); right:0; min-width:170px; border-radius:14px; padding:6px; box-shadow:0 8px 32px rgba(0,0,0,0.15); z-index:9000; flex-direction:column; gap:2px; }
+.options-menu.open { display:flex; }
+.options-item { background:none; border:none; padding:9px 14px; border-radius:9px; font:600 13px 'Inter Tight',system-ui,sans-serif; color:var(--ink-display); cursor:pointer; text-align:left; transition:background 0.12s; width:100%; }
+.options-item:hover,.options-item:active { background:rgba(0,0,0,0.06); }
+.options-item.violet { color:#7c3aed; }
 .profile-banner { font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted2); margin-top:2px; }
 /* Partner training pills in grid */
 .pill.partner-run  { opacity:0.5; font-size:9px; padding:2px 6px; }
@@ -1979,6 +1995,23 @@ function setProfile(p) {
   renderBriefing();
   if (typeof renderMobileView === 'function') { if (isMobilePortrait()) renderMobileView(); }
 }
+
+function toggleOptionsMenu() {
+  const menu = document.getElementById('options-menu');
+  const isOpen = menu.classList.contains('open');
+  menu.classList.toggle('open', !isOpen);
+  // Sync Edit Work label
+  const opt = document.getElementById('opt-edit-work');
+  if (opt) opt.textContent = wifeEditMode ? '🔒 Lock Work' : '✏️ Edit Work';
+}
+function closeOptionsMenu() {
+  document.getElementById('options-menu')?.classList.remove('open');
+}
+// Close when tapping anywhere outside the menu
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.options-wrap');
+  if (wrap && !wrap.contains(e.target)) closeOptionsMenu();
+}, true);
 
 function togglePartnerTraining() {
   showPartnerTraining = !showPartnerTraining;
