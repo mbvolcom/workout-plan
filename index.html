@@ -377,6 +377,7 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 /* PHASE */
 /* Phase collapse */
 .phase-block { margin-bottom:6px; }
+.cal-ctrl-sel { border:0.5px solid var(--border-mid); border-radius:7px; padding:5px 10px; font-size:12px; font-family:inherit; color:var(--text); background:rgba(255,255,255,0.55); outline:none; cursor:pointer; }
 .phase-label {
   font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
   color:var(--muted); padding:14px 0 6px; border-top:0.5px solid var(--border-mid); margin-top:4px;
@@ -1238,9 +1239,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <button class="on race" id="view-btn-calendar"
       onclick="setView('calendar')"
       oncontextmenu="showPlanDropdown(event)"
-      ontouchstart="startPlanLongPress(event)">📅 Plan</button>
-    <button id="view-btn-week" onclick="setView('week')">📆 Week</button>
-    <button id="view-btn-day" onclick="setView('day')">📋 Day</button>
+      ontouchstart="startPlanLongPress(event)">📅 Calendar</button>
     <button id="view-btn-shop" onclick="setView('shop')">🛒 Shop</button>
   </div>
 </div>
@@ -3053,6 +3052,45 @@ renderWeek = function(wi) {
 
 function build() {
   const cal = document.getElementById('cal'); cal.innerHTML = '';
+
+  // ── Controls bar (desktop/landscape only) ──────────────────────────────
+  const ctrlBar = document.createElement('div');
+  ctrlBar.id = 'cal-controls-bar';
+  ctrlBar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 4px 12px;flex-wrap:wrap;';
+
+  // Show/hide past weeks toggle
+  const pastBtn = document.createElement('button');
+  pastBtn.id = 'cal-past-btn';
+  pastBtn.className = 'btn';
+  pastBtn.textContent = showPastWeeks ? '⬆ Hide past weeks' : '📜 Show past weeks';
+  pastBtn.addEventListener('click', () => {
+    showPastWeeks = !showPastWeeks;
+    pastBtn.textContent = showPastWeeks ? '⬆ Hide past weeks' : '📜 Show past weeks';
+    applyPastWeeks();
+  });
+  ctrlBar.appendChild(pastBtn);
+
+  // Month/year go-to picker
+  const sep = document.createElement('div'); sep.style.cssText='width:1px;height:24px;background:rgba(0,0,0,0.1);margin:0 4px;';
+  ctrlBar.appendChild(sep);
+
+  const today2 = new Date();
+  const yearSel = document.createElement('select'); yearSel.className = 'cal-ctrl-sel';
+  const monthSel = document.createElement('select'); monthSel.className = 'cal-ctrl-sel';
+  for (let y = today2.getFullYear() - 1; y <= today2.getFullYear() + 2; y++) {
+    const o = document.createElement('option'); o.value = y; o.textContent = y;
+    if (y === today2.getFullYear()) o.selected = true;
+    yearSel.appendChild(o);
+  }
+  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].forEach((mo, i) => {
+    const o = document.createElement('option'); o.value = i+1; o.textContent = mo;
+    if (i === today2.getMonth()) o.selected = true;
+    monthSel.appendChild(o);
+  });
+  const goBtn = document.createElement('button'); goBtn.className='btn'; goBtn.textContent='→ Go';
+  goBtn.addEventListener('click', () => goToCalMonth(+yearSel.value, +monthSel.value));
+  ctrlBar.appendChild(monthSel); ctrlBar.appendChild(yearSel); ctrlBar.appendChild(goBtn);
+  cal.appendChild(ctrlBar);
   let lastPhase = null;
   let lastPlanName = null;
   let currentPhaseBlock = null; // tracks which phase-block new week-wraps go into
@@ -8226,6 +8264,36 @@ window.addEventListener('resize', ()=>{ if(isMobilePortrait()) { initMobileView(
 window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ if(isMobilePortrait()) initMobileView(); }, 100); });
 let calMode = 'race'; // 'race' or 'month'
 let showPastWeeks = false;
+
+function goToCalMonth(year, month) {
+  for (let wi = 0; wi < WEEKS.length; wi++) {
+    if (!WEEK_MONDAYS[wi]) continue;
+    const [y,m,d] = WEEK_MONDAYS[wi];
+    const wStart = new Date(y,m-1,d), wEnd = new Date(y,m-1,d+6);
+    const hits = dt => dt.getFullYear()===year && dt.getMonth()+1===month;
+    if (hits(wStart) || hits(wEnd)) {
+      if (collapsedWeeks.has(wi)) { collapsedWeeks.delete(wi); renderWeek(wi); }
+      const wrap = document.getElementById('week-'+wi);
+      if (wrap) wrap.scrollIntoView({behavior:'smooth', block:'start'});
+      return;
+    }
+  }
+}
+
+function applyPastWeeks() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  WEEKS.forEach((w, wi) => {
+    if (!WEEK_MONDAYS[wi]) return;
+    const [y,m,d] = WEEK_MONDAYS[wi];
+    const wEnd = new Date(y,m-1,d+6);
+    if (wEnd >= today) return; // not a past week
+    if (showPastWeeks) {
+      if (collapsedWeeks.has(wi)) { collapsedWeeks.delete(wi); renderWeek(wi); }
+    } else {
+      if (!collapsedWeeks.has(wi)) { collapsedWeeks.add(wi); renderWeek(wi); }
+    }
+  });
+}
 
 function setCalMode(mode) {
   document.body.classList.remove('shop-mode');
