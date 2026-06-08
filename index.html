@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- App version: 1.2.0 -->
+<!-- App version: 1.2.1 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -3366,8 +3366,9 @@ function applyWeekPlan(loaded) {
     }
 
     if (w.wife) wifeState[wi] = [...w.wife];
-    if (w.runs) state[wi].runs = [...w.runs];
-    if (w.str)  state[wi].str  = [...w.str];
+    // NOTE: runs/str are NOT loaded from the plan here — they live in calendar_state
+    // and are applied separately via applyState(). Loading them here would overwrite
+    // any user edits (drag/drop, add, delete) saved in calendar_state.
   });
 
   console.log('Plan applied:', plan.length, 'weeks from', loaded.source);
