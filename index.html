@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- App version: 1.2.1 -->
+<!-- App version: 1.3.0 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -46,8 +46,8 @@
 
   /* ── WIFE & KINDER MATCHED PAIRS ─────────────────────── */
   /* Morning shift + Deliver → warm amber-orange */
-  --wearly-bg:#FFF3E0; --wearly-c:#7B3200; --wearly-b:#FB8C00;
-  --kgd-bg:#FFF3E0;    --kgd-c:#7B3200;    --kgd-b:#FB8C00;
+  --wearly-bg:#E0F2F1; --wearly-c:#004D40; --wearly-b:#26A69A;
+  --kgd-bg:#E0F2F1;    --kgd-c:#004D40;    --kgd-b:#26A69A;
 
   /* Evening shift + Pick up → soft purple */
   --weve-bg:#F3E5F5;   --weve-c:#4A148C;   --weve-b:#AB47BC;
@@ -485,7 +485,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .pill.kinder-run  { background:linear-gradient(180deg,#BBDEFB,#90CAF9); color:#0D47A1; border-color:#42A5F5; }
 .pill.upper       { background:linear-gradient(180deg,#2A4E7F,#1E3A5F); color:#E3EAF4; border-color:#3A6EA8; }
 .pill.lower       { background:linear-gradient(180deg,#3D2780,#2D1B69); color:#E8E6F0; border-color:#6B4FC4; }
-.pill.wife-early  { background:linear-gradient(180deg,#FFE0B2,#FFCC80); color:#7B3200; border-color:#FB8C00; }
+.pill.wife-early  { background:linear-gradient(180deg,#B2DFDB,#80CBC4); color:#004D40; border-color:#26A69A; }
 .pill.wife-eve    { background:linear-gradient(180deg,#E1BEE7,#CE93D8); color:#4A148C; border-color:#AB47BC; }
 .pill.wife-off    { background:linear-gradient(180deg,#DCEDC8,#C5E1A5); color:#1B5E20; border-color:#7CB342; font-style:italic; }
 .pill.wife-other  { background:linear-gradient(180deg,#ECEFF1,#CFD8DC); color:#263238; border-color:#78909C; }
@@ -493,7 +493,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .pill.cross       { background:linear-gradient(180deg,#B2EBF2,#80DEEA); color:#004D5B; border-color:#00ACC1; }
 .pill.kinder-drop   { background:linear-gradient(180deg,#FFF8E1,#FFE082); color:#7A4100; border-color:#F0B429; }
 .pill.kinder-blank  { background:rgba(255,255,255,0.5); color:#999; border-color:#ddd; font-style:italic; }
-.pill.kinder-deliver { background:linear-gradient(180deg,#FFE0B2,#FFCC80); color:#7B3200; border-color:#FB8C00; }
+.pill.kinder-deliver { background:linear-gradient(180deg,#B2DFDB,#80CBC4); color:#004D40; border-color:#26A69A; }
 .pill.kinder-pickup  { background:linear-gradient(180deg,#E1BEE7,#CE93D8); color:#4A148C; border-color:#AB47BC; }
 .pill.kinder-both    { background:linear-gradient(180deg,#FCE4EC,#F48FB1); color:#A0004B; border-color:#E07FAA; }
 
@@ -707,7 +707,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .run-target-unit { font-size:12px; color:var(--muted); }
 .run-target-btn { background:var(--text); color:var(--bg); border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
 .run-target-clear { background:var(--border); color:var(--muted); }
-.run-target-sub { font-size:9px; color:var(--easy-c); opacity:0.85; margin-top:1px; display:block; }
+.run-target-sub { font-size:9px; color:inherit; opacity:0.9; margin-top:1px; display:block; }
 #run-panel-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(100,80,140,0.15); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; }
 @media(min-width:600px){#run-panel-overlay{align-items:center;}}
 #run-panel-overlay.open { display:flex; }
@@ -1870,83 +1870,83 @@ const WEEK_MONDAYS = [
 const WEEKS = [
   { phase:"Pre-plan", num:"Pre 1", dates:"14–20 Apr", km:47, moved:false,
     wife:["","","","","","",""],
-    runs:[null,"easy:Easy","quality:Sub-threshold",null,"easy:Easy + strides",null,"long:Long run"],
+    runs:[null,"easy:Easy 10 km","quality:Sub-threshold",null,"easy:Easy 10 km + strides",null,"long:Long run 14 km"],
     str:["upper:Upper 1",null,"lower:Lower 1",null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Pre 2", dates:"21–27 Apr", km:50, moved:false,
     wife:["","","","","","",""],
-    runs:[null,"easy:Easy","quality:Sub-threshold",null,"easy:Easy","quality:Sub-threshold","long:Long run"],
+    runs:[null,"easy:Easy 10 km","quality:Sub-threshold",null,"easy:Easy 10 km","quality:Sub-threshold","long:Long run 16 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"upper:Upper 2","lower:Lower 2",null,null]},
   { phase:null, num:"Pre 3", dates:"28 Apr–4 May", km:54, moved:false,
     wife:["","early:OD4","eve:OK4","eve:OKR4","early:D2","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy (PM)","kinder:Kindergarten run",null,null,"quality:Sub-threshold","long:Long run"],
+    runs:["quality:Sub-threshold","easy-pm:Easy 10 km (PM)","kinder:Kindergarten run",null,null,"quality:Sub-threshold","long:Long run 18 km"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Pre 4", dates:"5–11 May", km:42, moved:false,
     wife:["early:ODR4","early:ODR4","early:ODR4","eve:OKR4","","","off:F1 (off)"],
-    runs:[null,"easy-pm:Easy (PM)",null,"kinder:Kindergarten run","easy:Easy","quality:Sub-threshold","long:Long run"],
+    runs:[null,"easy-pm:Easy 8 km (PM)",null,"kinder:Kindergarten run","easy:Easy 8 km","quality:Sub-threshold","long:Long run 14 km"],
     str:["upper:Upper 1",null,"upper:Upper 2","lower:Lower 1",null,"lower:Lower 2",null]},
   { phase:null, num:"Pre 5", dates:"12–18 May", km:58, moved:true,
     wife:["","","early:OD4","early:OD4","off:F1 (off)","other:M2L","other:M2L"],
-    runs:["quality:Sub-threshold","easy:Easy","easy-pm:Easy (PM)",null,"long:Long run ↑","quality:Sub-threshold",null],
+    runs:["quality:Sub-threshold","easy:Easy 12 km","easy-pm:Easy 10 km (PM)",null,"long:Long run 21 km ↑","quality:Sub-threshold",null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:"Build", num:"Week 1", dates:"19–25 May", km:61, moved:false,
     wife:["","eve:OK4","eve:OK4","early:D2","early:ODR4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","kinder:Kindergarten run",null,"easy-pm:Easy (PM)","quality:Sub-threshold",null,"long:Long run"],
+    runs:["quality:Sub-threshold","kinder:Kindergarten run",null,"easy-pm:Easy 10 km (PM)","quality:Sub-threshold",null,"long:Long run 23 km"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 2", dates:"26 May–1 Jun", km:64, moved:false,
     wife:["other:F3 (?)","early:OD4","early:OD4","eve:OK4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy (PM)",null,"kinder:Kindergarten run","quality:Sub-threshold",null,"long:Long run"],
+    runs:["quality:Sub-threshold","easy-pm:Easy 12 km (PM)",null,"kinder:Kindergarten run","quality:Sub-threshold",null,"long:Long run 25 km"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 3", dates:"2–8 Jun", km:66, moved:true,
     wife:["","early:ODR4","early:ODR4","off:F1 (off)","","early:OD4L","early:OD4L"],
-    runs:["easy:Easy","easy-pm:Easy (PM)","easy-pm:Easy (PM)","quality:Sub-threshold","long:Long run ↑ (last 6 km MP)",null,null],
+    runs:["easy:Easy 12 km","easy-pm:Easy 11 km (PM)","easy-pm:Easy 10 km (PM)","quality:Sub-threshold","long:Long run 27 km ↑ (last 6 km MP)",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:null, num:"Week 4", dates:"9–15 Jun", km:48, moved:false,
     wife:["","","eve:OKR4","eve:OKR4","","","off:F1 (off)"],
-    runs:[null,"quality:Sub-threshold","kinder:Kindergarten run",null,"easy:Easy + strides",null,"long:Long run"],
+    runs:[null,"quality:Sub-threshold","kinder:Kindergarten run",null,"easy:Easy 8 km + strides",null,"long:Long run 18 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 5", dates:"16–22 Jun", km:68, moved:false,
     wife:["eve:OK4","eve:OK4","early:OD4","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","kinder:Kindergarten run","easy-pm:Easy (PM)",null,"quality:Sub-threshold",null,"long:Long run"],
+    runs:["quality:Sub-threshold","kinder:Kindergarten run","easy-pm:Easy 12 km (PM)",null,"quality:Sub-threshold",null,"long:Long run 29 km"],
     str:[null,null,"upper:Upper 1","lower:Lower 2",null,"upper:Upper 2","lower:Lower 1"]},
   { phase:null, num:"Week 6", dates:"23–29 Jun", km:69, moved:true,
     wife:["","early:OD4","","off:F1 (off)","eve:OK4L","early:OD4L","early:OD4L"],
-    runs:["easy:Easy","easy-pm:Easy (PM)","quality:Sub-threshold","easy:Easy","long:Long run ↑ (last 8 km MP)",null,null],
+    runs:["easy:Easy 13 km","easy-pm:Easy 12 km (PM)","quality:Sub-threshold","easy:Easy 12 km","long:Long run 29 km ↑ (last 8 km MP)",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:"Peak", num:"Week 7", dates:"30 Jun–6 Jul", km:71, moved:false,
     wife:["","eve:K2","other:N2 (night)","other:N2 (night)","","","off:F1 (off)"],
-    runs:["easy:Easy","kinder:Kindergarten run","quality:Near-threshold","easy:Easy","quality:Sub-threshold",null,"long:Long run"],
+    runs:["easy:Easy 13 km","kinder:Kindergarten run","quality:Near-threshold","easy:Easy 12 km","quality:Sub-threshold",null,"long:Long run 31 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 8", dates:"7–13 Jul", km:73, moved:false,
     wife:["eve:K2","eve:K2","","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["kinder:Kindergarten run",null,"quality:Near-threshold","easy-pm:Easy (PM)","easy:Easy + strides",null,"long:Long run (last 10 km MP)"],
+    runs:["kinder:Kindergarten run",null,"quality:Near-threshold","easy-pm:Easy 12 km (PM)","easy:Easy 10 km + strides",null,"long:Long run 33 km (last 10 km MP)"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 9", dates:"14–20 Jul", km:51, moved:true,
     wife:["","","","off:F1 (off)","early:D2L","early:D2L","early:D2L"],
-    runs:["easy:Easy","easy:Easy","quality:Sub-threshold","easy:Easy + strides","long:Long run ↑",null,null],
+    runs:["easy:Easy 12 km","easy:Easy 10 km","quality:Sub-threshold","easy:Easy 10 km + strides","long:Long run 21 km ↑",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:null, num:"Week 10", dates:"21–27 Jul", km:73, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Near-threshold","easy:Easy","quality:Sub-threshold",null,"long:PEAK — easy"],
+    runs:[null,"easy:Easy 14 km","quality:Near-threshold","easy:Easy 12 km","quality:Sub-threshold",null,"long:PEAK — 33 km easy"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 11", dates:"28 Jul–3 Aug", km:75, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Near-threshold","easy:Easy","easy:Easy + strides",null,"long:PEAK LONG RUN"],
+    runs:[null,"easy:Easy 14 km","quality:Near-threshold","easy:Easy 12 km","easy:Easy 10 km + strides",null,"long:PEAK LONG RUN — 37 km"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 12", dates:"4–10 Aug", km:50, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Sub-threshold","easy:Easy",null,"easy:Easy + strides","long:Long run"],
+    runs:[null,"easy:Easy 12 km","quality:Sub-threshold","easy:Easy 10 km",null,"easy:Easy 8 km + strides","long:Long run 18 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2","upper:Upper 2",null,null]},
   { phase:"Taper", num:"Week 13", dates:"11–17 Aug", km:56, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Sub-threshold","easy:Easy","easy:Easy + strides",null,"long:Long run (mid 10 km MP)"],
+    runs:[null,"easy:Easy 12 km","quality:Sub-threshold","easy:Easy 10 km","easy:Easy 8 km + strides",null,"long:Long run 25 km (mid 10 km MP)"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 14", dates:"18–24 Aug", km:38, moved:false,
     wife:["","early:FAGD","early:OD4","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy (PM)",null,"easy-pm:Easy (PM)",null,"easy:Easy","easy:Easy relaxed"],
+    runs:["quality:Sub-threshold","easy-pm:Easy 10 km (PM)",null,"easy-pm:Easy 8 km (PM)",null,"easy:Easy 6 km","easy:Easy 10 km relaxed"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 15", dates:"25–29 Aug", km:18, moved:false,
     wife:["","early:ODR4","early:ODR4","off:F1 (off)","early:OD4","early:OD4L","early:OD4L"],
-    runs:["easy:Easy + strides","easy-pm:Easy (PM)","easy-pm:Easy (PM)",null,"easy:Easy shake-out",null,"race:RACE DAY — Stavanger Marathon"],
+    runs:["easy:Easy 8 km + strides","easy-pm:Easy 5 km (PM)","easy-pm:Easy 3 km (PM)",null,"easy:Easy 4 km shake-out",null,"race:RACE DAY — Stavanger Marathon"],
     str:[null,null,null,null,null,null,null]},
 ];
 
@@ -2759,7 +2759,10 @@ function renderWeek(wi) {
           wDates.addEventListener('click', e => { e.stopPropagation(); openWeekPlan(w.num); });
         }
         meta.appendChild(wDates);
-        if (w.km) { const wKm = document.createElement('span'); wKm.className='week-km'; wKm.textContent=w.km+' km'; meta.appendChild(wKm); }
+        { const wKm = document.createElement('span'); wKm.className='week-km';
+          const tgtKm = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);
+          wKm.textContent = tgtKm > 0 ? tgtKm+' km' : (w.km ? w.km+' km' : '');
+          if (wKm.textContent) meta.appendChild(wKm); }
         if (w.moved) { const t=document.createElement('span'); t.className='moved-tag'; t.textContent='long→Fri'; meta.appendChild(t); }
       }
       rowEl.appendChild(meta);
@@ -3367,23 +3370,6 @@ function applyWeekPlan(loaded) {
 
     if (w.wife) wifeState[wi] = [...w.wife];
     // runs/str live in calendar_state, not the plan — do NOT overwrite here
-  });
-
-  // Sanitise pill labels from Supabase — strip legacy km numbers baked in
-  // e.g. "long:Long run 18 km" -> "long:Long run", "easy:Easy 12 km" -> "easy:Easy"
-  plan.forEach(w => {
-    if (!w.runs) return;
-    w.runs = w.runs.map(r => {
-      if (!r) return r;
-      r = r.replace(/^(easy(?:-pm)?:Easy) d+(?:.d+)? km( + strides)?$/, '$1$2');
-      r = r.replace(/^(easy-pm:Easy) d+(?:.d+)? km( (PM))?$/, '$1 (PM)');
-      r = r.replace(/^(easy:Easy) d+(?:.d+)? km( relaxed| shake-out)?$/, '$1$2');
-      r = r.replace(/^(long:Long run) d+(?:.d+)? km( [↑])? (((?:last|mid) d+ km MP))$/, '$1$2 $3');
-      r = r.replace(/^(long:Long run) d+(?:.d+)? km( [↑])?$/, '$1$2');
-      r = r.replace(/^(long:PEAK LONG RUN) — d+(?:.d+)? km.*$/, '$1');
-      r = r.replace(/^(long:PEAK —) d+(?:.d+)? km.*$/, '$1 easy');
-      return r.trim();
-    });
   });
 
   console.log('Plan applied:', plan.length, 'weeks from', loaded.source);
@@ -7932,7 +7918,7 @@ function renderMobileRaceWeek() {
   const prev = document.createElement('button'); prev.className='mob-week-nav-btn'; prev.textContent='‹';
   prev.addEventListener('click', ()=>{ mobWeekIndex=Math.max(0,mobWeekIndex-1); renderMobileRaceWeek(); });
   const info = document.createElement('div'); info.className='mob-week-info';
-  info.innerHTML=`<div class="mob-week-num">${w.num}</div><div class="mob-week-dates">${w.dates||''}</div>${w.km?`<div class="mob-week-km">${w.km} km planned</div>`:''}`;
+  info.innerHTML=`<div class="mob-week-num">${w.num}</div><div class="mob-week-dates">${w.dates||''}</div>${(()=>{const tgt=Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);return tgt>0?'<div class="mob-week-km">'+tgt+' km target</div>':w.km?'<div class="mob-week-km">'+w.km+' km plan</div>':'';})()} `;
   const next = document.createElement('button'); next.className='mob-week-nav-btn'; next.textContent='›';
   next.addEventListener('click', ()=>{ mobWeekIndex=Math.min(WEEKS.length-1,mobWeekIndex+1); renderMobileRaceWeek(); });
   nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
@@ -7979,7 +7965,8 @@ function renderMobileRaceWeek() {
       <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
   } else {
     // Marius: show km progress bar
-    const plannedKm = w.km || 0;
+    const tgtKmMob = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);
+    const plannedKm = tgtKmMob > 0 ? tgtKmMob : (w.km || 0);
     const actualKm  = sum.totalKm;
     const pct = plannedKm > 0 ? Math.min(100, Math.round((actualKm / plannedKm) * 100)) : 0;
     barWrap.innerHTML = `
