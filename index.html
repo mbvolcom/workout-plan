@@ -3372,7 +3372,6 @@ function applyWeekPlan(loaded) {
     // runs/str live in calendar_state, not the plan — do NOT overwrite here
   });
 
-  // Strip legacy km numbers from pill labels stored in Supabase plans table
   plan.forEach(w => {
     if (!w.runs) return;
     w.runs = w.runs.map(r => {
@@ -3390,7 +3389,6 @@ function applyWeekPlan(loaded) {
       return r.trim();
     });
   });
-
   console.log('Plan applied:', plan.length, 'weeks from', loaded.source);
 }
 
@@ -7826,6 +7824,91 @@ function initMobileView() {
   }
 }
 
+function renderMobileShop(container) {
+  // Render the shopping list inline inside mobile-cal (no full-screen overlay)
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding-bottom:40px;';
+
+  // Header row with notify + clear buttons
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
+  head.innerHTML = `
+    <h2 style="font-size:20px;font-weight:700;color:var(--ink-display);letter-spacing:-0.02em;">🛒 Shopping</h2>
+    <div style="display:flex;gap:6px;">
+      <button class="shop-clear" id="mob-shop-notif-btn" onclick="enableShoppingNotifications();updateMobShopNotifBtn()">🔔 Notify</button>
+      <button class="shop-clear" onclick="clearBoughtItems()">Clear bought</button>
+    </div>`;
+  wrap.appendChild(head);
+
+  // Add item row
+  const addRow = document.createElement('div');
+  addRow.className = 'shop-add';
+  addRow.innerHTML = `
+    <input id="mob-shop-input" type="text" placeholder="Add item…" autocomplete="off" enterkeyhint="done"/>
+    <button onclick="addMobShoppingItem()">Add</button>`;
+  addRow.querySelector('input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addMobShoppingItem(); }
+  });
+  wrap.appendChild(addRow);
+
+  // List container — reuse renderShoppingList logic but target this element
+  const listEl = document.createElement('div');
+  listEl.id = 'mob-shop-list';
+  wrap.appendChild(listEl);
+  container.appendChild(wrap);
+
+  renderMobShopList();
+  updateMobShopNotifBtn();
+}
+
+function renderMobShopList() {
+  const el = document.getElementById('mob-shop-list');
+  if (!el) return;
+  if (!shoppingItems.length) {
+    el.innerHTML = '<div class="shop-empty">List is empty — add something above.</div>';
+    return;
+  }
+  const pending = shoppingItems.filter(i => !i.done);
+  const done    = shoppingItems.filter(i => i.done);
+  const row = i => `
+    <div class="shop-item ${i.done?'done':''}">
+      <div class="cb" onclick="toggleShoppingItem('${i.id}',${!i.done})">${i.done?'✓':''}</div>
+      <div class="tx">${escShop(i.item)}</div>
+      <button class="rm" onclick="deleteShoppingItem('${i.id}')">×</button>
+    </div>`;
+  el.innerHTML = pending.map(row).join('') +
+    (done.length ? `<div class="shop-count" style="margin:16px 0 7px;">${done.length} bought</div>` + done.map(row).join('') : '');
+}
+
+async function addMobShoppingItem() {
+  const input = document.getElementById('mob-shop-input');
+  const text = (input ? input.value : '').trim();
+  if (!text) return;
+  if (input) input.value = '';
+  const temp = { id:'tmp_'+Date.now(), item:text, done:false };
+  shoppingItems.push(temp); renderMobShopList();
+  try {
+    const res = await fetch(SUPA_BASE + 'shopping_list', {
+      method:'POST', headers:{...SUPA_HDR,'Prefer':'return=representation'},
+      body: JSON.stringify({ item:text, done:false })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const saved = (await res.json())[0];
+    const idx = shoppingItems.findIndex(i => i.id === temp.id);
+    if (idx >= 0 && saved) shoppingItems[idx] = saved;
+    renderMobShopList();
+  } catch(e) { console.warn('Add item failed:', e); loadShoppingList(); }
+}
+
+async function updateMobShopNotifBtn() {
+  const btn = document.getElementById('mob-shop-notif-btn');
+  if (!btn) return;
+  const s = await pushStatus();
+  if (s === 'unsupported') { btn.style.display='none'; return; }
+  btn.textContent = s === 'on' ? '🔔 On' : '🔔 Notify';
+  btn.classList.toggle('on', s === 'on');
+}
+
 function renderMobileView() {
   const mc = document.getElementById('mobile-cal');
   mc.innerHTML = '';
@@ -7833,18 +7916,19 @@ function renderMobileView() {
   // Mode toggle
   const modeBar = document.createElement('div'); modeBar.className = 'mob-mode-bar';
   const raceBtn = document.createElement('button');
-  raceBtn.className = 'mob-mode-btn active';
+  raceBtn.className = 'mob-mode-btn' + (mobMode !== 'shop' ? ' active' : '');
   raceBtn.textContent = '🏃 Plan';
   raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
   modeBar.appendChild(raceBtn);
   const shopBtn = document.createElement('button');
-  shopBtn.className = 'mob-mode-btn';
+  shopBtn.className = 'mob-mode-btn' + (mobMode === 'shop' ? ' active' : '');
   shopBtn.textContent = '🛒 Shop';
-  shopBtn.addEventListener('click', () => setView('shop'));
+  shopBtn.addEventListener('click', () => { mobMode='shop'; renderMobileView(); });
   modeBar.appendChild(shopBtn);
   mc.appendChild(modeBar);
 
-  if (mobMode === 'race') renderMobileRaceWeek();
+  if (mobMode === 'shop') renderMobileShop(mc);
+  else if (mobMode === 'race') renderMobileRaceWeek();
   else renderMobileMonth();
 }
 
@@ -8689,6 +8773,10 @@ let weekViewIndex = 0; // which week is shown in week view
 let dayViewDate = new Date(); // which day is shown in day view
 
 function setView(view) {
+  // On mobile portrait, shop is rendered inline — don't trigger the overlay
+  if (view === 'shop' && typeof isMobilePortrait === 'function' && isMobilePortrait()) {
+    mobMode = 'shop'; renderMobileView(); return;
+  }
   currentView = view;
   document.body.classList.toggle('shop-mode', view === 'shop');
   document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
@@ -9190,6 +9278,8 @@ async function loadShoppingList() {
 }
 
 function renderShoppingList() {
+  // Also refresh mobile inline shop list if visible
+  if (mobMode === 'shop') renderMobShopList();
   const el = document.getElementById('shop-list');
   if (!el) return;
   if (!shoppingItems.length) {
@@ -9557,8 +9647,6 @@ async function enableShoppingNotifications() {
 }
 
 // ── AUTO-RESUBSCRIBE PUSH NOTIFICATIONS ───────────────────────────────────
-// On every app load, silently restore push subscription if the user had it enabled.
-// This survives deploys — the preference is stored in Supabase push_subscriptions.
 async function autoResubscribePush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   if (VAPID_PUBLIC_KEY.startsWith('REPLACE')) return;
@@ -9566,50 +9654,34 @@ async function autoResubscribePush() {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (sub) {
-      // Already subscribed — make sure it's saved in Supabase (upsert in case of stale record)
       const subJson = sub.toJSON();
       await fetch(SUPA_BASE + 'push_subscriptions', {
-        method: 'POST',
-        headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+        method: 'POST', headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
         body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson })
       });
-      updatePushButton('on');
-      return;
+      updatePushButton('on'); return;
     }
-    // No local subscription — check if user had it enabled before (record in Supabase)
     const res = await fetch(SUPA_BASE + 'push_subscriptions?select=endpoint&limit=1', { headers: SUPA_HDR });
     if (!res.ok) return;
     const rows = await res.json();
-    if (!rows.length) return; // User never enabled notifications
-    // User had notifications — silently re-subscribe (no permission prompt needed if already granted)
-    const perm = await Notification.permission;
-    if (perm !== 'granted') return; // Don't re-prompt; they need to tap the button manually
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY)
-    });
+    if (!rows.length) return;
+    if (Notification.permission !== 'granted') return;
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
     const subJson = sub.toJSON();
     await fetch(SUPA_BASE + 'push_subscriptions', {
-      method: 'POST',
-      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+      method: 'POST', headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson })
     });
     updatePushButton('on');
     console.log('Push notifications auto-restored ✓');
-  } catch(e) {
-    console.warn('Auto-resubscribe failed (non-critical):', e);
-  }
+  } catch(e) { console.warn('Auto-resubscribe failed:', e); }
 }
 
 // ── SERVICE WORKER ─────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(r => {
-        console.log('SW registered:', r.scope);
-        // Auto-restore push subscription after SW is ready
-        autoResubscribePush().catch(console.warn);
-      })
+      .then(r => { console.log('SW registered:', r.scope); autoResubscribePush().catch(console.warn); })
       .catch(e => console.warn('SW failed:', e));
   });
 }
