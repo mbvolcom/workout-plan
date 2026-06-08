@@ -2706,9 +2706,9 @@ function weekSummary(wi) {
     if (s.str2&&s.str2[di]) plannedStr++;
     if (s.cross[di]) plannedCross++;
 
-    // Target km for this day
+    // Target km for this day — only count if there's actually a run scheduled
     const t = runTargets[`${wi}-${di}`];
-    if (t != null) targetKm += parseFloat(t);
+    if (t != null && s.runs[di]) targetKm += parseFloat(t);
 
     // Only include Strava actuals for Marius's profile — Strava is his account
     if (activeProfile === 'marius') {
@@ -2760,7 +2760,7 @@ function renderWeek(wi) {
         }
         meta.appendChild(wDates);
         { const wKm = document.createElement('span'); wKm.className='week-km';
-          const tgtKm = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);
+          const tgtKm = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>{ const di=parseInt(k.split('-')[1]); return s+(ats(wi).runs[di] ? (runTargets[k]||0) : 0); },0);
           wKm.textContent = tgtKm > 0 ? tgtKm+' km' : (w.km ? w.km+' km' : '');
           if (wKm.textContent) meta.appendChild(wKm); }
         if (w.moved) { const t=document.createElement('span'); t.className='moved-tag'; t.textContent='long→Fri'; meta.appendChild(t); }
@@ -8021,7 +8021,7 @@ function renderMobileRaceWeek() {
   const prev = document.createElement('button'); prev.className='mob-week-nav-btn'; prev.textContent='‹';
   prev.addEventListener('click', ()=>{ mobWeekIndex=Math.max(0,mobWeekIndex-1); renderMobileRaceWeek(); });
   const info = document.createElement('div'); info.className='mob-week-info';
-  info.innerHTML=`<div class="mob-week-num">${w.num}</div><div class="mob-week-dates">${w.dates||''}</div>${(()=>{const tgt=Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);return tgt>0?'<div class="mob-week-km">'+tgt+' km target</div>':w.km?'<div class="mob-week-km">'+w.km+' km plan</div>':'';})()} `;
+  info.innerHTML=`<div class="mob-week-num">${w.num}</div><div class="mob-week-dates">${w.dates||''}</div>${(()=>{const tgt=Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>{const di=parseInt(k.split('-')[1]);return s+(ats(wi).runs[di]?(runTargets[k]||0):0);},0);return tgt>0?'<div class="mob-week-km">'+tgt+' km target</div>':w.km?'<div class="mob-week-km">'+w.km+' km plan</div>':'';})()} `;
   const next = document.createElement('button'); next.className='mob-week-nav-btn'; next.textContent='›';
   next.addEventListener('click', ()=>{ mobWeekIndex=Math.min(WEEKS.length-1,mobWeekIndex+1); renderMobileRaceWeek(); });
   nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
@@ -8068,7 +8068,7 @@ function renderMobileRaceWeek() {
       <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
   } else {
     // Marius: show km progress bar
-    const tgtKmMob = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);
+    const tgtKmMob = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>{ const di=parseInt(k.split('-')[1]); return s+(ats(wi).runs[di] ? (runTargets[k]||0) : 0); },0);
     const plannedKm = tgtKmMob > 0 ? tgtKmMob : (w.km || 0);
     const actualKm  = sum.totalKm;
     const pct = plannedKm > 0 ? Math.min(100, Math.round((actualKm / plannedKm) * 100)) : 0;
