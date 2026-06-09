@@ -543,8 +543,10 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #weather-overlay.open { display:flex; }
 #weather-panel {
   background:#ffffff; border:0.5px solid rgba(0,0,0,0.06); border-radius:14px; padding:20px;
-  width:100%; max-width:320px; box-shadow:0 8px 32px rgba(0,0,0,0.15);
+  width:100%; max-width:340px; max-height:80vh; display:flex; flex-direction:column;
+  box-shadow:0 8px 32px rgba(0,0,0,0.15);
 }
+#weather-slots { overflow-y:auto; flex:1; }
 #weather-header {
   display:flex; align-items:flex-start; justify-content:space-between;
   margin-bottom:16px; gap:10px;
@@ -555,7 +557,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   background:none; border:none; font-size:18px; color:var(--muted);
   cursor:pointer; padding:0; flex-shrink:0;
 }
-#weather-slots { display:flex; flex-direction:column; gap:10px; }
+#weather-slots { display:flex; flex-direction:column; gap:0; }
 .weather-slot {
   background:var(--bg); border-radius:10px; padding:12px 14px;
   display:flex; flex-direction:column; gap:0;
@@ -570,6 +572,23 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .weather-slot-temp { font-size:20px; font-weight:700; color:var(--text); }
 .weather-slot-wind { font-size:12px; color:var(--muted); }
 .weather-slot-desc { font-size:11px; color:var(--muted); }
+.weather-section-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 4px 6px; cursor:pointer; user-select:none;
+  border-bottom:0.5px solid var(--border);
+  font-size:11px; font-weight:700; letter-spacing:0.07em;
+  text-transform:uppercase; color:var(--muted);
+}
+.weather-section-hdr:hover { color:var(--text); }
+.weather-section-hdr .ws-arrow { font-size:10px; transition:transform 0.15s; }
+.weather-section-hdr.open .ws-arrow { transform:rotate(90deg); }
+.weather-section-rows { display:none; }
+.weather-section-rows.open { display:flex; flex-direction:column; }
+.weather-hour-row {
+  display:flex; align-items:center; gap:12px; padding:7px 4px;
+  border-bottom:0.5px solid var(--border); font-size:13px;
+}
+.weather-hour-row:last-child { border-bottom:none; }
 .weather-dot {
   display:inline-block; width:8px; height:8px; border-radius:50%;
   background:#1a6bbf; margin-left:3px; vertical-align:middle;
@@ -1191,7 +1210,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.3.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.3.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -4663,36 +4682,62 @@ function openWeather(dateStr) {
   const dayEntries = (weatherData[dateStr] || []).slice().sort((a,b) => a.hour - b.hour);
 
   if (!dayEntries.length) {
-    slots.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">No weather data for this day.</div>';
+    slots.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 4px;">No weather data for this day.</div>';
   } else {
-    // Group into named intervals but show every hour within each
+    const nowHour = new Date().getHours();
     const DISPLAY_INTERVALS = [
-      { label: 'Morning',   start:  0, end:  12 },
-      { label: 'Afternoon', start: 12, end:  18 },
-      { label: 'Evening',   start: 18, end:  24 },
+      { label: 'Night',     emoji: '🌙', start:  0, end:  6  },
+      { label: 'Morning',   emoji: '🌅', start:  6, end:  12 },
+      { label: 'Afternoon', emoji: '☀️',  start: 12, end:  18 },
+      { label: 'Evening',   emoji: '🌆', start: 18, end:  24 },
     ];
-    DISPLAY_INTERVALS.forEach(({ label, start, end }) => {
+    DISPLAY_INTERVALS.forEach(({ label, emoji, start, end }) => {
       const entries = dayEntries.filter(e => e.hour >= start && e.hour < end);
       if (!entries.length) return;
 
-      // Section header
-      const hdr = document.createElement('div');
-      hdr.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px;';
-      hdr.textContent = label;
-      slots.appendChild(hdr);
+      // Auto-expand the section containing the current hour (or morning by default)
+      const isCurrentSection = nowHour >= start && nowHour < end;
+      const isOpen = isCurrentSection;
 
-      // One row per hour
+      // Section header
+      const section = document.createElement('div');
+
+      const hdr = document.createElement('div');
+      hdr.className = 'weather-section-hdr' + (isOpen ? ' open' : '');
+
+      // Pick best representative emoji/temp for header summary
+      const midEntry = entries.find(e => e.hour >= start + Math.floor((end-start)/2)) || entries[0];
+      const minTemp = Math.round(Math.min(...entries.map(e=>e.temp).filter(v=>v!=null)));
+      const maxTemp = Math.round(Math.max(...entries.map(e=>e.temp).filter(v=>v!=null)));
+      const tempRange = minTemp === maxTemp ? minTemp+'°' : minTemp+'–'+maxTemp+'°';
+
+      hdr.innerHTML = `
+        <span>${emoji} ${label} <span style="font-weight:400;color:var(--muted2);margin-left:6px;">${tempRange}</span></span>
+        <span class="ws-arrow">▶</span>`;
+
+      const rows = document.createElement('div');
+      rows.className = 'weather-section-rows' + (isOpen ? ' open' : '');
+
       entries.forEach(e => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:13px;';
+        row.className = 'weather-hour-row';
         row.innerHTML = `
           <span style="color:var(--muted);min-width:40px;font-weight:600;">${String(e.hour).padStart(2,'0')}:00</span>
           <span style="font-size:18px;line-height:1;">${yrSymbol(e.symbol)}</span>
-          <span style="font-weight:700;min-width:38px;">${e.temp != null ? Math.round(e.temp)+'°C' : '—'}</span>
+          <span style="font-weight:700;min-width:40px;">${e.temp != null ? Math.round(e.temp)+'°C' : '—'}</span>
           <span style="color:var(--muted);">${e.wind != null ? e.wind+' m/s 💨' : ''}</span>
           <span style="color:var(--muted);font-size:11px;margin-left:auto;">${yrDesc(e.symbol)}</span>`;
-        slots.appendChild(row);
+        rows.appendChild(row);
       });
+
+      hdr.addEventListener('click', () => {
+        const open = hdr.classList.toggle('open');
+        rows.classList.toggle('open', open);
+      });
+
+      section.appendChild(hdr);
+      section.appendChild(rows);
+      slots.appendChild(section);
     });
   }
 
