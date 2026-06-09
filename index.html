@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- App version: 3.1.0 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -45,9 +44,9 @@
   --cross-bg:#E0F7FA; --cross-c:#004D5B; --cross-b:#00ACC1;
 
   /* ── WIFE & KINDER MATCHED PAIRS ─────────────────────── */
-  /* Morning shift + Deliver → teal */
-  --wearly-bg:#E0F2F1; --wearly-c:#004D40; --wearly-b:#26A69A;
-  --kgd-bg:#E0F2F1;    --kgd-c:#004D40;    --kgd-b:#26A69A;
+  /* Morning shift + Deliver → warm amber-orange */
+  --wearly-bg:#FFF3E0; --wearly-c:#7B3200; --wearly-b:#FB8C00;
+  --kgd-bg:#FFF3E0;    --kgd-c:#7B3200;    --kgd-b:#FB8C00;
 
   /* Evening shift + Pick up → soft purple */
   --weve-bg:#F3E5F5;   --weve-c:#4A148C;   --weve-b:#AB47BC;
@@ -493,7 +492,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .pill.cross       { background:linear-gradient(180deg,#B2EBF2,#80DEEA); color:#004D5B; border-color:#00ACC1; }
 .pill.kinder-drop   { background:linear-gradient(180deg,#FFF8E1,#FFE082); color:#7A4100; border-color:#F0B429; }
 .pill.kinder-blank  { background:rgba(255,255,255,0.5); color:#999; border-color:#ddd; font-style:italic; }
-.pill.kinder-deliver { background:linear-gradient(180deg,#B2DFDB,#80CBC4); color:#004D40; border-color:#26A69A; }
+.pill.kinder-deliver { background:linear-gradient(180deg,#FFE0B2,#FFCC80); color:#7B3200; border-color:#FB8C00; }
 .pill.kinder-pickup  { background:linear-gradient(180deg,#E1BEE7,#CE93D8); color:#4A148C; border-color:#AB47BC; }
 .pill.kinder-both    { background:linear-gradient(180deg,#FCE4EC,#F48FB1); color:#A0004B; border-color:#E07FAA; }
 
@@ -707,7 +706,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .run-target-unit { font-size:12px; color:var(--muted); }
 .run-target-btn { background:var(--text); color:var(--bg); border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
 .run-target-clear { background:var(--border); color:var(--muted); }
-.run-target-sub { font-size:9px; color:inherit; opacity:0.85; margin-top:1px; display:block; }
+.run-target-sub { font-size:9px; color:var(--easy-c); opacity:0.85; margin-top:1px; display:block; }
 #run-panel-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(100,80,140,0.15); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; }
 @media(min-width:600px){#run-panel-overlay{align-items:center;}}
 #run-panel-overlay.open { display:flex; }
@@ -1192,7 +1191,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.1.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.2.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1242,7 +1241,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       oncontextmenu="showPlanDropdown(event)"
       ontouchstart="startPlanLongPress(event)">📅 Calendar</button>
     <button id="view-btn-shop" onclick="setView('shop')">🛒 Shop</button>
-    <button id="view-btn-todo" onclick="setView('todo')">✅ Tasks</button>
   </div>
 </div>
 
@@ -1688,43 +1686,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .brief-empty { color:var(--muted); font-style:italic; font-size:12.5px; }
 .brief-row-tap { cursor:pointer; } .brief-row-tap:active { opacity:0.55; }
 
-
-/* ── TODO LIST ───────────────────────────────────────────────── */
-#todo-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
-body.todo-mode #desktop-cal-wrap, body.todo-mode #mobile-cal { display:none !important; }
-body.todo-mode #todo-view { display:block !important; }
-body.todo-mode #briefing-card { display:none !important; }
-body.todo-mode #shop-view { display:none !important; }
-.todo-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; }
-.todo-head h2 { font-size:23px; font-weight:700; color:var(--ink-display); letter-spacing:-0.02em; }
-.todo-add-wrap { background:rgba(255,255,255,0.55); border:0.5px solid rgba(255,255,255,0.6); border-radius:16px; padding:14px 15px; margin-bottom:18px; }
-.todo-add-input { width:100%; box-sizing:border-box; height:44px; padding:0 15px; border-radius:13px; border:0.5px solid var(--border-mid); background:rgba(255,255,255,0.6); font:500 15px 'Inter Tight',system-ui,sans-serif; color:var(--text); margin-bottom:10px; }
-.todo-add-input:focus { outline:none; border-color:var(--ink-sub); }
-.todo-add-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-.todo-assignee-btns { display:flex; gap:4px; }
-.todo-assignee-btn { background:rgba(255,255,255,0.5); border:0.5px solid var(--border-mid); border-radius:9px; padding:6px 13px; font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; color:var(--ink-sub); transition:background 0.15s,color 0.15s; }
-.todo-assignee-btn.on { background:var(--text); color:var(--bg); border-color:var(--text); }
-.todo-day-chips { display:flex; gap:4px; flex-wrap:wrap; flex:1; }
-.todo-day-chip { background:rgba(255,255,255,0.45); border:0.5px solid var(--border-mid); border-radius:8px; padding:5px 10px; font-size:12px; font-weight:500; cursor:pointer; font-family:inherit; color:var(--ink-sub); }
-.todo-day-chip.on { background:var(--text); color:var(--bg); border-color:var(--text); }
-.todo-add-btn { background:var(--text); color:var(--bg); border:none; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
-.todo-week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-.todo-week-btn { background:rgba(255,255,255,0.55); border:0.5px solid var(--border-mid); border-radius:10px; padding:7px 14px; font-size:17px; cursor:pointer; font-family:inherit; }
-.todo-week-lbl { font-size:14px; font-weight:600; color:var(--ink-sub); }
-.todo-group { margin-bottom:16px; }
-.todo-group-label { font-size:11px; font-weight:700; letter-spacing:0.06em; color:var(--muted); text-transform:uppercase; margin-bottom:6px; }
-.todo-item { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.55); border:0.5px solid rgba(255,255,255,0.6); border-radius:12px; padding:10px 13px; margin-bottom:6px; cursor:pointer; }
-.todo-item.done { opacity:0.5; }
-.tck { width:20px; height:20px; border-radius:50%; border:1.5px solid var(--border-mid); display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; background:rgba(255,255,255,0.5); }
-.todo-item.done .tck { background:var(--text); color:var(--bg); border-color:var(--text); }
-.ttx { flex:1; font-size:14px; font-weight:500; color:var(--text); }
-.todo-item.done .ttx { text-decoration:line-through; color:var(--muted); }
-.tass { font-size:11px; font-weight:600; border-radius:6px; padding:2px 7px; }
-.tass.tass-m { background:#E3F2FD; color:#1565C0; }
-.tass.tass-v { background:#FCE4EC; color:#880E4F; }
-.tass.tass-b { background:#F3E5F5; color:#4A148C; }
-.trm { background:none; border:none; font-size:16px; color:var(--muted); cursor:pointer; padding:2px 6px; font-family:inherit; }
-
 /* ── SHOPPING LIST ───────────────────────────────────────────── */
 #shop-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
 body.shop-mode #desktop-cal-wrap, body.shop-mode #mobile-cal { display:none !important; }
@@ -1877,36 +1838,9 @@ body.shop-mode #briefing-card { display:none !important; }
   <div id="shop-list"></div>
 </div>
 
-
-<div id="todo-view">
-  <div class="todo-head">
-    <button class="shop-clear" onclick="exitTodo()">&#8249; Back</button>
-    <h2>&#x2705; Tasks</h2>
-    <button class="shop-clear" id="todo-notif-btn" onclick="enableTodoNotifications()">&#x1F514; Notify</button>
-  </div>
-  <div class="todo-week-nav">
-    <button class="todo-week-btn" onclick="todoWeekOffset--;renderTodoView()">&#8249;</button>
-    <div class="todo-week-lbl" id="todo-week-lbl"></div>
-    <button class="todo-week-btn" onclick="todoWeekOffset++;renderTodoView()">&#8250;</button>
-  </div>
-  <div class="todo-add-wrap">
-    <input id="todo-input" class="todo-add-input" type="text" placeholder="Add a task&hellip;" autocomplete="off" enterkeyhint="done"
-      onkeydown="if(event.key==='Enter'){event.preventDefault();addTodoItem();}"/>
-    <div class="todo-add-row">
-      <div class="todo-assignee-btns">
-        <button class="todo-assignee-btn on" id="todo-ass-marius" onclick="setTodoAssignee('marius')">Marius</button>
-        <button class="todo-assignee-btn" id="todo-ass-vilde" onclick="setTodoAssignee('vilde')">Vilde</button>
-        <button class="todo-assignee-btn" id="todo-ass-both" onclick="setTodoAssignee('both')">Both</button>
-      </div>
-      <div class="todo-day-chips" id="todo-day-chips"></div>
-      <button class="todo-add-btn" onclick="addTodoItem()">Add</button>
-    </div>
-  </div>
-  <div id="todo-list"></div>
-</div>
-
 <div id="desktop-cal-wrap">
 <div id="cal"></div>
+<div id="month-cal" style="display:none;"></div>
 <div id="week-view" style="display:none;"></div>
 <div id="day-view" style="display:none;"></div>
 </div>
@@ -1936,83 +1870,83 @@ const WEEK_MONDAYS = [
 const WEEKS = [
   { phase:"Pre-plan", num:"Pre 1", dates:"14–20 Apr", km:47, moved:false,
     wife:["","","","","","",""],
-    runs:[null,"easy:Easy","quality:Sub-threshold",null,"easy:Easy + strides",null,"long:Long run"],
+    runs:[null,"easy:Easy 10 km","quality:Sub-threshold",null,"easy:Easy 10 km + strides",null,"long:Long run 14 km"],
     str:["upper:Upper 1",null,"lower:Lower 1",null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Pre 2", dates:"21–27 Apr", km:50, moved:false,
     wife:["","","","","","",""],
-    runs:[null,"easy:Easy","quality:Sub-threshold",null,"easy:Easy","quality:Sub-threshold","long:Long run"],
+    runs:[null,"easy:Easy 10 km","quality:Sub-threshold",null,"easy:Easy 10 km","quality:Sub-threshold","long:Long run 16 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"upper:Upper 2","lower:Lower 2",null,null]},
   { phase:null, num:"Pre 3", dates:"28 Apr–4 May", km:54, moved:false,
     wife:["","early:OD4","eve:OK4","eve:OKR4","early:D2","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy (PM)","kinder:Kindergarten run",null,null,"quality:Sub-threshold","long:Long run"],
+    runs:["quality:Sub-threshold","easy-pm:Easy 10 km (PM)","kinder:Kindergarten run",null,null,"quality:Sub-threshold","long:Long run 18 km"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Pre 4", dates:"5–11 May", km:42, moved:false,
     wife:["early:ODR4","early:ODR4","early:ODR4","eve:OKR4","","","off:F1 (off)"],
-    runs:[null,"easy-pm:Easy (PM)",null,"kinder:Kindergarten run","easy:Easy","quality:Sub-threshold","long:Long run"],
+    runs:[null,"easy-pm:Easy 8 km (PM)",null,"kinder:Kindergarten run","easy:Easy 8 km","quality:Sub-threshold","long:Long run 14 km"],
     str:["upper:Upper 1",null,"upper:Upper 2","lower:Lower 1",null,"lower:Lower 2",null]},
   { phase:null, num:"Pre 5", dates:"12–18 May", km:58, moved:true,
     wife:["","","early:OD4","early:OD4","off:F1 (off)","other:M2L","other:M2L"],
-    runs:["quality:Sub-threshold","easy:Easy","easy-pm:Easy (PM)",null,"long:Long run ↑","quality:Sub-threshold",null],
+    runs:["quality:Sub-threshold","easy:Easy 12 km","easy-pm:Easy 10 km (PM)",null,"long:Long run 21 km ↑","quality:Sub-threshold",null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:"Build", num:"Week 1", dates:"19–25 May", km:61, moved:false,
     wife:["","eve:OK4","eve:OK4","early:D2","early:ODR4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","kinder:Kindergarten run",null,"easy-pm:Easy (PM)","quality:Sub-threshold",null,"long:Long run"],
+    runs:["quality:Sub-threshold","kinder:Kindergarten run",null,"easy-pm:Easy 10 km (PM)","quality:Sub-threshold",null,"long:Long run 23 km"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 2", dates:"26 May–1 Jun", km:64, moved:false,
     wife:["other:F3 (?)","early:OD4","early:OD4","eve:OK4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy (PM)",null,"kinder:Kindergarten run","quality:Sub-threshold",null,"long:Long run"],
+    runs:["quality:Sub-threshold","easy-pm:Easy 12 km (PM)",null,"kinder:Kindergarten run","quality:Sub-threshold",null,"long:Long run 25 km"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 3", dates:"2–8 Jun", km:66, moved:true,
     wife:["","early:ODR4","early:ODR4","off:F1 (off)","","early:OD4L","early:OD4L"],
-    runs:["easy:Easy","easy-pm:Easy (PM)","easy-pm:Easy (PM)","quality:Sub-threshold","long:Long run ↑ (last 6 km MP)",null,null],
+    runs:["easy:Easy 12 km","easy-pm:Easy 11 km (PM)","easy-pm:Easy 10 km (PM)","quality:Sub-threshold","long:Long run 27 km ↑ (last 6 km MP)",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:null, num:"Week 4", dates:"9–15 Jun", km:48, moved:false,
     wife:["","","eve:OKR4","eve:OKR4","","","off:F1 (off)"],
-    runs:[null,"quality:Sub-threshold","kinder:Kindergarten run",null,"easy:Easy + strides",null,"long:Long run"],
+    runs:[null,"quality:Sub-threshold","kinder:Kindergarten run",null,"easy:Easy 8 km + strides",null,"long:Long run 18 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 5", dates:"16–22 Jun", km:68, moved:false,
     wife:["eve:OK4","eve:OK4","early:OD4","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","kinder:Kindergarten run","easy-pm:Easy (PM)",null,"quality:Sub-threshold",null,"long:Long run"],
+    runs:["quality:Sub-threshold","kinder:Kindergarten run","easy-pm:Easy 12 km (PM)",null,"quality:Sub-threshold",null,"long:Long run 29 km"],
     str:[null,null,"upper:Upper 1","lower:Lower 2",null,"upper:Upper 2","lower:Lower 1"]},
   { phase:null, num:"Week 6", dates:"23–29 Jun", km:69, moved:true,
     wife:["","early:OD4","","off:F1 (off)","eve:OK4L","early:OD4L","early:OD4L"],
-    runs:["easy:Easy","easy-pm:Easy (PM)","quality:Sub-threshold","easy:Easy","long:Long run ↑ (last 8 km MP)",null,null],
+    runs:["easy:Easy 13 km","easy-pm:Easy 12 km (PM)","quality:Sub-threshold","easy:Easy 12 km","long:Long run 29 km ↑ (last 8 km MP)",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:"Peak", num:"Week 7", dates:"30 Jun–6 Jul", km:71, moved:false,
     wife:["","eve:K2","other:N2 (night)","other:N2 (night)","","","off:F1 (off)"],
-    runs:["easy:Easy","kinder:Kindergarten run","quality:Near-threshold","easy:Easy","quality:Sub-threshold",null,"long:Long run"],
+    runs:["easy:Easy 13 km","kinder:Kindergarten run","quality:Near-threshold","easy:Easy 12 km","quality:Sub-threshold",null,"long:Long run 31 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 8", dates:"7–13 Jul", km:73, moved:false,
     wife:["eve:K2","eve:K2","","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["kinder:Kindergarten run",null,"quality:Near-threshold","easy-pm:Easy (PM)","easy:Easy + strides",null,"long:Long run (last 10 km MP)"],
+    runs:["kinder:Kindergarten run",null,"quality:Near-threshold","easy-pm:Easy 12 km (PM)","easy:Easy 10 km + strides",null,"long:Long run 33 km (last 10 km MP)"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 9", dates:"14–20 Jul", km:51, moved:true,
     wife:["","","","off:F1 (off)","early:D2L","early:D2L","early:D2L"],
-    runs:["easy:Easy","easy:Easy","quality:Sub-threshold","easy:Easy + strides","long:Long run ↑",null,null],
+    runs:["easy:Easy 12 km","easy:Easy 10 km","quality:Sub-threshold","easy:Easy 10 km + strides","long:Long run 21 km ↑",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:null, num:"Week 10", dates:"21–27 Jul", km:73, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Near-threshold","easy:Easy","quality:Sub-threshold",null,"long:PEAK — easy"],
+    runs:[null,"easy:Easy 14 km","quality:Near-threshold","easy:Easy 12 km","quality:Sub-threshold",null,"long:PEAK — 33 km easy"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 11", dates:"28 Jul–3 Aug", km:75, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Near-threshold","easy:Easy","easy:Easy + strides",null,"long:PEAK LONG RUN"],
+    runs:[null,"easy:Easy 14 km","quality:Near-threshold","easy:Easy 12 km","easy:Easy 10 km + strides",null,"long:PEAK LONG RUN — 37 km"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 12", dates:"4–10 Aug", km:50, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Sub-threshold","easy:Easy",null,"easy:Easy + strides","long:Long run"],
+    runs:[null,"easy:Easy 12 km","quality:Sub-threshold","easy:Easy 10 km",null,"easy:Easy 8 km + strides","long:Long run 18 km"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2","upper:Upper 2",null,null]},
   { phase:"Taper", num:"Week 13", dates:"11–17 Aug", km:56, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy","quality:Sub-threshold","easy:Easy","easy:Easy + strides",null,"long:Long run (mid 10 km MP)"],
+    runs:[null,"easy:Easy 12 km","quality:Sub-threshold","easy:Easy 10 km","easy:Easy 8 km + strides",null,"long:Long run 25 km (mid 10 km MP)"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 14", dates:"18–24 Aug", km:38, moved:false,
     wife:["","early:FAGD","early:OD4","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy (PM)",null,"easy-pm:Easy (PM)",null,"easy:Easy","easy:Easy relaxed"],
+    runs:["quality:Sub-threshold","easy-pm:Easy 10 km (PM)",null,"easy-pm:Easy 8 km (PM)",null,"easy:Easy 6 km","easy:Easy 10 km relaxed"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 15", dates:"25–29 Aug", km:18, moved:false,
     wife:["","early:ODR4","early:ODR4","off:F1 (off)","early:OD4","early:OD4L","early:OD4L"],
-    runs:["easy:Easy + strides","easy-pm:Easy (PM)","easy-pm:Easy (PM)",null,"easy:Easy shake-out",null,"race:RACE DAY — Stavanger Marathon"],
+    runs:["easy:Easy 8 km + strides","easy-pm:Easy 5 km (PM)","easy-pm:Easy 3 km (PM)",null,"easy:Easy 4 km shake-out",null,"race:RACE DAY — Stavanger Marathon"],
     str:[null,null,null,null,null,null,null]},
 ];
 
@@ -2825,10 +2759,7 @@ function renderWeek(wi) {
           wDates.addEventListener('click', e => { e.stopPropagation(); openWeekPlan(w.num); });
         }
         meta.appendChild(wDates);
-        { const wKm = document.createElement('span'); wKm.className='week-km';
-          const tgtKm = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);
-          wKm.textContent = tgtKm > 0 ? tgtKm+' km' : (w.km ? w.km+' km' : '');
-          if (wKm.textContent) meta.appendChild(wKm); }
+        if (w.km) { const wKm = document.createElement('span'); wKm.className='week-km'; wKm.textContent=w.km+' km'; meta.appendChild(wKm); }
         if (w.moved) { const t=document.createElement('span'); t.className='moved-tag'; t.textContent='long→Fri'; meta.appendChild(t); }
       }
       rowEl.appendChild(meta);
@@ -3380,23 +3311,6 @@ async function seedWeekPlan() {
   } catch(e) { console.error('Seed failed:', e); }
 }
 
-function stripKmLabel(label) {
-  if (!label) return label;
-  return label
-    .replace(/(:easy-pm:[^:]*) \d+(?:\.\d+)? km \(PM\)/g, '$1 (PM)')
-    .replace(/(:easy:[^:]*) \d+(?:\.\d+)? km \+ strides/g, '$1 + strides')
-    .replace(/(:easy:[^:]*) \d+(?:\.\d+)? km relaxed/g, '$1 relaxed')
-    .replace(/(:easy:[^:]*) \d+(?:\.\d+)? km shake-out/g, '$1 shake-out')
-    .replace(/(:easy:[^:]*) \d+(?:\.\d+)? km/g, '$1')
-    .replace(/(:Long run[^"]*) \d+(?:\.\d+)? km ↑ \(last/g, '$1 ↑ (last')
-    .replace(/(:Long run[^"]*) \d+(?:\.\d+)? km \(last/g, '$1 (last')
-    .replace(/(:Long run[^"]*) \d+(?:\.\d+)? km \(mid/g, '$1 (mid')
-    .replace(/(:Long run[^"]*) \d+(?:\.\d+)? km ↑/g, '$1 ↑')
-    .replace(/(:Long run[^"]*) \d+(?:\.\d+)? km/g, '$1')
-    .replace(/(:PEAK[^"]*) \d+(?:\.\d+)? km easy/g, '$1')
-    .replace(/(:PEAK[^"]*) \d+(?:\.\d+)? km/g, '$1');
-}
-
 function applyWeekPlan(loaded) {
   if (!loaded) return;
 
@@ -3452,10 +3366,8 @@ function applyWeekPlan(loaded) {
     }
 
     if (w.wife) wifeState[wi] = [...w.wife];
-    if (loaded.source === 'plans') {
-      if (w.runs) state[wi].runs = w.runs.map(stripKmLabel);
-      if (w.str)  state[wi].str  = [...w.str];
-    }
+    if (w.runs) state[wi].runs = [...w.runs];
+    if (w.str)  state[wi].str  = [...w.str];
   });
 
   console.log('Plan applied:', plan.length, 'weeks from', loaded.source);
@@ -3564,9 +3476,7 @@ if (_local) applyState(JSON.parse(_local));
   // 9. Family briefing + shared shopping list + recipe library
   renderBriefing();
   loadShoppingList();
-  loadTodoItems();
   loadRecipeLibrary();
-  autoResubscribePush();
 
   // Auto-refresh recipes when switching back to the app (e.g. added on another device)
   document.addEventListener('visibilitychange', () => {
@@ -3584,227 +3494,6 @@ if (_local) applyState(JSON.parse(_local));
     fetchGCal().then(() => { if (isMobilePortrait()) renderMobileRaceWeek(); });
   }, 5 * 60 * 1000);
 })();
-
-// ── AUTO-RESUBSCRIBE PUSH ──────────────────────────────────────────────────
-async function autoResubscribePush() {
-  try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (Notification.permission !== 'granted') return;
-    if (VAPID_PUBLIC_KEY.startsWith('REPLACE')) return;
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (sub) return;
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY)
-    });
-    const subJson = sub.toJSON();
-    await fetch(SUPA_BASE + 'push_subscriptions', {
-      method: 'POST',
-      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile })
-    });
-    console.log('Push auto-resubscribed for', activeProfile);
-  } catch(e) { console.warn('autoResubscribePush failed:', e); }
-}
-
-
-// ── TODO LIST ─────────────────────────────────────────────────────────────
-let todoItems = [];
-let todoAssignee = 'marius';
-let todoDay = null;
-let todoWeekOffset = 0;
-
-function getTodoWeekStart(offset) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dow = (today.getDay() + 6) % 7;
-  const mon = new Date(today); mon.setDate(today.getDate() - dow + offset * 7);
-  return mon;
-}
-function todoWeekDays(offset) {
-  const mon = getTodoWeekStart(offset);
-  return Array.from({length:7}, (_,i) => { const d = new Date(mon); d.setDate(mon.getDate()+i); return d; });
-}
-function fmtDate(d) {
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-function setTodoAssignee(who) {
-  todoAssignee = who;
-  ['marius','vilde','both'].forEach(w => {
-    const btn = document.getElementById('todo-ass-'+w);
-    if (btn) btn.classList.toggle('on', w===who);
-  });
-}
-function renderTodoWeekLabel() {
-  const lbl = document.getElementById('todo-week-lbl');
-  if (!lbl) return;
-  const days = todoWeekDays(todoWeekOffset);
-  const fmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  const tag = todoWeekOffset===0 ? ' (this week)' : todoWeekOffset===1 ? ' (next week)' : todoWeekOffset===-1 ? ' (last week)' : '';
-  lbl.textContent = fmt(days[0]) + ' – ' + fmt(days[6]) + tag;
-}
-function renderTodoDayChips() {
-  const wrap = document.getElementById('todo-day-chips');
-  if (!wrap) return;
-  const days = todoWeekDays(todoWeekOffset);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const DAY_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  wrap.innerHTML = days.map((d,i) => {
-    const ds = fmtDate(d);
-    const label = d.toDateString()===today.toDateString() ? 'Today' : DAY_SHORT[i];
-    return '<button class="todo-day-chip ' + (todoDay===ds?'on':'') + '" onclick="setTodoDay(\'' + ds + '\')">' + label + '</button>';
-  }).join('');
-}
-function setTodoDay(ds) {
-  todoDay = (todoDay === ds) ? null : ds;
-  renderTodoDayChips();
-}
-async function loadTodoItems() {
-  try {
-    const res = await fetch(SUPA_BASE + 'todo_list?select=*&order=created_at', { headers: SUPA_HDR });
-    if (!res.ok) throw new Error('todo_list ' + res.status);
-    todoItems = await res.json();
-    renderTodoView();
-    if (typeof renderBriefing === 'function') renderBriefing();
-  } catch(e) { console.warn('Failed to load todo list:', e); }
-}
-function escTodo(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-async function addTodoItem() {
-  const inp = document.getElementById('todo-input');
-  const text = (inp ? inp.value : '').trim();
-  if (!text) return;
-  const day = todoDay;
-  const assignees = todoAssignee === 'both' ? ['marius','vilde'] : [todoAssignee];
-  try {
-    for (const assignee of assignees) {
-      await fetch(SUPA_BASE + 'todo_list', {
-        method:'POST',
-        headers:{...SUPA_HDR,'Prefer':'return=minimal'},
-        body: JSON.stringify({ text, assignee, day, added_by: activeProfile })
-      });
-    }
-    if (inp) inp.value = '';
-    await loadTodoItems();
-    if (todoAssignee !== activeProfile) {
-      const toUser = todoAssignee === 'both'
-        ? (activeProfile === 'marius' ? 'vilde' : 'marius')
-        : todoAssignee;
-      if (toUser !== activeProfile) sendTodoNotification(toUser, text);
-    }
-  } catch(e) { console.warn('addTodoItem failed:', e); }
-}
-async function toggleTodoItem(id) {
-  const item = todoItems.find(i => i.id === id);
-  if (!item) return;
-  try {
-    await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
-      method:'PATCH',
-      headers:{...SUPA_HDR,'Prefer':'return=minimal'},
-      body: JSON.stringify({ done: !item.done })
-    });
-    await loadTodoItems();
-  } catch(e) { console.warn('toggleTodoItem failed:', e); }
-}
-async function deleteTodoItem(id) {
-  try {
-    await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
-      method:'DELETE', headers: SUPA_HDR
-    });
-    await loadTodoItems();
-  } catch(e) { console.warn('deleteTodoItem failed:', e); }
-}
-function exitTodo() {
-  setView('plan');
-  if (mobMode === 'todo') { mobMode = 'race'; renderMobileView(); }
-}
-function renderTodoView() {
-  renderTodoWeekLabel();
-  renderTodoDayChips();
-  const listEl = document.getElementById('todo-list');
-  if (!listEl) return;
-  const days = todoWeekDays(todoWeekOffset);
-  const dayStrs = days.map(fmtDate);
-  const weekItems = todoItems.filter(i => i.day == null || dayStrs.includes(i.day));
-  let out = '';
-  days.forEach((d) => {
-    const ds = fmtDate(d);
-    const its = weekItems.filter(i => i.day === ds);
-    if (its.length) out += renderTodoGroup(its, d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}));
-  });
-  const undated = weekItems.filter(i => !i.day);
-  if (undated.length) out += renderTodoGroup(undated, 'Any day');
-  listEl.innerHTML = out || '<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px;">No tasks this week 🎉</div>';
-}
-function renderTodoGroup(items, label) {
-  const rows = items.map(i => {
-    const assCls = i.assignee==='marius'?'tass-m':i.assignee==='vilde'?'tass-v':'tass-b';
-    const assLabel = i.assignee==='marius'?'Marius':i.assignee==='vilde'?'Vilde':'Both';
-    return '<div class="todo-item' + (i.done?' done':'') + '" onclick="toggleTodoItem(\'' + i.id + '\')">'
-      + '<div class="tck">' + (i.done?'✓':'') + '</div>'
-      + '<div class="ttx">' + escTodo(i.text) + '</div>'
-      + '<span class="tass ' + assCls + '">' + assLabel + '</span>'
-      + '<button class="trm" onclick="event.stopPropagation();deleteTodoItem(\'' + i.id + '\')">×</button>'
-      + '</div>';
-  }).join('');
-  return '<div class="todo-group"><div class="todo-group-label">' + label + '</div>' + rows + '</div>';
-}
-async function sendTodoNotification(toUser, taskText) {
-  try {
-    const fromName = activeProfile === 'marius' ? 'Marius' : 'Vilde';
-    await fetch(SUPA_FN_BASE + 'send-todo-push', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_KEY},
-      body: JSON.stringify({ to_user: toUser, from_name: fromName, task: taskText })
-    });
-  } catch(e) { console.warn('sendTodoNotification failed:', e); }
-}
-async function registerTodoPushForUser() {
-  try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (!sub || Notification.permission !== 'granted') return;
-    const subJson = sub.toJSON();
-    await fetch(SUPA_BASE + 'push_subscriptions', {
-      method:'POST',
-      headers:{...SUPA_HDR,'Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile })
-    });
-  } catch(e) {}
-}
-async function enableTodoNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert("Push notifications aren't supported on this device or browser."); return;
-  }
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (isIOS && !isStandalonePWA()) {
-    alert('On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), then open it from there and tap 🔔 again.');
-    return;
-  }
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { alert('Notification permission not granted.'); return; }
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
-    }
-    const subJson = sub.toJSON();
-    const res = await fetch(SUPA_BASE + 'push_subscriptions', {
-      method:'POST',
-      headers:{...SUPA_HDR,'Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile })
-    });
-    if (!res.ok && res.status !== 409) throw new Error('save failed: ' + res.status);
-    const btn = document.getElementById('todo-notif-btn');
-    if (btn) { btn.textContent = '🔔 On'; btn.classList.add('on'); }
-    alert('Notifications enabled 🎉 You\'ll get a heads-up when ' + (activeProfile==='marius'?'Vilde':'Marius') + ' adds a task for you.');
-  } catch(e) {
-    alert('Could not enable notifications: ' + (e && e.message ? e.message : e));
-  }
-}
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
 const SUPA_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
@@ -7956,8 +7645,7 @@ function buildStatsWeeks() {
       });
     });
 
-    { const tgtKmMob = Object.keys(runTargets).filter(k=>k.startsWith(wi+'-')).reduce((s,k)=>s+(runTargets[k]||0),0);
-      plannedKm = tgtKmMob > 0 ? tgtKmMob : (w.km || 0); }
+    plannedKm = w.km || 0;
 
     return {
       wi, label:w.num, shortLabel: w.num.replace('Week ','W').replace('Pre ','P'),
@@ -8126,29 +7814,16 @@ function renderMobileView() {
   const raceBtn = document.createElement('button');
   raceBtn.className = 'mob-mode-btn active';
   raceBtn.textContent = '🏃 Plan';
-  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); document.body.classList.remove('todo-mode'); mobMode='race'; renderMobileView(); });
+  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
   modeBar.appendChild(raceBtn);
   const shopBtn = document.createElement('button');
-  shopBtn.className = 'mob-mode-btn' + (mobMode==='shop'?' active':'');
+  shopBtn.className = 'mob-mode-btn';
   shopBtn.textContent = '🛒 Shop';
-  shopBtn.addEventListener('click', () => { mobMode='shop'; setView('shop'); });
+  shopBtn.addEventListener('click', () => setView('shop'));
   modeBar.appendChild(shopBtn);
-  const todoTabBtn = document.createElement('button');
-  todoTabBtn.className = 'mob-mode-btn' + (mobMode==='todo'?' active':'');
-  todoTabBtn.textContent = '✅ Tasks';
-  todoTabBtn.addEventListener('click', () => { mobMode='todo'; setView('todo'); });
-  modeBar.appendChild(todoTabBtn);
   mc.appendChild(modeBar);
 
-  if (mobMode === 'shop') {
-    const shopWrap = document.createElement('div');
-    shopWrap.id = 'mob-shop-inline';
-    shopWrap.style.cssText = 'padding:14px 16px 40px;';
-    shopWrap.innerHTML = document.getElementById('shop-view').innerHTML;
-    mc.appendChild(shopWrap);
-  } else if (mobMode === 'todo') {
-    renderTodoView();
-  } else if (mobMode === 'race') renderMobileRaceWeek();
+  if (mobMode === 'race') renderMobileRaceWeek();
   else renderMobileMonth();
 }
 
@@ -8994,10 +8669,8 @@ let dayViewDate = new Date(); // which day is shown in day view
 function setView(view) {
   currentView = view;
   document.body.classList.toggle('shop-mode', view === 'shop');
-  document.body.classList.toggle('todo-mode', view === 'todo');
-  if (view === 'todo') { renderTodoDayChips(); renderTodoWeekLabel(); registerTodoPushForUser(); }
   document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
-  document.getElementById('month-cal').style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
+  const _monthCal = document.getElementById('month-cal'); if (_monthCal) _monthCal.style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
   document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
   document.getElementById('day-view').style.display   = view === 'day'      ? '' : 'none';
   ['calendar','week','day','shop'].forEach(v => {
@@ -9435,21 +9108,6 @@ function renderBriefing() {
   if (evts.length) {
     const ev = evts.map(e => `${e.isAllDay ? '' : (e.startTime ? e.startTime+' · ' : '')}${e.summary}`).join('<br>');
     rows += briefRow('📅', 'Calendar', ev);
-  }
-
-  // Todo tasks for today
-  if (typeof todoItems !== 'undefined' && todoItems.length) {
-    const todayTasks = todoItems.filter(i => !i.done && i.day === dateStr);
-    if (todayTasks.length) {
-      const tasksByPerson = {};
-      todayTasks.forEach(t => { (tasksByPerson[t.assignee] = tasksByPerson[t.assignee]||[]).push(t); });
-      const taskHtml = Object.entries(tasksByPerson).map(([who, ts]) => {
-        const name = who === 'marius' ? 'Marius' : 'Vilde';
-        const txt = ts.map(t => escShop(t.text)).join(', ');
-        return '<span style="font-weight:600">'+name+':</span> '+txt;
-      }).join('<br>');
-      rows += '<div class="brief-row brief-row-tap" onclick="setView('todo')"><div class="ic">✅</div><div class="bd"><div class="bl">Tasks</div><div class="bv">'+taskHtml+'</div></div></div>';
-    }
   }
 
   // Shopping list reminder (shared, not day-specific) — tap to open the list
