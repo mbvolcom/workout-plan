@@ -1191,7 +1191,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.1.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.2.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3692,6 +3692,8 @@ function renderTodoView() {
   // Update week label + day chips
   renderTodoWeekLabel();
   renderTodoDayChips();
+  // Sync mobile inline todo list if visible
+  setTimeout(() => { if (typeof renderMobTodoList === 'function') renderMobTodoList(); }, 0);
 
   const el = document.getElementById('todo-list');
   if (!el) return;
@@ -8063,27 +8065,262 @@ function renderMobileView() {
   const mc = document.getElementById('mobile-cal');
   mc.innerHTML = '';
 
-  // Mode toggle
+  // Always clear body overlay modes on mobile — shop/tasks render inline here
+  document.body.classList.remove('shop-mode', 'todo-mode');
+
+  // Mode toggle bar
   const modeBar = document.createElement('div'); modeBar.className = 'mob-mode-bar';
   const raceBtn = document.createElement('button');
   raceBtn.className = 'mob-mode-btn' + (mobMode==='race'||mobMode==='month'?' active':'');
   raceBtn.textContent = '🏃 Plan';
-  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
+  raceBtn.addEventListener('click', () => { mobMode='race'; renderMobileView(); });
   modeBar.appendChild(raceBtn);
   const shopBtn = document.createElement('button');
   shopBtn.className = 'mob-mode-btn' + (mobMode==='shop'?' active':'');
   shopBtn.textContent = '🛒 Shop';
-  shopBtn.addEventListener('click', () => { mobMode='shop'; setView('shop'); });
+  shopBtn.addEventListener('click', () => { mobMode='shop'; renderMobileView(); });
   modeBar.appendChild(shopBtn);
   const todoTabBtn = document.createElement('button');
   todoTabBtn.className = 'mob-mode-btn' + (mobMode==='todo'?' active':'');
   todoTabBtn.textContent = '✅ Tasks';
-  todoTabBtn.addEventListener('click', () => { mobMode='todo'; setView('todo'); });
+  todoTabBtn.addEventListener('click', () => { mobMode='todo'; renderMobileView(); });
   modeBar.appendChild(todoTabBtn);
   mc.appendChild(modeBar);
 
   if (mobMode === 'race') renderMobileRaceWeek();
   else if (mobMode === 'month') renderMobileMonth();
+  else if (mobMode === 'shop') renderMobileShopInline(mc);
+  else if (mobMode === 'todo') renderMobileTodoInline(mc);
+}
+
+function renderMobileShopInline(mc) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding-bottom:40px;';
+
+  // Header row
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
+  head.innerHTML = `
+    <h2 style="font-size:17px;font-weight:700;color:var(--text);margin:0;">🛒 Shopping</h2>
+    <div style="display:flex;gap:6px;">
+      <button class="shop-clear" id="mob-shop-notif-btn" onclick="enableShoppingNotifications();updateMobShopNotifBtn()">🔔 Notify</button>
+      <button class="shop-clear" onclick="clearBoughtItems()">Clear bought</button>
+    </div>`;
+  wrap.appendChild(head);
+
+  // Add item row
+  const addRow = document.createElement('div');
+  addRow.className = 'shop-add';
+  addRow.innerHTML = `
+    <input id="mob-shop-input" type="text" placeholder="Add item…" autocomplete="off" enterkeyhint="done"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();addMobShopItem();}"/>
+    <button onclick="addMobShopItem()">Add</button>`;
+  wrap.appendChild(addRow);
+
+  // List container
+  const listEl = document.createElement('div');
+  listEl.id = 'mob-shop-list';
+  wrap.appendChild(listEl);
+
+  mc.appendChild(wrap);
+
+  // Render current list
+  renderMobShopList();
+  updateMobShopNotifBtn();
+}
+
+function renderMobShopList() {
+  const el = document.getElementById('mob-shop-list');
+  if (!el) return;
+  // Sync with main shop-list content
+  const src = document.getElementById('shop-list');
+  if (src) el.innerHTML = src.innerHTML;
+  // Re-wire toggle/delete clicks to use the inline list element
+  el.querySelectorAll('[onclick]').forEach(btn => {
+    // onclick attributes already reference global functions, they work as-is
+  });
+}
+
+function updateMobShopNotifBtn() {
+  pushStatus().then(s => {
+    const btn = document.getElementById('mob-shop-notif-btn');
+    if (!btn) return;
+    btn.textContent = s === 'on' ? '🔔 On' : '🔔 Notify';
+    btn.classList.toggle('on', s === 'on');
+  });
+}
+
+async function addMobShopItem() {
+  const input = document.getElementById('mob-shop-input');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  input.value = '';
+  // Use the same addShoppingItem logic but with our value
+  const temp = { id:'tmp_'+Date.now()+'_'+Math.random(), item:val, done:false };
+  shoppingItems.push(temp);
+  renderShoppingList();
+  renderMobShopList();
+  try {
+    const res = await fetch(SUPA_BASE + 'shopping_list', {
+      method:'POST', headers:{...SUPA_HDR,'Prefer':'return=representation'},
+      body: JSON.stringify({ item:val, done:false })
+    });
+    if (res.ok) {
+      const saved = (await res.json())[0];
+      const idx = shoppingItems.findIndex(i=>i.id===temp.id);
+      if (idx>=0 && saved) shoppingItems[idx] = saved;
+      renderShoppingList();
+      renderMobShopList();
+    }
+  } catch(e) { console.warn('addMobShopItem failed:', e); }
+}
+
+function renderMobileTodoInline(mc) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding-bottom:40px;';
+
+  // Header row
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
+  head.innerHTML = `
+    <h2 style="font-size:17px;font-weight:700;color:var(--text);margin:0;">✅ Tasks</h2>
+    <button class="shop-clear" id="mob-todo-notif-btn" onclick="enableTodoNotifications()">🔔 Notify</button>`;
+  wrap.appendChild(head);
+
+  // Week nav
+  const weekNav = document.createElement('div');
+  weekNav.className = 'todo-week-nav';
+  weekNav.innerHTML = `
+    <button class="todo-week-btn" onclick="todoWeekOffset--;renderMobileView()">‹</button>
+    <div class="todo-week-lbl" id="mob-todo-week-lbl"></div>
+    <button class="todo-week-btn" onclick="todoWeekOffset++;renderMobileView()">›</button>`;
+  wrap.appendChild(weekNav);
+
+  // Add task row
+  const addWrap = document.createElement('div');
+  addWrap.className = 'todo-add-wrap';
+  addWrap.innerHTML = `
+    <input id="mob-todo-input" class="todo-add-input" type="text" placeholder="Add a task…" autocomplete="off" enterkeyhint="done"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();addMobTodoItem();}"/>
+    <div class="todo-add-row">
+      <div class="todo-assignee-btns">
+        <button class="todo-assignee-btn on" id="mob-todo-ass-marius" onclick="setMobTodoAssignee('marius')">Marius</button>
+        <button class="todo-assignee-btn" id="mob-todo-ass-vilde" onclick="setMobTodoAssignee('vilde')">Vilde</button>
+        <button class="todo-assignee-btn" id="mob-todo-ass-both" onclick="setMobTodoAssignee('both')">Both</button>
+      </div>
+      <div class="todo-day-chips" id="mob-todo-day-chips"></div>
+      <button class="todo-add-btn" onclick="addMobTodoItem()">Add</button>
+    </div>`;
+  wrap.appendChild(addWrap);
+
+  // Task list
+  const listEl = document.createElement('div');
+  listEl.id = 'mob-todo-list';
+  wrap.appendChild(listEl);
+
+  mc.appendChild(wrap);
+
+  // Init state
+  window._mobTodoAssignee = window._mobTodoAssignee || 'marius';
+  window._mobTodoDay = window._mobTodoDay || null;
+  setMobTodoAssignee(window._mobTodoAssignee, true);
+
+  // Render week label + day chips + list
+  renderMobTodoWeekLabel();
+  renderMobTodoDayChips();
+  renderMobTodoList();
+
+  // Update notify btn
+  pushStatus().then(s => {
+    const btn = document.getElementById('mob-todo-notif-btn');
+    if (btn) { btn.textContent = s==='on'?'🔔 On':'🔔 Notify'; btn.classList.toggle('on', s==='on'); }
+  });
+}
+
+function renderMobTodoWeekLabel() {
+  const el = document.getElementById('mob-todo-week-lbl');
+  if (!el) return;
+  const days = todoWeekDays(todoWeekOffset);
+  const fmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const label = todoWeekOffset === 0 ? 'This week' : todoWeekOffset === 1 ? 'Next week' : todoWeekOffset === -1 ? 'Last week' : `${fmt(days[0])} – ${fmt(days[6])}`;
+  el.textContent = label;
+}
+
+function renderMobTodoDayChips() {
+  const el = document.getElementById('mob-todo-day-chips');
+  if (!el) return;
+  const days = todoWeekDays(todoWeekOffset);
+  el.innerHTML = '';
+  days.forEach((d, i) => {
+    const ds = fmtDate(d);
+    const btn = document.createElement('button');
+    btn.className = 'todo-day-chip' + (window._mobTodoDay === ds ? ' active' : '');
+    btn.textContent = ['M','T','W','T','F','S','S'][i];
+    btn.addEventListener('click', () => {
+      window._mobTodoDay = (window._mobTodoDay === ds) ? null : ds;
+      renderMobTodoDayChips();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function setMobTodoAssignee(a, silent) {
+  window._mobTodoAssignee = a;
+  ['marius','vilde','both'].forEach(x => {
+    const b = document.getElementById('mob-todo-ass-'+x);
+    if (b) b.classList.toggle('on', x === a);
+  });
+}
+
+async function addMobTodoItem() {
+  const input = document.getElementById('mob-todo-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const assignee = window._mobTodoAssignee || 'marius';
+  const day = window._mobTodoDay || null;
+  const temp = { id:'tmp_'+Date.now(), text, assignee, day, done:false };
+  todoItems.push(temp);
+  renderMobTodoList();
+  try {
+    const res = await fetch(SUPA_BASE + 'todo_list', {
+      method:'POST', headers:{...SUPA_HDR,'Prefer':'return=representation'},
+      body: JSON.stringify({ text, assignee, day, done:false })
+    });
+    if (res.ok) {
+      const saved = (await res.json())[0];
+      const idx = todoItems.findIndex(i=>i.id===temp.id);
+      if (idx>=0 && saved) todoItems[idx] = saved;
+      renderMobTodoList();
+      renderTodoView();
+      if (typeof notifyTodoAssignee === 'function') notifyTodoAssignee(saved);
+    }
+  } catch(e) { console.warn('addMobTodoItem failed:', e); }
+}
+
+function renderMobTodoList() {
+  const el = document.getElementById('mob-todo-list');
+  if (!el) return;
+  const days = todoWeekDays(todoWeekOffset);
+  const weekDates = days.map(fmtDate);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const weekItems = todoItems.filter(i => i.day ? weekDates.includes(i.day) : todoWeekOffset === 0);
+  if (!weekItems.length) { el.innerHTML = '<div class="todo-empty">No tasks this week — add one above.</div>'; return; }
+  const DAY_LABELS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  let html = '';
+  const nodayItems = weekItems.filter(i => !i.day);
+  if (nodayItems.length) html += renderTodoGroup('Anytime this week', nodayItems);
+  days.forEach((d, i) => {
+    const ds = fmtDate(d);
+    const dayItems = weekItems.filter(it => it.day === ds);
+    if (!dayItems.length) return;
+    const isToday = d.toDateString() === today.toDateString();
+    const label = (isToday ? 'Today — ' : '') + DAY_LABELS[i] + ', ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    html += renderTodoGroup(label, dayItems);
+  });
+  el.innerHTML = html || '<div class="todo-empty">No tasks this week.</div>';
 }
 
 function openMobFlagMenu(dateStr) {
@@ -8926,6 +9163,10 @@ let weekViewIndex = 0; // which week is shown in week view
 let dayViewDate = new Date(); // which day is shown in day view
 
 function setView(view) {
+  // On mobile portrait, shop and tasks render inline — don't trigger overlay modes
+  if ((view === 'shop' || view === 'todo') && typeof isMobilePortrait === 'function' && isMobilePortrait()) {
+    mobMode = view; renderMobileView(); return;
+  }
   currentView = view;
   document.body.classList.toggle('shop-mode', view === 'shop');
   document.body.classList.toggle('todo-mode', view === 'todo');
@@ -9371,16 +9612,13 @@ function renderBriefing() {
     rows += briefRow('📅', 'Calendar', ev);
   }
 
-  // Todo tasks for today/tomorrow
-  const todayTasks = (todoItems||[]).filter(i => !i.done && i.day === dateStr);
+  // Todo tasks for today/tomorrow — filtered to current profile only
+  const todayTasks = (todoItems||[]).filter(i =>
+    !i.done && i.day === dateStr &&
+    (i.assignee === activeProfile || i.assignee === 'both')
+  );
   if (todayTasks.length) {
-    const tasksByPerson = {};
-    todayTasks.forEach(t => { (tasksByPerson[t.assignee] = tasksByPerson[t.assignee]||[]).push(t); });
-    const taskHtml = Object.entries(tasksByPerson).map(([who, ts]) => {
-      const name = who === 'marius' ? 'Marius' : 'Vilde';
-      const txt = ts.map(t => escShop(t.text)).join(', ');
-      return `<span style="font-weight:600">${name}:</span> ${txt}`;
-    }).join('<br>');
+    const taskHtml = todayTasks.map(t => escShop(t.text)).join(', ');
     rows += `<div class="brief-row brief-row-tap" onclick="setView('todo')"><div class="ic">✅</div><div class="bd"><div class="bl">Tasks</div><div class="bv">${taskHtml}</div></div></div>`;
   }
 
@@ -9452,6 +9690,8 @@ async function loadShoppingList() {
 }
 
 function renderShoppingList() {
+  // Sync mobile inline shop list if visible
+  setTimeout(() => { if (typeof renderMobShopList === 'function') renderMobShopList(); }, 0);
   const el = document.getElementById('shop-list');
   if (!el) return;
   if (!shoppingItems.length) {
