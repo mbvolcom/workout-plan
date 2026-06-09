@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <title>Training Calendar 2026</title>
+<!-- App version: 1.1.0 -->
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1166,54 +1167,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-pill-cross { background:var(--cross-bg); color:var(--cross-c); border:0.5px solid var(--cross-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-empty { background:var(--bg); border:1px dashed var(--border-mid); border-radius:8px; padding:8px 12px; cursor:pointer; }
 .mob-add-btn { font-size:12px; color:var(--muted); font-style:italic; }
-
-/* ── Sterk Gutt Stats v2 ── */
-.sg2-filter-bar{padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.06);background:#0a0907;}
-.sg2-filter-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(241,236,226,.28);margin-bottom:10px;}
-.sg2-preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
-.sg2-preset-btn{padding:5px 12px;border:1px solid rgba(255,255,255,.08);background:transparent;color:rgba(241,236,226,.38);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;cursor:pointer;transition:all .12s;border-radius:2px;}
-.sg2-preset-btn.active{border-color:#c8f06e;background:rgba(200,240,110,.08);color:#c8f06e;}
-.sg2-filter-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
-.sg2-date-input{flex:1;background:#111113;border:1px solid rgba(255,255,255,.10);padding:7px 10px;font-size:12px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;color-scheme:dark;border-radius:2px;}
-.sg2-apply-btn{padding:7px 14px;border:1px solid #c8f06e;background:rgba(200,240,110,.08);color:#c8f06e;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;flex-shrink:0;}
-.sg2-subtabs{display:flex;border-bottom:1px solid rgba(255,255,255,.06);padding:0 16px;background:#0a0907;}
-.sg2-subtab{flex:1;padding:12px 0;background:none;border:none;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:rgba(241,236,226,.32);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;}
-.sg2-subtab.active{color:#c8f06e;border-bottom-color:#c8f06e;}
-.sg2-body{padding:14px 12px 60px;}
-.sg2-kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;}
-.sg2-kpi-card{background:#111113;border:1px solid rgba(255,255,255,.07);padding:12px 10px 10px;text-align:center;}
-.sg2-kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;line-height:1;letter-spacing:.02em;margin-bottom:4px;}
-.sg2-kpi-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:2px;}
-.sg2-kpi-sub{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.06em;color:rgba(241,236,226,.28);}
-.sg2-stat-card{background:#111113;border:1px solid rgba(255,255,255,.07);padding:14px;margin-bottom:8px;}
-.sg2-card-title{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(241,236,226,.28);margin-bottom:14px;}
-.sg2-muscle-row{display:grid;grid-template-columns:88px 1fr 34px;align-items:center;gap:10px;margin-bottom:9px;}
-.sg2-muscle-row:last-child{margin-bottom:0;}
-.sg2-muscle-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;color:rgba(241,236,226,.55);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sg2-muscle-track{height:6px;background:rgba(255,255,255,.06);overflow:hidden;}
-.sg2-muscle-fill{height:6px;background:linear-gradient(90deg,#c8f06e,#a8d84e);border-radius:0 2px 2px 0;transition:width .65s cubic-bezier(.16,1,.3,1);width:0%;}
-.sg2-muscle-val{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#c8f06e;text-align:right;}
-.sg2-routine-card{background:#111113;border:1px solid rgba(255,255,255,.07);padding:14px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
-.sg2-routine-card:hover{border-color:rgba(200,240,110,.3);}
-.sg2-routine-name{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#f4efe5;letter-spacing:.02em;margin-bottom:8px;}
-.sg2-routine-meta{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;}
-.sg2-routine-item{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(241,236,226,.38);letter-spacing:.04em;}
-.sg2-routine-item span{color:#f4efe5;font-weight:700;margin-right:2px;}
-.sg2-routine-bar-track{height:3px;background:rgba(255,255,255,.06);overflow:hidden;}
-.sg2-routine-bar-fill{height:3px;background:#c8f06e;border-radius:0 2px 2px 0;transition:width .5s cubic-bezier(.16,1,.3,1);}
-.sg2-ex-select{width:100%;background:#0a0907;border:1px solid rgba(255,255,255,.10);padding:11px 14px;font-size:14px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;margin-bottom:14px;cursor:pointer;-webkit-appearance:none;appearance:none;border-radius:2px;}
-.sg2-ex-select:focus{border-color:#c8f06e;}
-.sg2-back-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(241,236,226,.55);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;cursor:pointer;transition:all .15s;border-radius:2px;margin:10px 16px 2px;display:inline-block;}
-.sg2-back-btn:hover{background:rgba(255,255,255,.1);color:#f4efe5;}
-.sg2-body-map{width:100%;max-width:460px;margin:0 auto;padding-bottom:16px;--bm-color-0:#111113;--bm-color-1:rgba(200,240,110,.12);--bm-color-2:rgba(200,240,110,.24);--bm-color-3:rgba(200,240,110,.36);--bm-color-4:rgba(200,240,110,.48);--bm-color-5:rgba(200,240,110,.58);--bm-color-6:rgba(200,240,110,.68);--bm-color-7:rgba(200,240,110,.76);--bm-color-8:rgba(200,240,110,.84);--bm-color-9:rgba(200,240,110,.92);--bm-color-10:#c8f06e;}
-.sg2-body-map>div{width:100%!important;justify-content:center!important;}
-.sg2-body-map>div>div{max-width:50%!important;flex:1 1 0!important;min-width:0!important;}
-.sg2-body-map svg{width:100%!important;height:auto!important;display:block;}
-.sg2-map-legend{display:flex;align-items:center;justify-content:center;gap:14px;font-size:9px;letter-spacing:.10em;color:rgba(241,236,226,.38);text-transform:uppercase;margin-top:8px;}
-.sg2-legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
 </head>
 <body>
 <div class="bg-stage">
@@ -1238,7 +1192,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.3.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.2.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1280,14 +1234,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <button class="btn" onclick="openStatsPage()">📊 Stats</button>
     <button class="btn" id="partner-toggle-btn" onclick="togglePartnerTraining()">👁 Partner</button>
     <button class="btn is-violet" onclick="openClaudePanel()">✦ Claude</button>
-  </div>
-  <div class="tb-spacer"></div>
-  <div class="seg-tabs" id="view-seg-tabs">
-    <button class="on race" id="view-btn-calendar"
-      onclick="setView('calendar')"
-      oncontextmenu="showPlanDropdown(event)"
-      ontouchstart="startPlanLongPress(event)">📅 Calendar</button>
-    <button id="view-btn-shop" onclick="setView('shop')">🛒 Shop</button>
+    <button class="btn" id="shop-open-btn" onclick="openShopOverlay()">🛒 Shop</button>
   </div>
 </div>
 
@@ -1733,11 +1680,11 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .brief-empty { color:var(--muted); font-style:italic; font-size:12.5px; }
 .brief-row-tap { cursor:pointer; } .brief-row-tap:active { opacity:0.55; }
 
-/* ── SHOPPING LIST ───────────────────────────────────────────── */
-#shop-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
-body.shop-mode #desktop-cal-wrap, body.shop-mode #mobile-cal { display:none !important; }
-body.shop-mode #shop-view { display:block !important; }
-body.shop-mode #briefing-card { display:none !important; }
+/* ── SHOPPING LIST (OVERLAY) ─────────────────────────────────── */
+#shop-overlay { display:none; position:fixed; inset:0; z-index:8000; background:rgba(0,0,0,0.35); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; }
+#shop-overlay.open { display:flex; }
+#shop-view { width:100%; max-width:680px; max-height:88vh; overflow-y:auto; border-radius:24px 24px 0 0; background:#f6f9fc; padding:20px 16px 40px; box-shadow:0 -4px 40px rgba(0,0,0,0.18); }
+@media (min-width:640px) { #shop-overlay { align-items:center; } #shop-view { border-radius:20px; max-height:80vh; } }
 .shop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; }
 .shop-head h2 { font-size:23px; font-weight:700; color:var(--ink-display); letter-spacing:-0.02em; }
 .shop-clear { background:none; border:0.5px solid var(--border-mid); border-radius:9px; padding:7px 13px; font-size:12px; color:var(--ink-sub); cursor:pointer; font-family:inherit; }
@@ -1868,6 +1815,7 @@ body.shop-mode #briefing-card { display:none !important; }
 
 <div id="briefing-card" class="glass"></div>
 
+<div id="shop-overlay">
 <div id="shop-view">
   <div class="shop-head">
     <button class="shop-clear" onclick="exitShop()">‹ Back</button>
@@ -1884,6 +1832,7 @@ body.shop-mode #briefing-card { display:none !important; }
   </div>
   <div id="shop-list"></div>
 </div>
+</div><!-- #shop-overlay -->
 
 <div id="desktop-cal-wrap">
 <div id="cal"></div>
@@ -7273,343 +7222,348 @@ function drawProgressLine(canvas, labels, data, color, showAnnotations) {
 }
 
 
-// ── STERK GUTT STATS v2 ─────────────────────────────────────────────────────
+// ── STERK GUTT STATS (mirrors Sterk Gutt app exactly) ──────────────────────
+// ── SG STATS STATE ─────────────────────────────────────────────────────────
 let _sgPreset = 'all';
 let _sgSubtab = 'overview';
-
-let _bodyMuscleMod = null;
-async function getBodyMuscleMod() {
-  if (_bodyMuscleMod) return _bodyMuscleMod;
-  try { _bodyMuscleMod = await import('https://cdn.jsdelivr.net/npm/body-muscles@1/dist/body-muscles.es.js'); }
-  catch(e) { console.warn('body-muscles load failed',e); _bodyMuscleMod = {}; }
-  return _bodyMuscleMod;
-}
-
-const SG2_MUSCLE_GROUPS = ['Abs','Arms','Back','Chest','Legs','Shoulders'];
-const SG2_NORMALISE = {'Quads':'Legs','Hamstrings':'Legs','Glutes':'Legs','Calves':'Legs','Biceps':'Arms','Triceps':'Arms'};
-function sg2NormMuscle(m) { return SG2_NORMALISE[m] || m; }
-const SG2_PM_TO_BODY = {
-  'Pecs':['chest_l','chest_r'],'Upper Pecs':['chest_l','chest_r'],'Lower Pecs':['chest_l','chest_r'],
-  'Lats':['lats_l','lats_r'],'Traps':['traps_upper_l','traps_upper_r','traps_lower_l','traps_lower_r'],
-  'Rhomboids':['traps_lower_l','traps_lower_r'],'Rear Delts':['rear_delt_l','rear_delt_r'],
-  'Erectors':['lower_back_l','lower_back_r'],'Front Delts':['front_delt_l','front_delt_r'],
-  'Side Delts':['side_delt_l','side_delt_r'],'Biceps':['bicep_l','bicep_r'],
-  'Brachialis':['bicep_l','bicep_r'],'Forearm':['forearm_l','forearm_r'],
-  'Triceps':['tricep_l','tricep_r'],'Quads':['quad_l','quad_r'],
-  'Hamstrings':['hamstring_l','hamstring_r'],'Glutes':['glute_l','glute_r'],
-  'Calves':['calf_l','calf_r'],'Abs':['upper_abs_l','upper_abs_r','lower_abs_l','lower_abs_r'],
-  'Obliques':['oblique_l','oblique_r'],'Hip Flexors':['hip_flexor_l','hip_flexor_r'],
-  'Adductors':['adductor_l','adductor_r'],
-};
 
 async function renderSGStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
+
+  // Fetch data first
   const loadEl = document.createElement('div');
-  loadEl.style.cssText = 'font-size:12px;letter-spacing:.06em;color:rgba(241,236,226,.28);text-align:center;padding:40px 0;';
+  loadEl.style.cssText = 'color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;';
   loadEl.textContent = 'Loading Sterk Gutt data…';
   container.appendChild(loadEl);
   const allSessions = await fetchSGSessions();
   loadEl.remove();
+
   if (!allSessions.length) {
-    container.innerHTML = '<div style="color:rgba(241,236,226,.28);font-size:12px;padding:40px 20px;text-align:center;letter-spacing:.06em;">No sessions found in Sterk Gutt.</div>';
+    container.innerHTML = '<div style="color:#4b5563;font-size:13px;padding:20px 0;text-align:center;">No sessions found in Sterk Gutt.</div>';
     return;
   }
   window._sgAllSessions = allSessions;
-  sg2BuildUI(container, allSessions);
+  buildSGStatsUI(container, allSessions);
 }
 
-function sg2BuildUI(container, allSessions) {
+function buildSGStatsUI(container, allSessions) {
   container.innerHTML = '';
 
-  // Back to running button
-  const backBtn = document.createElement('button');
-  backBtn.className = 'sg2-back-btn';
-  backBtn.textContent = '← Running stats';
-  backBtn.addEventListener('click', () => setStatsTab('running'));
-  container.appendChild(backBtn);
+  // ── Preset buttons ──────────────────────────────────────────────────────
+  const filterBar = document.createElement('div');
+  filterBar.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;margin-bottom:12px;';
+  const filterTitle = document.createElement('div');
+  filterTitle.style.cssText = 'font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:10px;';
+  filterTitle.textContent = 'Time period';
+  filterBar.appendChild(filterTitle);
 
-  // Filter bar
-  const fb = document.createElement('div'); fb.className = 'sg2-filter-bar';
-  const ft = document.createElement('div'); ft.className = 'sg2-filter-title'; ft.textContent = 'Time period';
-  fb.appendChild(ft);
-  const presetRow = document.createElement('div'); presetRow.className = 'sg2-preset-row';
+  const presetRow = document.createElement('div');
+  presetRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;';
+  const presets = [
+    {key:'all',label:'All time'},{key:'1w',label:'Last week'},
+    {key:'1m',label:'1 month'},{key:'3m',label:'3 months'},
+    {key:'6m',label:'6 months'},{key:'1y',label:'1 year'},
+    {key:'custom',label:'Custom…'},
+  ];
 
-  const earliest = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt)))) : new Date();
-  const customRow = document.createElement('div'); customRow.className = 'sg2-filter-row'; customRow.style.display = _sgPreset==='custom'?'flex':'none';
-  const fromIn = document.createElement('input'); fromIn.type='date'; fromIn.className='sg2-date-input'; fromIn.value=earliest.toISOString().slice(0,10);
-  const sep = document.createElement('span'); sep.textContent='→'; sep.style.cssText='font-size:11px;color:rgba(241,236,226,.28);';
-  const toIn = document.createElement('input'); toIn.type='date'; toIn.className='sg2-date-input'; toIn.value=new Date().toISOString().slice(0,10);
-  const goBtn = document.createElement('button'); goBtn.className='sg2-apply-btn'; goBtn.textContent='Go';
-  goBtn.addEventListener('click', () => { _sgPreset='custom'; sg2Render(allSessions); });
-  customRow.appendChild(fromIn); customRow.appendChild(sep); customRow.appendChild(toIn); customRow.appendChild(goBtn);
+  const customRow = document.createElement('div');
+  customRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:6px;' + (_sgPreset==='custom'?'':'display:none;');
+  customRow.id = 'sg-custom-row';
 
-  const PRESETS = [{key:'all',label:'All time'},{key:'1w',label:'Last week'},{key:'1m',label:'Last month'},{key:'3m',label:'3 months'},{key:'6m',label:'6 months'},{key:'1y',label:'1 year'},{key:'custom',label:'Custom…'}];
-  PRESETS.forEach(p => {
-    const btn = document.createElement('button'); btn.className='sg2-preset-btn'+(_sgPreset===p.key?' active':''); btn.textContent=p.label;
+  // Default dates for custom
+  const earliest = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt).getTime()))) : new Date();
+  const fromInput = document.createElement('input'); fromInput.type='date'; fromInput.id='sg-from';
+  fromInput.style.cssText='flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;';
+  fromInput.value = earliest.toISOString().slice(0,10);
+  const sep = document.createElement('span'); sep.textContent='→'; sep.style.color='#4b5563';
+  const toInput = document.createElement('input'); toInput.type='date'; toInput.id='sg-to';
+  toInput.style.cssText='flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;';
+  toInput.value = new Date().toISOString().slice(0,10);
+  const goBtn = document.createElement('button');
+  goBtn.textContent='Go'; goBtn.style.cssText='background:rgba(0,180,255,0.1);color:#00b4ff;border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;';
+  goBtn.addEventListener('click', () => { _sgPreset='custom'; renderSGFiltered(allSessions, container, subtabRow); });
+  customRow.appendChild(fromInput); customRow.appendChild(sep); customRow.appendChild(toInput); customRow.appendChild(goBtn);
+
+  presets.forEach(p => {
+    const btn = document.createElement('button');
+    btn.style.cssText = `padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${_sgPreset===p.key?'#00b4ff':'rgba(255,255,255,0.1)'};background:${_sgPreset===p.key?'rgba(0,180,255,0.15)':'transparent'};color:${_sgPreset===p.key?'#00b4ff':'#9ca3af'};transition:all 0.15s;`;
+    btn.textContent = p.label;
     btn.addEventListener('click', () => {
       _sgPreset = p.key;
-      presetRow.querySelectorAll('.sg2-preset-btn').forEach(b => b.classList.toggle('active', b.textContent===p.label));
-      customRow.style.display = p.key==='custom'?'flex':'none';
-      if (p.key !== 'custom') sg2Render(allSessions);
+      presetRow.querySelectorAll('button').forEach(b => {
+        const active = b.textContent === p.label;
+        b.style.borderColor = active?'#00b4ff':'rgba(255,255,255,0.1)';
+        b.style.background  = active?'rgba(0,180,255,0.15)':'transparent';
+        b.style.color       = active?'#00b4ff':'#9ca3af';
+      });
+      customRow.style.display = p.key==='custom' ? 'flex' : 'none';
+      if (p.key !== 'custom') renderSGFiltered(allSessions, container, subtabRow);
     });
     presetRow.appendChild(btn);
   });
-  fb.appendChild(presetRow); fb.appendChild(customRow); container.appendChild(fb);
 
-  // Sub-tabs
-  const subtabs = document.createElement('div'); subtabs.className='sg2-subtabs';
+  filterBar.appendChild(presetRow);
+  filterBar.appendChild(customRow);
+  container.appendChild(filterBar);
+
+  // ── Sub-tabs ────────────────────────────────────────────────────────────
+  const subtabRow = document.createElement('div');
+  subtabRow.style.cssText = 'display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:10px;padding:3px;margin-bottom:12px;';
   ['Overview','Routines','Exercise'].forEach(tab => {
     const btn = document.createElement('button');
-    btn.className = 'sg2-subtab'+(_sgSubtab===tab.toLowerCase()?' active':'');
     btn.textContent = tab; btn.dataset.tab = tab.toLowerCase();
+    btn.style.cssText = `flex:1;background:${_sgSubtab===tab.toLowerCase()?'#16181c':'none'};border:none;padding:8px 4px;font-size:12px;font-weight:600;color:${_sgSubtab===tab.toLowerCase()?'#e0ddd8':'#6b7280'};cursor:pointer;border-radius:8px;font-family:inherit;transition:all 0.15s;box-shadow:${_sgSubtab===tab.toLowerCase()?'0 1px 4px rgba(0,0,0,0.2)':'none'};`;
     btn.addEventListener('click', () => {
       _sgSubtab = tab.toLowerCase();
-      subtabs.querySelectorAll('.sg2-subtab').forEach(b => b.classList.toggle('active', b.dataset.tab===_sgSubtab));
-      sg2Render(allSessions);
+      subtabRow.querySelectorAll('button').forEach(b => {
+        const a = b.dataset.tab===_sgSubtab;
+        b.style.background = a?'#16181c':'none';
+        b.style.color      = a?'#e0ddd8':'#6b7280';
+        b.style.boxShadow  = a?'0 1px 4px rgba(0,0,0,0.2)':'none';
+      });
+      renderSGFiltered(allSessions, container, subtabRow);
     });
-    subtabs.appendChild(btn);
+    subtabRow.appendChild(btn);
   });
-  container.appendChild(subtabs);
+  container.appendChild(subtabRow);
 
-  const area = document.createElement('div'); area.id='sg2-area'; area.className='sg2-body';
-  container.appendChild(area);
-  sg2Render(allSessions);
+  // Content area
+  const contentArea = document.createElement('div');
+  contentArea.id = 'sg-content-area';
+  container.appendChild(contentArea);
+
+  renderSGFiltered(allSessions, container, subtabRow);
 }
 
-function sg2GetRange(allSessions) {
+function getSGDateRange(allSessions) {
   const now = new Date(); now.setHours(23,59,59,999);
   if (_sgPreset === 'all') {
-    const from = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt)))) : new Date(0);
-    from.setHours(0,0,0,0); return {from,to:now};
+    const earliest = allSessions.length
+      ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt).getTime())))
+      : new Date();
+    earliest.setHours(0,0,0,0);
+    return {from:earliest, to:now};
   }
   if (_sgPreset === 'custom') {
-    const inputs = document.querySelectorAll('#stats-content .sg2-date-input');
+    const from = document.getElementById('sg-from')?.value;
+    const to   = document.getElementById('sg-to')?.value;
     return {
-      from: inputs[0]?.value ? new Date(inputs[0].value+'T00:00:00') : new Date(0),
-      to:   inputs[1]?.value ? new Date(inputs[1].value+'T23:59:59') : now,
+      from: from ? new Date(from+'T00:00:00') : new Date(0),
+      to:   to   ? new Date(to+'T23:59:59')   : now,
     };
   }
-  const days = {'1w':7,'1m':30,'3m':90,'6m':180,'1y':365}[_sgPreset]||30;
+  const days = {'1w':7,'1m':30,'3m':90,'6m':180,'1y':365}[_sgPreset]||90;
   const from = new Date(now); from.setDate(from.getDate()-days); from.setHours(0,0,0,0);
-  return {from,to:now};
+  return {from, to:now};
 }
 
-function sg2Render(allSessions) {
-  const {from,to} = sg2GetRange(allSessions);
-  const sessions = allSessions.filter(s => { const d=new Date(s.started_at||s.startedAt); return d>=from&&d<=to; });
-  const area = document.getElementById('sg2-area');
+function renderSGFiltered(allSessions, container, subtabRow) {
+  const {from,to} = getSGDateRange(allSessions);
+  const sessions = allSessions.filter(s => {
+    const d = new Date(s.started_at||s.startedAt);
+    return d >= from && d <= to;
+  });
+  const area = document.getElementById('sg-content-area');
   if (!area) return;
   area.innerHTML = '';
-  if (_sgSubtab==='overview')  sg2RenderOverview(sessions, area);
-  if (_sgSubtab==='routines')  sg2RenderRoutines(sessions, allSessions, area);
-  if (_sgSubtab==='exercise')  sg2RenderExerciseTab(sessions, area);
+
+  if (_sgSubtab === 'overview') renderSGOverview(sessions, from, to, area);
+  if (_sgSubtab === 'routines') renderSGRoutines(sessions, allSessions, area);
+  if (_sgSubtab === 'exercise') renderSGExerciseTab(sessions, area);
 }
 
-function sg2RenderOverview(sessions, area) {
+function renderSGOverview(sessions, fromDate, toDate, area) {
   const n = sessions.length;
-  const allSets = sessions.reduce((a,s)=>a+(s.exercises||[]).reduce((b,ex)=>b+(ex.sets||[]).filter(st=>st.logged).length,0),0);
-  const avgSets = n?(allSets/n).toFixed(1):0;
-  const totalVol = Math.round(sessions.reduce((a,s)=>a+sgCalcVolume(s),0));
-  const totalDur = sessions.reduce((a,s)=>a+(s.duration||0),0);
-  const avgDur = n?Math.round(totalDur/n/60):0;
-  const weekCounts = {};
+  let totalSets=0, totalDuration=0;
+  const prMap={}, muscleMap={}, weekMap={};
   sessions.forEach(s => {
     const d=new Date(s.started_at||s.startedAt);
+    totalDuration+=(s.duration||0);
     const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
-    const k=mon.toISOString().slice(0,10);
-    weekCounts[k]=(weekCounts[k]||0)+1;
+    weekMap[mon.toISOString().slice(0,10)]=(weekMap[mon.toISOString().slice(0,10)]||0)+1;
+    (s.exercises||[]).forEach(ex=>{
+      const logged=(ex.sets||[]).filter(st=>st.logged);
+      totalSets+=logged.length;
+      muscleMap[ex.muscle||'Other']=(muscleMap[ex.muscle||'Other']||0)+logged.length;
+      logged.forEach(st=>{const w=parseFloat(st.weight)||0;if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};});
+    });
   });
-  const totalWeeks=Object.keys(weekCounts).length||1;
-  const freq=(n/totalWeeks).toFixed(1);
+  const weeksWithSessions = Object.keys(weekMap).length || 1;
+  const avgSets  = n?(totalSets/n).toFixed(1):0;
+  const freq     = (n/weeksWithSessions).toFixed(1);
+  const avgDur   = n?Math.round(totalDuration/n/60):0;
+  const totalVol = Math.round(sessions.reduce((a,s)=>a+sgCalcVolume(s),0));
 
-  // KPI grid
-  const kpiGrid=document.createElement('div'); kpiGrid.className='sg2-kpi-grid';
-  [{val:n,lbl:'Sessions',sub:'in period',color:'#c8f06e'},
+  // KPIs
+  const kpiGrid=document.createElement('div'); kpiGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;';
+  [{val:n,lbl:'Sessions',sub:'in period',color:'#00b4ff'},
    {val:avgSets,lbl:'Avg sets',sub:'per session',color:'#00ffcc'},
-   {val:freq,lbl:'Sess/week',sub:totalWeeks+' weeks',color:'#f0a96e'},
+   {val:freq,lbl:'Sessions/week',sub:`over ${weeksWithSessions} active week${weeksWithSessions!==1?'s':''}`,color:'#f0a96e'},
    {val:avgDur+'m',lbl:'Avg duration',sub:'per session',color:'#7c6aff'},
-   {val:Math.round(totalVol/1000)+'t',lbl:'Total volume',sub:'sets×reps×kg',color:'#00ffcc'},
-   {val:allSets,lbl:'Total sets',sub:'logged',color:'#c8f06e'},
+   {val:totalVol.toLocaleString()+'kg',lbl:'Total volume',sub:'sets×reps×kg',color:'#00ffcc'},
+   {val:totalSets,lbl:'Total sets',sub:'logged',color:'#00b4ff'},
   ].forEach(k=>{
-    const c=document.createElement('div'); c.className='sg2-kpi-card';
-    c.innerHTML='<div class="sg2-kpi-val" style="color:'+k.color+'">'+k.val+'</div><div class="sg2-kpi-lbl">'+k.lbl+'</div><div class="sg2-kpi-sub">'+k.sub+'</div>';
+    const c=document.createElement('div'); c.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;';
+    c.innerHTML=`<div style="font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;color:${k.color};margin-bottom:4px;">${k.val}</div><div style="font-size:11px;font-weight:600;color:#c8c4be;letter-spacing:0.04em;">${k.lbl}</div><div style="font-size:10px;color:#6b7280;margin-top:2px;">${k.sub}</div>`;
     kpiGrid.appendChild(c);
   });
   area.appendChild(kpiGrid);
 
-  // Weekly bar chart card
-  const wc=document.createElement('div'); wc.className='sg2-stat-card';
-  wc.innerHTML='<div class="sg2-card-title">Weekly sessions</div><div style="position:relative;width:100%;height:120px;overflow:hidden;"><canvas id="sg2-weekly" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
-  area.appendChild(wc);
-
-  // Muscle volume bars
-  const muscles={};
-  sessions.forEach(s=>(s.exercises||[]).forEach(ex=>{
-    const sets=(ex.sets||[]).filter(st=>st.logged).length; if(!sets) return;
-    const m=sg2NormMuscle(ex.muscle)||'Other'; muscles[m]=(muscles[m]||0)+sets;
-  }));
-  const muscleSorted=Object.entries(muscles).sort((a,b)=>{
-    const ai=SG2_MUSCLE_GROUPS.indexOf(a[0]),bi=SG2_MUSCLE_GROUPS.indexOf(b[0]);
-    if(ai>=0&&bi>=0) return ai-bi; if(ai>=0) return -1; if(bi>=0) return 1; return b[1]-a[1];
+  // Muscle volume
+  const ms=document.createElement('div'); ms.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  ms.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:14px;">Volume by muscle group</div>';
+  const sortedM=Object.entries(muscleMap).sort((a,b)=>b[1]-a[1]);
+  const maxM=sortedM[0]?.[1]||1;
+  sortedM.forEach(([m,v])=>{
+    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+    row.innerHTML=`<span style="font-size:11px;color:#9ca3af;min-width:110px;">${m}</span><div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:#00b4ff;width:${Math.round(v/maxM*100)}%"></div></div><span style="font-size:11px;color:#6b7280;min-width:24px;text-align:right;">${v}</span>`;
+    ms.appendChild(row);
   });
-  const maxM=Math.max(...muscleSorted.map(e=>e[1]),1);
-  const mc=document.createElement('div'); mc.className='sg2-stat-card';
-  mc.innerHTML='<div class="sg2-card-title">Muscle volume (sets)</div>';
-  if(!muscleSorted.length) {
-    const nd=document.createElement('div'); nd.style.cssText='font-size:11px;color:rgba(241,236,226,.28);padding:4px 0;letter-spacing:.06em;'; nd.textContent='No data yet'; mc.appendChild(nd);
-  } else {
-    muscleSorted.forEach(([m,v])=>{
-      const row=document.createElement('div'); row.className='sg2-muscle-row';
-      row.innerHTML='<span class="sg2-muscle-lbl">'+m+'</span><div class="sg2-muscle-track"><div class="sg2-muscle-fill" data-pct="'+Math.round(v/maxM*100)+'"></div></div><span class="sg2-muscle-val">'+v+'</span>';
-      mc.appendChild(row);
-    });
-  }
-  area.appendChild(mc);
+  area.appendChild(ms);
 
-  // Body heatmap
-  const bmc=document.createElement('div'); bmc.className='sg2-stat-card';
-  bmc.innerHTML='<div class="sg2-card-title">Muscle heatmap</div><div id="sg2-body-map" class="sg2-body-map"></div><div class="sg2-map-legend"><span class="sg2-legend-dot" style="background:rgba(200,240,110,.2)"></span><span>Low</span><span class="sg2-legend-dot" style="background:rgba(200,240,110,.6)"></span><span>Med</span><span class="sg2-legend-dot" style="background:#c8f06e"></span><span>High</span></div>';
-  area.appendChild(bmc);
-
-  // Animate bars
-  requestAnimationFrame(()=>{
-    area.querySelectorAll('.sg2-muscle-fill').forEach(el=>{ el.style.width=el.dataset.pct+'%'; });
+  // Weekly sessions bar
+  const ws=document.createElement('div'); ws.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  ws.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:10px;">Weekly sessions</div>';
+  const sortedWks=Object.keys(weekMap).sort();
+  const maxWk=Math.max(...Object.values(weekMap),1);
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const chartEl=document.createElement('div'); chartEl.style.cssText='display:flex;align-items:flex-end;gap:3px;height:80px;';
+  sortedWks.forEach(wk=>{
+    const cnt=weekMap[wk]; const h=Math.round((cnt/maxWk)*72);
+    const [,m]=wk.split('-');
+    const col=document.createElement('div'); col.style.cssText='flex:1;display:flex;flex-direction:column;align-items:stretch;';
+    const bar=document.createElement('div'); bar.style.cssText=`display:flex;flex-direction:column;justify-content:flex-end;height:72px;`;
+    const fill=document.createElement('div'); fill.style.cssText=`height:${h}px;background:#00b4ff88;border-radius:2px 2px 0 0;`; fill.title=`${wk}: ${cnt}`;
+    bar.appendChild(fill);
+    const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;color:#4b5563;text-align:center;margin-top:2px;overflow:hidden;';
+    lbl.textContent=MONTHS[parseInt(m,10)-1];
+    col.appendChild(bar); col.appendChild(lbl); chartEl.appendChild(col);
   });
+  ws.appendChild(chartEl); area.appendChild(ws);
 
-  // Draw weekly chart
-  setTimeout(()=>{
-    const canvas=document.getElementById('sg2-weekly');
-    if(!canvas||!canvas.offsetWidth) return;
-    const wkKeys=Object.keys(weekCounts).sort();
-    sg2DrawBarChart(canvas, wkKeys.map(l=>l.slice(5)), wkKeys.map(k=>weekCounts[k]), '#c8f06e');
-  },100);
-
-  // Body map
-  sg2RenderBodyMap(sessions, document.getElementById('sg2-body-map'));
+  // PRs
+  const ps=document.createElement('div'); ps.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;margin-bottom:12px;';
+  ps.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;padding:14px 16px 10px;">Personal records</div>';
+  Object.entries(prMap).sort((a,b)=>b[1].weight-a[1].weight).forEach(([name,pr])=>{
+    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04);';
+    row.innerHTML=`<div><div style="font-size:13px;color:#d1d5db;">${name}</div><div style="font-size:10px;color:#4b5563;">${pr.muscle}</div></div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#00ffcc;">${pr.weight} kg</div><div style="font-size:10px;color:#4b5563;">${pr.reps} reps</div></div>`;
+    ps.appendChild(row);
+  });
+  if (!Object.keys(prMap).length) ps.innerHTML+='<div style="color:#4b5563;font-size:12px;padding:14px 16px;">No data.</div>';
+  area.appendChild(ps);
 }
 
-async function sg2RenderBodyMap(sessions, container) {
-  if (!container) return;
-  const primaryData={};
-  sessions.forEach(s=>(s.exercises||[]).forEach(ex=>{
-    const logged=(ex.sets||[]).filter(st=>st.logged).length;
-    if(!logged||!ex.primaryMuscle) return;
-    primaryData[ex.primaryMuscle]=(primaryData[ex.primaryMuscle]||0)+logged;
-  }));
-  container.innerHTML='';
-  if(!Object.keys(primaryData).length){
-    const nd=document.createElement('div'); nd.style.cssText='font-size:10px;color:rgba(241,236,226,.28);letter-spacing:.06em;padding:12px 0;text-align:center;'; nd.textContent='Set primary muscles on exercises to see heatmap'; container.appendChild(nd); return;
-  }
-  const mod=await getBodyMuscleMod();
-  if(!mod.BodyChart||!mod.ViewSide){
-    const nd=document.createElement('div'); nd.style.cssText='font-size:10px;color:rgba(241,236,226,.28);letter-spacing:.06em;padding:12px 0;text-align:center;'; nd.textContent='Body map unavailable'; container.appendChild(nd); return;
-  }
-  const maxVal=Math.max(...Object.values(primaryData));
-  const bodyState={};
-  Object.entries(primaryData).forEach(([pm,val])=>{
-    const ids=SG2_PM_TO_BODY[pm]; if(!ids) return;
-    const intensity=Math.max(1,Math.round((val/maxVal)*10));
-    ids.forEach(id=>{ if(!bodyState[id]||bodyState[id].intensity<intensity) bodyState[id]={intensity,selected:false}; });
-  });
-  const wrap=document.createElement('div'); wrap.style.cssText='display:flex;gap:4px;justify-content:center;';
-  const frontEl=document.createElement('div'); frontEl.style.cssText='flex:1;max-width:48%;';
-  const backEl=document.createElement('div');  backEl.style.cssText='flex:1;max-width:48%;';
-  wrap.appendChild(frontEl); wrap.appendChild(backEl); container.appendChild(wrap);
-  try {
-    new mod.BodyChart(frontEl,{view:mod.ViewSide.FRONT,bodyState,enableTransitions:false});
-    new mod.BodyChart(backEl, {view:mod.ViewSide.BACK, bodyState,enableTransitions:false});
-  } catch(e){ console.warn('BodyChart error',e); }
-}
-
-function sg2RenderRoutines(sessions, allSessions, area) {
+function renderSGRoutines(sessions, allSessions, area) {
   const routineMap={};
   sessions.forEach(s=>{
-    const routineName=s.routine_name||s.routineName||null;
-    const routineId=s.routine_id||s.routineId||null;
-    const key=routineId||routineName||'Unknown';
-    const name=routineName||routineId||'Unknown routine';
+    // Supabase returns snake_case — handle both
+    const routineName = s.routine_name || s.routineName || null;
+    const routineId   = s.routine_id   || s.routineId   || null;
+    const key  = routineId || routineName || 'Unknown';
+    const name = routineName || routineId || 'Unknown routine';
     if(!routineMap[key]) routineMap[key]={name,count:0,totalSets:0,totalVol:0,totalDur:0,sessions:[]};
     const sets=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
-    routineMap[key].count++; routineMap[key].totalSets+=sets;
-    routineMap[key].totalVol+=sgCalcVolume(s); routineMap[key].totalDur+=(s.duration||0);
+    routineMap[key].count++;
+    routineMap[key].totalSets+=sets;
+    routineMap[key].totalVol+=sgCalcVolume(s);
+    routineMap[key].totalDur+=(s.duration||0);
     routineMap[key].sessions.push(s);
   });
+
   const entries=Object.values(routineMap).sort((a,b)=>b.count-a.count);
   const maxCount=entries[0]?.count||1;
-  if(!entries.length){
-    const nd=document.createElement('div'); nd.style.cssText='color:rgba(241,236,226,.28);font-size:12px;padding:20px 0;text-align:center;letter-spacing:.06em;'; nd.textContent='No sessions in this period.'; area.appendChild(nd); return;
+
+  if (!entries.length) {
+    area.innerHTML='<div style="color:#6b7280;font-size:13px;padding:20px 0;text-align:center;">No sessions in this period.</div>';
+    return;
   }
+
   entries.forEach(r=>{
     const avgSets=r.count?(r.totalSets/r.count).toFixed(1):0;
     const avgDur=r.count?Math.round(r.totalDur/r.count/60):0;
     const pct=Math.round((r.count/maxCount)*100);
-    const card=document.createElement('div'); card.className='sg2-routine-card';
-    card.innerHTML='<div class="sg2-routine-name">'+r.name+'</div><div class="sg2-routine-meta"><div class="sg2-routine-item"><span>'+r.count+'</span> sessions</div><div class="sg2-routine-item"><span>'+avgSets+'</span> avg sets</div><div class="sg2-routine-item"><span>'+avgDur+'m</span> avg dur</div><div class="sg2-routine-item"><span>'+Math.round(r.totalVol/1000)+'t</span> vol</div></div><div class="sg2-routine-bar-track"><div class="sg2-routine-bar-fill" style="width:'+pct+'%"></div></div>';
-    card.addEventListener('click',()=>sg2ShowRoutineProgress(r,area,sessions,allSessions));
+    const card=document.createElement('div');
+    card.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s;';
+    card.innerHTML=`
+      <div style="font-size:14px;font-weight:700;color:#e0ddd8;margin-bottom:8px;">${r.name}</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${r.count}</span> sessions</div>
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${avgSets}</span> avg sets</div>
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${avgDur}m</span> avg dur</div>
+        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${Math.round(r.totalVol/1000)}t</span> vol</div>
+      </div>
+      <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="height:100%;border-radius:2px;background:#00b4ff;width:${pct}%"></div></div>`;
+    card.addEventListener('mouseenter',()=>card.style.borderColor='rgba(0,180,255,0.3)');
+    card.addEventListener('mouseleave',()=>card.style.borderColor='rgba(255,255,255,0.07)');
+    card.addEventListener('click',()=>showSGRoutineProgress(r,area,sessions,allSessions));
     area.appendChild(card);
   });
 }
 
-function sg2ShowRoutineProgress(routineData, area, sessions, allSessions) {
+function showSGRoutineProgress(routineData, area, sessions, allSessions) {
   area.innerHTML='';
-  const back=document.createElement('button'); back.style.cssText='background:none;border:none;color:#c8f06e;font-size:10px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;cursor:pointer;padding:0 0 16px;';
+  const back=document.createElement('button');
+  back.style.cssText='background:none;border:none;color:#00b4ff;font-size:13px;cursor:pointer;font-family:inherit;padding:0 0 16px;';
   back.textContent='← Back to routines';
-  back.addEventListener('click',()=>{ area.innerHTML=''; sg2RenderRoutines(sessions,allSessions,area); });
+  back.addEventListener('click',()=>{area.innerHTML='';renderSGRoutines(sessions,allSessions,area);});
   area.appendChild(back);
-  const title=document.createElement('div'); title.style.cssText='font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:16px;';
-  title.textContent=routineData.name; area.appendChild(title);
-  const sorted=routineData.sessions.slice().sort((a,b)=>new Date(a.started_at||a.startedAt)-new Date(b.started_at||b.startedAt));
-  const volData=sorted.map(s=>Math.round(sgCalcVolume(s)));
-  const setData=sorted.map(s=>(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0));
-  const labels=sorted.map(s=>new Date(s.started_at||s.startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
-  const vc=document.createElement('div'); vc.className='sg2-stat-card';
-  vc.innerHTML='<div class="sg2-card-title">Volume load per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-vol-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
-  area.appendChild(vc);
-  const sc=document.createElement('div'); sc.className='sg2-stat-card';
-  sc.innerHTML='<div class="sg2-card-title">Sets per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-set-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
-  area.appendChild(sc);
+
+  const title=document.createElement('div');
+  title.style.cssText='font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:2px;color:#e0ddd8;margin-bottom:16px;';
+  title.textContent=routineData.name;
+  area.appendChild(title);
+
+  // Volume trend
+  const sortedSess=routineData.sessions.sort((a,b)=>new Date(a.started_at||a.startedAt)-new Date(b.started_at||b.startedAt));
+  const volData=sortedSess.map(s=>Math.round(sgCalcVolume(s)));
+  const volLabels=sortedSess.map(s=>new Date(s.started_at||s.startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
+  const setData=sortedSess.map(s=>(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0));
+
+  const vc=document.createElement('div'); vc.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  vc.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:8px;">Volume load per session</div>';
+  const cw1=document.createElement('div'); cw1.style.cssText='position:relative;width:100%;height:140px;overflow:hidden;';
+  const c1=document.createElement('canvas'); c1.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;';
+  cw1.appendChild(c1); vc.appendChild(cw1); area.appendChild(vc);
+
+  const sc=document.createElement('div'); sc.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
+  sc.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:8px;">Sets per session</div>';
+  const cw2=document.createElement('div'); cw2.style.cssText='position:relative;width:100%;height:140px;overflow:hidden;';
+  const c2=document.createElement('canvas'); c2.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;';
+  cw2.appendChild(c2); sc.appendChild(cw2); area.appendChild(sc);
+
   setTimeout(()=>{
-    const c1=document.getElementById('sg2-vol-chart'), c2=document.getElementById('sg2-set-chart');
-    if(c1&&c1.offsetWidth) drawSGLine(c1,labels,volData,'#7c6aff');
-    if(c2&&c2.offsetWidth) drawSGLine(c2,labels,setData,'#c8f06e');
+    if(c1.offsetWidth) drawSGLine(c1,volLabels,volData,'#7c6aff');
+    if(c2.offsetWidth) drawSGLine(c2,volLabels,setData,'#00b4ff');
   },100);
 }
 
-function sg2RenderExerciseTab(sessions, area) {
-  const card=document.createElement('div'); card.className='sg2-stat-card';
+function renderSGExerciseTab(sessions, area) {
+  const card=document.createElement('div'); card.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
   const exNames=[...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
-  const sel=document.createElement('select'); sel.className='sg2-ex-select';
-  sel.innerHTML='<option value="">— Select exercise —</option>'+exNames.map(n=>'<option value="'+n+'">'+n+'</option>').join('');
+  const sel=document.createElement('select');
+  sel.style.cssText='width:100%;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:13px;color:#f0ede8;font-family:inherit;outline:none;margin-bottom:14px;appearance:auto;cursor:pointer;';
+  sel.innerHTML='<option value="">— Select exercise —</option>'+exNames.map(n=>`<option value="${n}">${n}</option>`).join('');
   const exBody=document.createElement('div');
-  sel.addEventListener('change',()=>{
-    if(!sel.value){ exBody.innerHTML=''; return; }
-    const points=buildExercisePoints(sessions,sel.value,null);
-    exBody.innerHTML='';
-    renderExerciseAnalysis(exBody,points,sel.value,points[0]?.equipment||null);
-  });
+  sel.addEventListener('change',()=>renderSGExerciseProgress(sessions,sel.value,exBody));
   card.appendChild(sel); card.appendChild(exBody); area.appendChild(card);
 }
 
-function sg2DrawBarChart(canvas, labels, data, color) {
-  const dpr=window.devicePixelRatio||1;
-  const w=canvas.offsetWidth, h=canvas.offsetHeight;
-  canvas.width=w*dpr; canvas.height=h*dpr;
-  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  ctx.clearRect(0,0,w,h);
-  if(!data.length) return;
-  const n=data.length, max=Math.max(...data,1);
-  const pad={top:8,bottom:18,left:4,right:4};
-  const chartH=h-pad.top-pad.bottom;
-  const barW=Math.max(2,Math.floor((w-pad.left-pad.right)/n)-3);
-  const step=Math.max(1,Math.ceil(n/5));
-  data.forEach((v,i)=>{
-    const bh=Math.max(2,(v/max)*chartH);
-    const x=pad.left+i*((w-pad.left-pad.right)/n);
-    ctx.fillStyle=color+'33'; ctx.fillRect(x,pad.top,barW,chartH);
-    ctx.fillStyle=color; ctx.fillRect(x,pad.top+chartH-bh,barW,bh);
-    if(i%step===0||i===n-1){ ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font='8px sans-serif'; ctx.textAlign='center'; ctx.fillText(labels[i],x+barW/2,h-4); }
-  });
+function sgCalcVolume(s) {
+  return (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).reduce((b,st)=>{
+    if(!st.logged) return b;
+    const w=parseFloat(st.weight)||0;
+    const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):(parseFloat(st.reps)||0);
+    return b+w*r;
+  },0),0);
+}
+
+function renderSGExerciseProgress(sessions, exName, body) {
+  if (!exName) { body.innerHTML = ''; return; }
+  const points = buildExercisePoints(sessions, exName, null);
+  const equipment = points[0]?.equipment || null;
+  body.innerHTML = '';
+  renderExerciseAnalysis(body, points, exName, equipment);
 }
 
 function drawSGLine(canvas, labels, data, color) {
@@ -7623,22 +7577,23 @@ function drawSGLine(canvas, labels, data, color) {
   const n=data.length;
   const xS=i=>pad.left+(n===1?cW/2:i/(n-1)*cW);
   const yS=v=>pad.top+cH-((v-minV)/(maxV-minV||1))*cH;
-  ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=1;
-  [0,.5,1].forEach(t=>{
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  [0,0.5,1].forEach(t=>{
     const y=pad.top+t*cH;
     ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(w-pad.right,y);ctx.stroke();
-    ctx.fillStyle='rgba(241,236,226,.28)';ctx.font='9px sans-serif';ctx.textAlign='right';
+    ctx.fillStyle='#4b5563';ctx.font='9px sans-serif';ctx.textAlign='right';
     ctx.fillText(Math.round(maxV-t*(maxV-minV)),pad.left-4,y+4);
   });
-  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineJoin='round';ctx.lineCap='round';
   ctx.beginPath();
   data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
   ctx.stroke();
   data.forEach((v,i)=>{ctx.fillStyle=color;ctx.beginPath();ctx.arc(xS(i),yS(v),3,0,Math.PI*2);ctx.fill();});
-  ctx.fillStyle='rgba(241,236,226,.28)'; ctx.textAlign='center'; ctx.font='8px sans-serif';
+  ctx.fillStyle='#4b5563';ctx.textAlign='center';ctx.font='8px sans-serif';
   const step=Math.ceil(n/6);
   data.forEach((_,i)=>{if(i%step===0||i===n-1)ctx.fillText(labels[i],xS(i),h-6);});
 }
+
 
 function buildStatsWeeks() {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -7854,13 +7809,9 @@ function renderMobileView() {
   const raceBtn = document.createElement('button');
   raceBtn.className = 'mob-mode-btn active';
   raceBtn.textContent = '🏃 Plan';
-  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
+  raceBtn.addEventListener('click', () => { mobMode='race'; renderMobileView(); });
   modeBar.appendChild(raceBtn);
-  const shopBtn = document.createElement('button');
-  shopBtn.className = 'mob-mode-btn';
-  shopBtn.textContent = '🛒 Shop';
-  shopBtn.addEventListener('click', () => setView('shop'));
-  modeBar.appendChild(shopBtn);
+
   mc.appendChild(modeBar);
 
   if (mobMode === 'race') renderMobileRaceWeek();
@@ -8337,8 +8288,6 @@ function applyPastWeeks() {
 }
 
 function setCalMode(mode) {
-  document.body.classList.remove('shop-mode');
-  const _shopBtn = document.getElementById('view-btn-shop'); if (_shopBtn) _shopBtn.classList.remove('active');
   setView('calendar');
 }
 
@@ -8708,14 +8657,13 @@ let dayViewDate = new Date(); // which day is shown in day view
 
 function setView(view) {
   currentView = view;
-  document.body.classList.toggle('shop-mode', view === 'shop');
   document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
-  document.getElementById('month-cal').style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
+  document.getElementById('month-cal').style.display  = (calMode === 'month') ? '' : 'none';
   document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
   document.getElementById('day-view').style.display   = view === 'day'      ? '' : 'none';
-  ['calendar','week','day','shop'].forEach(v => {
+  ['calendar','week','day'].forEach(v => {
     const b = document.getElementById('view-btn-' + v);
-    if (b) b.classList.toggle('active', v === view && (view === 'shop' || calMode !== 'month'));
+    if (b) b.classList.toggle('active', v === view && calMode !== 'month');
   });
 
   if (view === 'week') {
@@ -8731,11 +8679,7 @@ function setView(view) {
   } else if (view === 'day') {
     dayViewDate = new Date();
     renderDayView();
-  } else if (view === 'shop') {
-    renderShoppingList();
-    loadShoppingList();
-    updatePushButton();
-  }
+
 }
 
 // ── WEEK VIEW ──────────────────────────────────────────────────────────────
@@ -9156,7 +9100,7 @@ function renderBriefing() {
     const preview = pendingShop.slice(0,3).map(i => escShop(i.item)).join(', ');
     const more = pendingShop.length > 3 ? ` +${pendingShop.length-3}` : '';
     const val = `${pendingShop.length} to buy<span style="color:var(--ink-meta);font-weight:400;"> · ${preview}${more}</span> ›`;
-    rows += `<div class="brief-row brief-row-tap" onclick="setView('shop')"><div class="ic">🛒</div><div class="bd"><div class="bl">Shopping</div><div class="bv">${val}</div></div></div>`;
+    rows += `<div class="brief-row brief-row-tap" onclick="openShopOverlay()"><div class="ic">🛒</div><div class="bd"><div class="bl">Shopping</div><div class="bv">${val}</div></div></div>`;
   }
 
   // Solo-evening heuristic (partner working evening / long / night)
@@ -9187,12 +9131,19 @@ function renderBriefing() {
 // ── SHOPPING LIST (shared, synced via Supabase) ─────────────────────────────
 let shoppingItems = [];
 
-function exitShop() {
-  document.body.classList.remove('shop-mode');
-  const b = document.getElementById('view-btn-shop'); if (b) b.classList.remove('active');
-  if (isMobilePortrait()) renderMobileView();
-  else setView('calendar');
+function openShopOverlay() {
+  const overlay = document.getElementById('shop-overlay');
+  if (overlay) overlay.classList.add('open');
+  renderShoppingList();
+  loadShoppingList();
+  updatePushButton();
+  overlay.onclick = function(e) { if (e.target === overlay) closeShopOverlay(); };
 }
+function closeShopOverlay() {
+  const overlay = document.getElementById('shop-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+function exitShop() { closeShopOverlay(); }
 
 function escShop(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
