@@ -1191,7 +1191,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.0.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.1.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1883,7 +1883,7 @@ body.shop-mode #briefing-card { display:none !important; }
   <div class="todo-head">
     <button class="shop-clear" onclick="exitTodo()">‹ Back</button>
     <h2>✅ Tasks</h2>
-    <div style="width:60px;"></div>
+    <button class="shop-clear" id="todo-notif-btn" onclick="enableTodoNotifications()">🔔 Notify</button>
   </div>
   <div class="todo-week-nav">
     <button class="todo-week-btn" onclick="todoWeekOffset--;renderTodoView()">‹</button>
@@ -1897,6 +1897,7 @@ body.shop-mode #briefing-card { display:none !important; }
       <div class="todo-assignee-btns">
         <button class="todo-assignee-btn on" id="todo-ass-marius" onclick="setTodoAssignee('marius')">Marius</button>
         <button class="todo-assignee-btn" id="todo-ass-vilde" onclick="setTodoAssignee('vilde')">Vilde</button>
+        <button class="todo-assignee-btn" id="todo-ass-both" onclick="setTodoAssignee('both')">Both</button>
       </div>
       <div class="todo-day-chips" id="todo-day-chips"></div>
       <button class="todo-add-btn" onclick="addTodoItem()">Add</button>
@@ -3593,6 +3594,17 @@ function setTodoAssignee(who) {
   todoAssignee = who;
   document.getElementById('todo-ass-marius').classList.toggle('on', who==='marius');
   document.getElementById('todo-ass-vilde').classList.toggle('on', who==='vilde');
+  const bothBtn = document.getElementById('todo-ass-both');
+  if (bothBtn) bothBtn.classList.toggle('on', who==='both');
+}
+
+function renderTodoWeekLabel() {
+  const lbl = document.getElementById('todo-week-lbl');
+  if (!lbl) return;
+  const days = todoWeekDays(todoWeekOffset);
+  const fmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const tag = todoWeekOffset===0 ? ' (this week)' : todoWeekOffset===1 ? ' (next week)' : todoWeekOffset===-1 ? ' (last week)' : '';
+  lbl.textContent = fmt(days[0]) + ' – ' + fmt(days[6]) + tag;
 }
 
 function renderTodoDayChips() {
@@ -3632,16 +3644,23 @@ async function addTodoItem() {
   const inp = document.getElementById('todo-input');
   const text = (inp ? inp.value.trim() : '');
   if (!text) return;
-  const item = { text, assignee: todoAssignee, day: todoDay || null, done: false };
   inp.value = '';
+  const assignees = todoAssignee === 'both' ? ['marius','vilde'] : [todoAssignee];
   try {
-    const res = await fetch(SUPA_BASE + 'todo_list', {
-      method:'POST', headers:{...SUPA_HDR,'Content-Type':'application/json','Prefer':'return=representation'},
-      body: JSON.stringify(item)
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const created = await res.json();
-    todoItems.push(...(Array.isArray(created)?created:[created]));
+    for (const ass of assignees) {
+      const item = { text, assignee: ass, day: todoDay || null, done: false };
+      const res = await fetch(SUPA_BASE + 'todo_list', {
+        method:'POST', headers:{...SUPA_HDR,'Content-Type':'application/json','Prefer':'return=representation'},
+        body: JSON.stringify(item)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const created = await res.json();
+      todoItems.push(...(Array.isArray(created)?created:[created]));
+      // Notify the assignee if they're the other person (or both)
+      if (ass !== activeProfile) {
+        sendTodoNotification(ass, text);
+      }
+    }
     renderTodoView();
     if (typeof renderBriefing === 'function') renderBriefing();
   } catch(e) { console.warn('addTodoItem failed:', e); }
@@ -3669,17 +3688,8 @@ async function deleteTodoItem(id) {
 }
 
 function renderTodoView() {
-  // Update week label
-  const lbl = document.getElementById('todo-week-lbl');
-  if (lbl) {
-    const days = todoWeekDays(todoWeekOffset);
-    const fmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    const offset = todoWeekOffset;
-    const tag = offset===0 ? ' (this week)' : offset===1 ? ' (next week)' : offset===-1 ? ' (last week)' : '';
-    lbl.textContent = fmt(days[0]) + ' – ' + fmt(days[6]) + tag;
-  }
-
-  // Refresh day chips
+  // Update week label + day chips
+  renderTodoWeekLabel();
   renderTodoDayChips();
 
   const el = document.getElementById('todo-list');
@@ -8918,6 +8928,7 @@ function setView(view) {
   currentView = view;
   document.body.classList.toggle('shop-mode', view === 'shop');
   document.body.classList.toggle('todo-mode', view === 'todo');
+  if (view === 'todo') { renderTodoDayChips(); renderTodoWeekLabel(); registerTodoPushForUser(); }
   document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
   document.getElementById('month-cal').style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
   document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
@@ -9802,6 +9813,79 @@ async function enableShoppingNotifications() {
     alert('Notifications enabled \uD83C\uDF89 You\u2019ll get a heads-up when items are added to the list.');
   } catch(e) {
     console.warn('Enable notifications failed:', e);
+    alert('Could not enable notifications: ' + (e && e.message ? e.message : e));
+  }
+}
+
+
+// ── TODO PUSH NOTIFICATIONS ──────────────────────────────────────────────────
+
+// Save push subscription tagged with user id so the other person can be notified
+async function registerTodoPushForUser() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (VAPID_PUBLIC_KEY.startsWith('REPLACE')) return;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !isStandalonePWA()) return;
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
+    }
+    const subJson = sub.toJSON();
+    // Store with user_id so targeted notifications work
+    await fetch(SUPA_BASE + 'push_subscriptions', {
+      method:'POST',
+      headers:{...SUPA_HDR, 'Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile })
+    });
+  } catch(e) { console.warn('registerTodoPushForUser failed:', e); }
+}
+
+// Send a push notification to a specific user via Supabase Edge Function
+async function sendTodoNotification(toUser, taskText) {
+  try {
+    const SUPA_FN_BASE = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
+    const fromName = activeProfile === 'marius' ? 'Marius' : 'Vilde';
+    await fetch(SUPA_FN_BASE + 'send-todo-push', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+SUPA_KEY },
+      body: JSON.stringify({ to_user: toUser, from_name: fromName, task: taskText })
+    });
+  } catch(e) { console.warn('sendTodoNotification failed:', e); }
+}
+
+// Enable todo notifications for the current user
+async function enableTodoNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('Push notifications aren\'t supported on this device or browser.'); return;
+  }
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !isStandalonePWA()) {
+    alert('On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), then open it from there and tap 🔔 again.');
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { alert('Notification permission not granted.'); return; }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
+    }
+    const subJson = sub.toJSON();
+    const res = await fetch(SUPA_BASE + 'push_subscriptions', {
+      method:'POST',
+      headers:{...SUPA_HDR,'Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile })
+    });
+    if (!res.ok && res.status !== 409) throw new Error('save failed: ' + res.status);
+    const btn = document.getElementById('todo-notif-btn');
+    if (btn) { btn.textContent = '🔔 On'; btn.classList.add('on'); }
+    alert('Notifications enabled 🎉 You\'ll get a heads-up when ' + (activeProfile==='marius'?'Vilde':'Marius') + ' adds a task for you.');
+  } catch(e) {
     alert('Could not enable notifications: ' + (e && e.message ? e.message : e));
   }
 }
