@@ -440,7 +440,7 @@ h1 { font-size:18px; font-weight:600; margin-bottom:0; color:var(--text); }
 .week-summary-row .sum-dash { color: var(--border-mid); }
 /* DATE NUMBER ROW */
 .date-num-row { margin-bottom: 1px; }
-.date-num-cell { font-size:10px; font-weight:600; color:var(--muted); text-align:center; line-height:1.2; padding:2px 0; display:flex; flex-direction:row; align-items:center; justify-content:center; gap:1px; flex-wrap:wrap; }
+.date-num-cell { font-size:10px; font-weight:600; color:var(--muted); text-align:center; line-height:1.2; padding:2px 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
 .date-mo { font-size:7.5px; font-weight:500; color:var(--muted2); letter-spacing:0.04em; opacity:0.8; }
 
 /* COLLAPSE TOGGLE */
@@ -543,10 +543,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #weather-overlay.open { display:flex; }
 #weather-panel {
   background:#ffffff; border:0.5px solid rgba(0,0,0,0.06); border-radius:14px; padding:20px;
-  width:100%; max-width:340px; max-height:80vh; display:flex; flex-direction:column;
-  box-shadow:0 8px 32px rgba(0,0,0,0.15);
+  width:100%; max-width:320px; box-shadow:0 8px 32px rgba(0,0,0,0.15);
 }
-#weather-slots { overflow-y:auto; flex:1; }
 #weather-header {
   display:flex; align-items:flex-start; justify-content:space-between;
   margin-bottom:16px; gap:10px;
@@ -557,7 +555,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   background:none; border:none; font-size:18px; color:var(--muted);
   cursor:pointer; padding:0; flex-shrink:0;
 }
-#weather-slots { display:flex; flex-direction:column; gap:0; }
+#weather-slots { display:flex; flex-direction:column; gap:10px; }
 .weather-slot {
   background:var(--bg); border-radius:10px; padding:12px 14px;
   display:flex; flex-direction:column; gap:0;
@@ -572,23 +570,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .weather-slot-temp { font-size:20px; font-weight:700; color:var(--text); }
 .weather-slot-wind { font-size:12px; color:var(--muted); }
 .weather-slot-desc { font-size:11px; color:var(--muted); }
-.weather-section-hdr {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 4px 6px; cursor:pointer; user-select:none;
-  border-bottom:0.5px solid var(--border);
-  font-size:11px; font-weight:700; letter-spacing:0.07em;
-  text-transform:uppercase; color:var(--muted);
-}
-.weather-section-hdr:hover { color:var(--text); }
-.weather-section-hdr .ws-arrow { font-size:10px; transition:transform 0.15s; }
-.weather-section-hdr.open .ws-arrow { transform:rotate(90deg); }
-.weather-section-rows { display:none; }
-.weather-section-rows.open { display:flex; flex-direction:column; }
-.weather-hour-row {
-  display:flex; align-items:center; gap:12px; padding:7px 4px;
-  border-bottom:0.5px solid var(--border); font-size:13px;
-}
-.weather-hour-row:last-child { border-bottom:none; }
 .weather-dot {
   display:inline-block; width:8px; height:8px; border-radius:50%;
   background:#1a6bbf; margin-left:3px; vertical-align:middle;
@@ -1185,7 +1166,55 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-pill-cross { background:var(--cross-bg); color:var(--cross-c); border:0.5px solid var(--cross-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-empty { background:var(--bg); border:1px dashed var(--border-mid); border-radius:8px; padding:8px 12px; cursor:pointer; }
 .mob-add-btn { font-size:12px; color:var(--muted); font-style:italic; }
+
+/* ── Sterk Gutt Stats v2 (dark neon-green aesthetic) ── */
+.sg2-filter-bar { padding:14px 16px 12px; border-bottom:1px solid rgba(255,255,255,0.06); background:#0a0907; }
+.sg2-filter-title { font-family:'JetBrains Mono',monospace; font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(241,236,226,0.28);margin-bottom:10px; }
+.sg2-preset-row { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px; }
+.sg2-preset-btn { padding:5px 12px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(241,236,226,0.38);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;cursor:pointer;transition:all 0.12s;border-radius:2px; }
+.sg2-preset-btn.active { border-color:#c8f06e;background:rgba(200,240,110,0.08);color:#c8f06e; }
+.sg2-filter-row { display:flex;align-items:center;gap:8px;margin-top:8px; }
+.sg2-date-input { flex:1;background:#111113;border:1px solid rgba(255,255,255,0.10);padding:7px 10px;font-size:12px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;color-scheme:dark;border-radius:2px; }
+.sg2-apply-btn { padding:7px 14px;border:1px solid #c8f06e;background:rgba(200,240,110,0.08);color:#c8f06e;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;flex-shrink:0; }
+.sg2-subtabs { display:flex;border-bottom:1px solid rgba(255,255,255,0.06);padding:0 16px;background:#0a0907; }
+.sg2-subtab { flex:1;padding:12px 0;background:none;border:none;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.10em;text-transform:uppercase;color:rgba(241,236,226,0.32);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s; }
+.sg2-subtab.active { color:#c8f06e;border-bottom-color:#c8f06e; }
+.sg2-body { padding:14px 12px 60px; }
+.sg2-kpi-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px; }
+.sg2-kpi-card { background:#111113;border:1px solid rgba(255,255,255,0.07);padding:12px 10px 10px;text-align:center; }
+.sg2-kpi-val { font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;line-height:1;letter-spacing:0.02em;margin-bottom:4px; }
+.sg2-kpi-lbl { font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:2px; }
+.sg2-kpi-sub { font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(241,236,226,0.28); }
+.sg2-stat-card { background:#111113;border:1px solid rgba(255,255,255,0.07);padding:14px;margin-bottom:8px; }
+.sg2-card-title { font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(241,236,226,0.28);margin-bottom:14px; }
+.sg2-muscle-row { display:grid;grid-template-columns:88px 1fr 34px;align-items:center;gap:10px;margin-bottom:9px; }
+.sg2-muscle-row:last-child { margin-bottom:0; }
+.sg2-muscle-lbl { font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.04em;color:rgba(241,236,226,0.55);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.sg2-muscle-track { height:6px;background:rgba(255,255,255,0.06);overflow:hidden; }
+.sg2-muscle-fill { height:6px;background:linear-gradient(90deg,#c8f06e,#a8d84e);border-radius:0 2px 2px 0;transition:width 0.65s cubic-bezier(0.16,1,0.3,1);width:0%; }
+.sg2-muscle-val { font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#c8f06e;text-align:right; }
+.sg2-routine-card { background:#111113;border:1px solid rgba(255,255,255,0.07);padding:14px;margin-bottom:6px;cursor:pointer;transition:border-color 0.15s; }
+.sg2-routine-card:hover { border-color:rgba(200,240,110,0.3); }
+.sg2-routine-name { font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#f4efe5;letter-spacing:0.02em;margin-bottom:8px; }
+.sg2-routine-meta { display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px; }
+.sg2-routine-item { font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(241,236,226,0.38);letter-spacing:0.04em; }
+.sg2-routine-item span { color:#f4efe5;font-weight:700;margin-right:2px; }
+.sg2-routine-bar-track { height:3px;background:rgba(255,255,255,0.06);overflow:hidden; }
+.sg2-routine-bar-fill { height:3px;background:#c8f06e;border-radius:0 2px 2px 0;transition:width 0.5s cubic-bezier(0.16,1,0.3,1); }
+.sg2-ex-select { width:100%;background:#0a0907;border:1px solid rgba(255,255,255,0.10);padding:11px 14px;font-size:14px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;margin-bottom:14px;cursor:pointer;-webkit-appearance:none;appearance:none;border-radius:2px; }
+.sg2-ex-select:focus { border-color:#c8f06e; }
+.sg2-back-running { display:flex;align-items:center;gap:8px;padding:10px 16px 0;margin-bottom:2px; }
+.sg2-back-running-btn { background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:rgba(241,236,226,0.55);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:5px 12px;cursor:pointer;transition:all 0.15s;border-radius:2px; }
+.sg2-back-running-btn:hover { background:rgba(255,255,255,0.1);color:#f4efe5; }
+.sg2-body-map { width:100%;max-width:460px;margin:0 auto;padding-bottom:16px; --bm-color-0:#111113; --bm-color-1:rgba(200,240,110,0.12); --bm-color-2:rgba(200,240,110,0.24); --bm-color-3:rgba(200,240,110,0.36); --bm-color-4:rgba(200,240,110,0.48); --bm-color-5:rgba(200,240,110,0.58); --bm-color-6:rgba(200,240,110,0.68); --bm-color-7:rgba(200,240,110,0.76); --bm-color-8:rgba(200,240,110,0.84); --bm-color-9:rgba(200,240,110,0.92); --bm-color-10:#c8f06e; }
+.sg2-body-map>div { width:100%!important;justify-content:center!important; }
+.sg2-body-map>div>div { max-width:50%!important;flex:1 1 0!important;min-width:0!important; }
+.sg2-body-map svg { width:100%!important;height:auto!important;display:block; }
+.sg2-map-legend { display:flex;align-items:center;justify-content:center;gap:14px;font-size:9px;letter-spacing:0.10em;color:rgba(241,236,226,0.38);text-transform:uppercase;margin-top:8px; }
+.sg2-legend-dot { display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
 </head>
 <body>
 <div class="bg-stage">
@@ -1210,7 +1239,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.3.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.3.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1260,7 +1289,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       oncontextmenu="showPlanDropdown(event)"
       ontouchstart="startPlanLongPress(event)">📅 Calendar</button>
     <button id="view-btn-shop" onclick="setView('shop')">🛒 Shop</button>
-    <button id="view-btn-todo" onclick="setView('todo')">✅ Tasks</button>
   </div>
 </div>
 
@@ -1706,45 +1734,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .brief-empty { color:var(--muted); font-style:italic; font-size:12.5px; }
 .brief-row-tap { cursor:pointer; } .brief-row-tap:active { opacity:0.55; }
 
-
-/* ── TODO LIST ───────────────────────────────────────────────── */
-#todo-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
-body.todo-mode #desktop-cal-wrap, body.todo-mode #mobile-cal { display:none !important; }
-body.todo-mode #todo-view { display:block !important; }
-body.todo-mode #briefing-card { display:none !important; }
-body.todo-mode #shop-view { display:none !important; }
-.todo-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; }
-.todo-head h2 { font-size:23px; font-weight:700; color:var(--ink-display); letter-spacing:-0.02em; }
-/* Quick-add bar */
-.todo-add-wrap { background:rgba(255,255,255,0.55); border:0.5px solid rgba(255,255,255,0.6); border-radius:16px; padding:14px 15px; margin-bottom:18px; }
-.todo-add-input { width:100%; box-sizing:border-box; height:44px; padding:0 15px; border-radius:13px; border:0.5px solid var(--border-mid); background:rgba(255,255,255,0.6); font:500 15px 'Inter Tight',system-ui,sans-serif; color:var(--text); margin-bottom:10px; }
-.todo-add-input:focus { outline:none; border-color:var(--ink-sub); }
-.todo-add-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-.todo-assignee-btns { display:flex; gap:4px; }
-.todo-assignee-btn { background:rgba(255,255,255,0.5); border:0.5px solid var(--border-mid); border-radius:9px; padding:6px 13px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; transition:all 0.15s; }
-.todo-assignee-btn.on { background:var(--text); color:var(--bg); border-color:transparent; }
-.todo-day-chips { display:flex; gap:4px; flex-wrap:wrap; }
-.todo-day-chip { background:rgba(255,255,255,0.5); border:0.5px solid var(--border-mid); border-radius:8px; padding:5px 10px; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; transition:all 0.15s; }
-.todo-day-chip.on { background:oklch(0.62 0.18 145); color:#fff; border-color:transparent; }
-.todo-add-btn { height:36px; padding:0 18px; border-radius:11px; border:0; background:linear-gradient(180deg,rgba(26,22,38,0.92),rgba(26,22,38,0.82)); color:#fff; font:600 14px 'Inter Tight',system-ui,sans-serif; cursor:pointer; margin-left:auto; }
-/* Task groups */
-.todo-group { margin-bottom:14px; }
-.todo-group-label { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-meta); margin-bottom:7px; padding-left:2px; }
-.todo-item { display:flex; align-items:center; gap:11px; padding:11px 14px; border-radius:13px; background:rgba(255,255,255,0.5); border:0.5px solid rgba(255,255,255,0.55); margin-bottom:6px; }
-.todo-item.done { opacity:0.52; }
-.todo-item .tcb { width:24px; height:24px; border-radius:7px; border:1.5px solid var(--border-mid); flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; background:rgba(255,255,255,0.5); color:#fff; }
-.todo-item.done .tcb { background:oklch(0.62 0.18 145); border-color:transparent; }
-.todo-item .ttx { flex:1; font-size:14px; color:var(--text); word-break:break-word; }
-.todo-item.done .ttx { text-decoration:line-through; color:var(--muted); }
-.todo-item .tass { font-size:10px; font-weight:600; padding:2px 7px; border-radius:6px; flex-shrink:0; }
-.tass-marius { background:rgba(99,102,241,0.15); color:#4338ca; }
-.tass-vilde { background:rgba(236,72,153,0.15); color:#be185d; }
-.todo-item .trm { background:none; border:0; color:var(--muted2); font-size:20px; line-height:1; cursor:pointer; padding:2px 4px; flex-shrink:0; }
-.todo-empty { font-size:13px; color:var(--muted); font-style:italic; padding:8px 2px; }
-.todo-week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:8px; }
-.todo-week-btn { background:var(--surface); border:1px solid var(--border-mid); border-radius:10px; width:38px; height:38px; font-size:16px; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:inherit; }
-.todo-week-lbl { font-size:13px; font-weight:600; color:var(--text); text-align:center; flex:1; }
-
 /* ── SHOPPING LIST ───────────────────────────────────────────── */
 #shop-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
 body.shop-mode #desktop-cal-wrap, body.shop-mode #mobile-cal { display:none !important; }
@@ -1897,37 +1886,8 @@ body.shop-mode #briefing-card { display:none !important; }
   <div id="shop-list"></div>
 </div>
 
-
-<div id="todo-view">
-  <div class="todo-head">
-    <button class="shop-clear" onclick="exitTodo()">‹ Back</button>
-    <h2>✅ Tasks</h2>
-    <button class="shop-clear" id="todo-notif-btn" onclick="enableTodoNotifications()">🔔 Notify</button>
-  </div>
-  <div class="todo-week-nav">
-    <button class="todo-week-btn" onclick="todoWeekOffset--;renderTodoView()">‹</button>
-    <div class="todo-week-lbl" id="todo-week-lbl"></div>
-    <button class="todo-week-btn" onclick="todoWeekOffset++;renderTodoView()">›</button>
-  </div>
-  <div class="todo-add-wrap">
-    <input id="todo-input" class="todo-add-input" type="text" placeholder="Add a task…" autocomplete="off" enterkeyhint="done"
-      onkeydown="if(event.key==='Enter'){event.preventDefault();addTodoItem();}"/>
-    <div class="todo-add-row">
-      <div class="todo-assignee-btns">
-        <button class="todo-assignee-btn on" id="todo-ass-marius" onclick="setTodoAssignee('marius')">Marius</button>
-        <button class="todo-assignee-btn" id="todo-ass-vilde" onclick="setTodoAssignee('vilde')">Vilde</button>
-        <button class="todo-assignee-btn" id="todo-ass-both" onclick="setTodoAssignee('both')">Both</button>
-      </div>
-      <div class="todo-day-chips" id="todo-day-chips"></div>
-      <button class="todo-add-btn" onclick="addTodoItem()">Add</button>
-    </div>
-  </div>
-  <div id="todo-list"></div>
-</div>
-
 <div id="desktop-cal-wrap">
 <div id="cal"></div>
-<div id="month-cal" style="display:none;"></div>
 <div id="week-view" style="display:none;"></div>
 <div id="day-view" style="display:none;"></div>
 </div>
@@ -3563,7 +3523,6 @@ if (_local) applyState(JSON.parse(_local));
   // 9. Family briefing + shared shopping list + recipe library
   renderBriefing();
   loadShoppingList();
-  loadTodoItems();
   loadRecipeLibrary();
 
   // Auto-refresh recipes when switching back to the app (e.g. added on another device)
@@ -3582,193 +3541,6 @@ if (_local) applyState(JSON.parse(_local));
     fetchGCal().then(() => { if (isMobilePortrait()) renderMobileRaceWeek(); });
   }, 5 * 60 * 1000);
 })();
-
-
-
-// ── TODO LIST ─────────────────────────────────────────────────────────────
-let todoItems = [];
-let todoAssignee = 'marius'; // current new-item assignee
-let todoDay = null;          // current new-item day (YYYY-MM-DD or null)
-let todoWeekOffset = 0;      // 0 = current week
-
-function getTodoWeekStart(offset) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dow = (today.getDay() + 6) % 7; // Monday=0
-  const mon = new Date(today); mon.setDate(today.getDate() - dow + offset * 7);
-  return mon;
-}
-
-function todoWeekDays(offset) {
-  const mon = getTodoWeekStart(offset);
-  return Array.from({length:7}, (_,i) => {
-    const d = new Date(mon); d.setDate(mon.getDate()+i);
-    return d;
-  });
-}
-
-function fmtDate(d) {
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
-function setTodoAssignee(who) {
-  todoAssignee = who;
-  document.getElementById('todo-ass-marius').classList.toggle('on', who==='marius');
-  document.getElementById('todo-ass-vilde').classList.toggle('on', who==='vilde');
-  const bothBtn = document.getElementById('todo-ass-both');
-  if (bothBtn) bothBtn.classList.toggle('on', who==='both');
-}
-
-function renderTodoWeekLabel() {
-  const lbl = document.getElementById('todo-week-lbl');
-  if (!lbl) return;
-  const days = todoWeekDays(todoWeekOffset);
-  const fmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  const tag = todoWeekOffset===0 ? ' (this week)' : todoWeekOffset===1 ? ' (next week)' : todoWeekOffset===-1 ? ' (last week)' : '';
-  lbl.textContent = fmt(days[0]) + ' – ' + fmt(days[6]) + tag;
-}
-
-function renderTodoDayChips() {
-  const wrap = document.getElementById('todo-day-chips');
-  if (!wrap) return;
-  const days = todoWeekDays(todoWeekOffset);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const DAY_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  wrap.innerHTML = days.map((d,i) => {
-    const ds = fmtDate(d);
-    const label = d.toDateString()===today.toDateString() ? 'Today' : DAY_SHORT[i];
-    const on = todoDay===ds ? 'on' : '';
-    return `<button class="todo-day-chip ${on}" onclick="setTodoDay('${ds}')">${label}</button>`;
-  }).join('');
-}
-
-function setTodoDay(ds) {
-  todoDay = (todoDay === ds) ? null : ds; // toggle
-  renderTodoDayChips();
-}
-
-async function loadTodoItems() {
-  try {
-    const res = await fetch(SUPA_BASE + 'todo_list?select=*&order=created_at', { headers: SUPA_HDR });
-    if (!res.ok) throw new Error('todo_list ' + res.status);
-    todoItems = await res.json();
-    renderTodoView();
-    if (typeof renderBriefing === 'function') renderBriefing();
-  } catch(e) { console.warn('Failed to load todo list:', e); }
-}
-
-function escTodo(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-async function addTodoItem() {
-  const inp = document.getElementById('todo-input');
-  const text = (inp ? inp.value.trim() : '');
-  if (!text) return;
-  inp.value = '';
-  const assignees = todoAssignee === 'both' ? ['marius','vilde'] : [todoAssignee];
-  try {
-    for (const ass of assignees) {
-      const item = { text, assignee: ass, day: todoDay || null, done: false };
-      const res = await fetch(SUPA_BASE + 'todo_list', {
-        method:'POST', headers:{...SUPA_HDR,'Content-Type':'application/json','Prefer':'return=representation'},
-        body: JSON.stringify(item)
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const created = await res.json();
-      todoItems.push(...(Array.isArray(created)?created:[created]));
-      // Notify the assignee if they're the other person (or both)
-      if (ass !== activeProfile) {
-        sendTodoNotification(ass, text);
-      }
-    }
-    renderTodoView();
-    if (typeof renderBriefing === 'function') renderBriefing();
-  } catch(e) { console.warn('addTodoItem failed:', e); }
-}
-
-async function toggleTodoItem(id, done) {
-  todoItems = todoItems.map(i => i.id===id ? {...i, done} : i);
-  renderTodoView();
-  if (typeof renderBriefing === 'function') renderBriefing();
-  try {
-    await fetch(SUPA_BASE + 'todo_list?id=eq.'+id, {
-      method:'PATCH', headers:{...SUPA_HDR,'Content-Type':'application/json'},
-      body: JSON.stringify({done})
-    });
-  } catch(e) { console.warn('toggleTodoItem failed:', e); }
-}
-
-async function deleteTodoItem(id) {
-  todoItems = todoItems.filter(i => i.id!==id);
-  renderTodoView();
-  if (typeof renderBriefing === 'function') renderBriefing();
-  try {
-    await fetch(SUPA_BASE + 'todo_list?id=eq.'+id, { method:'DELETE', headers:SUPA_HDR });
-  } catch(e) { console.warn('deleteTodoItem failed:', e); }
-}
-
-function renderTodoView() {
-  // Update week label + day chips
-  renderTodoWeekLabel();
-  renderTodoDayChips();
-  // Sync mobile inline todo list if visible
-  setTimeout(() => { if (typeof renderMobTodoList === 'function') renderMobTodoList(); }, 0);
-
-  const el = document.getElementById('todo-list');
-  if (!el) return;
-
-  const days = todoWeekDays(todoWeekOffset);
-  const weekDates = days.map(fmtDate);
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  // Items for this week: day is in weekDates, OR day is null (no-day items, always show in current week)
-  const weekItems = todoItems.filter(i => {
-    if (i.day) return weekDates.includes(i.day);
-    return todoWeekOffset === 0;
-  });
-
-  if (!weekItems.length) {
-    el.innerHTML = '<div class="todo-empty">No tasks this week — add one above.</div>';
-    return;
-  }
-
-  // Group: each day + "No day" bucket
-  const DAY_LABELS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  let html = '';
-
-  // No-day group first (only current week)
-  const nodayItems = weekItems.filter(i => !i.day);
-  if (nodayItems.length) {
-    html += renderTodoGroup('Anytime this week', nodayItems);
-  }
-
-  // Day groups
-  days.forEach((d, i) => {
-    const ds = fmtDate(d);
-    const dayItems = weekItems.filter(it => it.day === ds);
-    if (!dayItems.length) return;
-    const isToday = d.toDateString() === today.toDateString();
-    const label = (isToday ? 'Today — ' : '') + DAY_LABELS[i] + ', ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    html += renderTodoGroup(label, dayItems);
-  });
-
-  el.innerHTML = html || '<div class="todo-empty">No tasks this week.</div>';
-}
-
-function renderTodoGroup(label, items) {
-  const rows = items.map(i => {
-    const assLabel = i.assignee === 'marius' ? 'Marius' : 'Vilde';
-    const assCls = i.assignee === 'marius' ? 'tass-marius' : 'tass-vilde';
-    return `<div class="todo-item ${i.done?'done':''}">
-      <div class="tcb" onclick="toggleTodoItem('${i.id}',${!i.done})">${i.done?'✓':''}</div>
-      <div class="ttx">${escTodo(i.text)}</div>
-      <span class="tass ${assCls}">${assLabel}</span>
-      <button class="trm" onclick="deleteTodoItem('${i.id}')">×</button>
-    </div>`;
-  }).join('');
-  return `<div class="todo-group"><div class="todo-group-label">${label}</div>${rows}</div>`;
-}
-
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
 const SUPA_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
@@ -4642,26 +4414,24 @@ function getIntervalWeather(dateStr, startH, endH) {
 }
 
 function addWeatherDots() {
+  const weatherDates = Object.keys(weatherData);
+  console.log('Weather dates:', weatherDates.slice(0,3), '...');
   WEEK_MONDAYS.forEach(([y,m,d], wi) => {
     const wrap = document.getElementById('week-' + wi);
     if (!wrap) return;
     const dateCells = wrap.querySelectorAll('.date-num-cell');
+    if (!dateCells.length) { console.log('No date cells in week', wi); return; }
     dateCells.forEach((cell, di) => {
       const dt = new Date(y, m-1, d+di);
       const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
       if (!weatherData[dateStr]) return;
-      if (cell.querySelector('.weather-emoji-tag')) return;
-      // Pick best symbol + temp for the day (prefer midday hours)
-      const entries = weatherData[dateStr];
-      const best = entries.find(e=>e.hour>=10&&e.hour<=14) || entries[0];
-      const tag = document.createElement('span');
-      tag.className = 'weather-emoji-tag';
-      tag.title = 'Tap for weather';
-      tag.style.cssText = 'font-size:11px;cursor:pointer;white-space:nowrap;margin-left:4px;vertical-align:middle;';
-      tag.textContent = yrSymbol(best.symbol) + (best.temp != null ? ' ' + Math.round(best.temp) + '°' : '');
-      tag.addEventListener('click', e => { e.stopPropagation(); openWeather(dateStr); });
-      // Insert after the date number, inline
-      cell.appendChild(tag);
+      if (cell.querySelector('.weather-dot')) return;
+      const dot = document.createElement('span');
+      dot.className = 'weather-dot has-weather';
+      dot.title = 'Tap for weather';
+      dot.addEventListener('click', e => { e.stopPropagation(); openWeather(dateStr); });
+      cell.appendChild(dot);
+      console.log('Added dot for', dateStr);
     });
   });
 }
@@ -4679,67 +4449,65 @@ function openWeather(dateStr) {
   const slots = document.getElementById('weather-slots');
   slots.innerHTML = '';
 
-  const dayEntries = (weatherData[dateStr] || []).slice().sort((a,b) => a.hour - b.hour);
+  const dayEntries = weatherData[dateStr] || [];
+  console.log('Entries for', dateStr, ':', dayEntries);
 
-  if (!dayEntries.length) {
-    slots.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 4px;">No weather data for this day.</div>';
-  } else {
-    const nowHour = new Date().getHours();
-    const DISPLAY_INTERVALS = [
-      { label: 'Night',     emoji: '🌙', start:  0, end:  6  },
-      { label: 'Morning',   emoji: '🌅', start:  6, end:  12 },
-      { label: 'Afternoon', emoji: '☀️',  start: 12, end:  18 },
-      { label: 'Evening',   emoji: '🌆', start: 18, end:  24 },
-    ];
-    DISPLAY_INTERVALS.forEach(({ label, emoji, start, end }) => {
-      const entries = dayEntries.filter(e => e.hour >= start && e.hour < end);
-      if (!entries.length) return;
+  INTERVALS.forEach(({ label, start, end }) => {
+    const entries = dayEntries.filter(e => e.hour >= start && e.hour < end);
+    const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    const temps = entries.map(e=>e.temp).filter(v=>v!=null);
+    const winds = entries.map(e=>e.wind).filter(v=>v!=null);
+    const symbol = entries.find(e=>e.symbol)?.symbol || null;
+    const avgTemp = temps.length ? Math.round(avg(temps)) : null;
+    const avgWind = winds.length ? Math.round(avg(winds)*10)/10 : null;
 
-      // Auto-expand the section containing the current hour (or morning by default)
-      const isCurrentSection = nowHour >= start && nowHour < end;
-      const isOpen = isCurrentSection;
+    const slot = document.createElement('div');
+    slot.className = 'weather-slot';
 
-      // Section header
-      const section = document.createElement('div');
+    const summary = document.createElement('div');
+    summary.style.cssText = 'display:flex;align-items:center;gap:14px;width:100%;cursor:pointer;';
+    summary.innerHTML = `
+      <div class="weather-slot-time">${label}</div>
+      <div class="weather-slot-icon">${yrSymbol(symbol)}</div>
+      <div class="weather-slot-info">
+        <div class="weather-slot-temp">${avgTemp != null ? avgTemp+'°C' : '—'}</div>
+        <div class="weather-slot-wind">${avgWind != null ? avgWind+' m/s' : '—'}</div>
+        <div class="weather-slot-desc">${yrDesc(symbol)}</div>
+      </div>
+      <div style="margin-left:auto;font-size:11px;color:var(--muted);">▸</div>`;
+    slot.appendChild(summary);
 
-      const hdr = document.createElement('div');
-      hdr.className = 'weather-section-hdr' + (isOpen ? ' open' : '');
+    // Hourly detail (hidden by default)
+    const hourly = document.createElement('div');
+    hourly.style.cssText = 'display:none;margin-top:10px;border-top:0.5px solid var(--border);padding-top:8px;width:100%;';
 
-      // Pick best representative emoji/temp for header summary
-      const midEntry = entries.find(e => e.hour >= start + Math.floor((end-start)/2)) || entries[0];
-      const minTemp = Math.round(Math.min(...entries.map(e=>e.temp).filter(v=>v!=null)));
-      const maxTemp = Math.round(Math.max(...entries.map(e=>e.temp).filter(v=>v!=null)));
-      const tempRange = minTemp === maxTemp ? minTemp+'°' : minTemp+'–'+maxTemp+'°';
-
-      hdr.innerHTML = `
-        <span>${emoji} ${label} <span style="font-weight:400;color:var(--muted2);margin-left:6px;">${tempRange}</span></span>
-        <span class="ws-arrow">▶</span>`;
-
-      const rows = document.createElement('div');
-      rows.className = 'weather-section-rows' + (isOpen ? ' open' : '');
-
-      entries.forEach(e => {
-        const row = document.createElement('div');
-        row.className = 'weather-hour-row';
-        row.innerHTML = `
-          <span style="color:var(--muted);min-width:40px;font-weight:600;">${String(e.hour).padStart(2,'0')}:00</span>
-          <span style="font-size:18px;line-height:1;">${yrSymbol(e.symbol)}</span>
-          <span style="font-weight:700;min-width:40px;">${e.temp != null ? Math.round(e.temp)+'°C' : '—'}</span>
-          <span style="color:var(--muted);">${e.wind != null ? e.wind+' m/s 💨' : ''}</span>
-          <span style="color:var(--muted);font-size:11px;margin-left:auto;">${yrDesc(e.symbol)}</span>`;
-        rows.appendChild(row);
-      });
-
-      hdr.addEventListener('click', () => {
-        const open = hdr.classList.toggle('open');
-        rows.classList.toggle('open', open);
-      });
-
-      section.appendChild(hdr);
-      section.appendChild(rows);
-      slots.appendChild(section);
+    entries.forEach(e => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:3px 0;font-size:12px;';
+      row.innerHTML = `
+        <span style="color:var(--muted);min-width:32px;">${String(e.hour).padStart(2,'0')}:00</span>
+        <span>${yrSymbol(e.symbol)}</span>
+        <span style="font-weight:600;">${e.temp != null ? Math.round(e.temp)+'°C' : '—'}</span>
+        <span style="color:var(--muted);">${e.wind != null ? e.wind+' m/s' : '—'}</span>
+        <span style="color:var(--muted);font-size:10px;">${yrDesc(e.symbol)}</span>`;
+      hourly.appendChild(row);
     });
-  }
+
+    if (!entries.length) {
+      hourly.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0;">No data for this interval</div>';
+    }
+
+    slot.appendChild(hourly);
+
+    let expanded = false;
+    summary.addEventListener('click', () => {
+      expanded = !expanded;
+      hourly.style.display = expanded ? 'block' : 'none';
+      summary.querySelector('div:last-child').textContent = expanded ? '▾' : '▸';
+    });
+
+    slots.appendChild(slot);
+  });
 
   weatherOverlay.classList.add('open');
 }
@@ -7506,354 +7274,438 @@ function drawProgressLine(canvas, labels, data, color, showAnnotations) {
 }
 
 
-// ── STERK GUTT STATS (mirrors Sterk Gutt app exactly) ──────────────────────
-// ── SG STATS STATE ─────────────────────────────────────────────────────────
+// ── STERK GUTT STATS v2 (rich dashboard) ────────────────────────────────────
+// Uses body-muscles CDN for muscle heatmap. State:
 let _sgPreset = 'all';
 let _sgSubtab = 'overview';
+
+// body-muscles import (lazy, once)
+let _bodyMuscleMod = null;
+async function getBodyMuscleMod() {
+  if (_bodyMuscleMod) return _bodyMuscleMod;
+  try {
+    _bodyMuscleMod = await import('https://cdn.jsdelivr.net/npm/body-muscles@1/dist/body-muscles.es.js');
+  } catch(e) { console.warn('body-muscles load failed', e); _bodyMuscleMod = {}; }
+  return _bodyMuscleMod;
+}
+
+const SG2_MUSCLE_GROUPS = ['Abs','Arms','Back','Chest','Legs','Shoulders'];
+const SG2_NORMALISE = {'Quads':'Legs','Hamstrings':'Legs','Glutes':'Legs','Calves':'Legs','Biceps':'Arms','Triceps':'Arms'};
+function sg2NormMuscle(m) { return SG2_NORMALISE[m] || m; }
+
+const SG2_PM_TO_BODY = {
+  'Pecs':['chest_l','chest_r'],'Upper Pecs':['chest_l','chest_r'],'Lower Pecs':['chest_l','chest_r'],
+  'Lats':['lats_l','lats_r'],'Traps':['traps_upper_l','traps_upper_r','traps_lower_l','traps_lower_r'],
+  'Rhomboids':['traps_lower_l','traps_lower_r'],'Rear Delts':['rear_delt_l','rear_delt_r'],
+  'Erectors':['lower_back_l','lower_back_r'],'Front Delts':['front_delt_l','front_delt_r'],
+  'Side Delts':['side_delt_l','side_delt_r'],'Biceps':['bicep_l','bicep_r'],
+  'Brachialis':['bicep_l','bicep_r'],'Forearm':['forearm_l','forearm_r'],
+  'Triceps':['tricep_l','tricep_r'],'Quads':['quad_l','quad_r'],
+  'Hamstrings':['hamstring_l','hamstring_r'],'Glutes':['glute_l','glute_r'],
+  'Calves':['calf_l','calf_r'],'Abs':['upper_abs_l','upper_abs_r','lower_abs_l','lower_abs_r'],
+  'Obliques':['oblique_l','oblique_r'],'Hip Flexors':['hip_flexor_l','hip_flexor_r'],
+  'Adductors':['adductor_l','adductor_r'],
+};
 
 async function renderSGStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
 
-  // Fetch data first
   const loadEl = document.createElement('div');
-  loadEl.style.cssText = 'color:#4b5563;font-size:13px;padding:40px 20px;text-align:center;';
+  loadEl.style.cssText = 'font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.10em;color:rgba(241,236,226,0.28);text-align:center;padding:40px 0;';
   loadEl.textContent = 'Loading Sterk Gutt data…';
   container.appendChild(loadEl);
+
   const allSessions = await fetchSGSessions();
   loadEl.remove();
 
   if (!allSessions.length) {
-    container.innerHTML = '<div style="color:#4b5563;font-size:13px;padding:20px 0;text-align:center;">No sessions found in Sterk Gutt.</div>';
+    container.innerHTML = '<div style="font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);font-size:12px;padding:40px 20px;text-align:center;letter-spacing:0.06em;">No sessions found in Sterk Gutt.</div>';
     return;
   }
   window._sgAllSessions = allSessions;
-  buildSGStatsUI(container, allSessions);
+  sg2BuildUI(container, allSessions);
 }
 
-function buildSGStatsUI(container, allSessions) {
+function sg2BuildUI(container, allSessions) {
   container.innerHTML = '';
 
-  // ── Preset buttons ──────────────────────────────────────────────────────
-  const filterBar = document.createElement('div');
-  filterBar.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;margin-bottom:12px;';
-  const filterTitle = document.createElement('div');
-  filterTitle.style.cssText = 'font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:10px;';
-  filterTitle.textContent = 'Time period';
-  filterBar.appendChild(filterTitle);
+  // ── Back to Running button ──
+  const backRow = document.createElement('div');
+  backRow.className = 'sg2-back-running';
+  const backBtn = document.createElement('button');
+  backBtn.className = 'sg2-back-running-btn';
+  backBtn.textContent = '← Running stats';
+  backBtn.addEventListener('click', () => setStatsTab('running'));
+  backRow.appendChild(backBtn);
+  container.appendChild(backRow);
+
+  // ── Filter bar ──
+  const fb = document.createElement('div');
+  fb.className = 'sg2-filter-bar';
+  const ft = document.createElement('div');
+  ft.className = 'sg2-filter-title';
+  ft.textContent = 'Time period';
+  fb.appendChild(ft);
 
   const presetRow = document.createElement('div');
-  presetRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;';
+  presetRow.className = 'sg2-preset-row';
   const presets = [
     {key:'all',label:'All time'},{key:'1w',label:'Last week'},
-    {key:'1m',label:'1 month'},{key:'3m',label:'3 months'},
+    {key:'1m',label:'Last month'},{key:'3m',label:'3 months'},
     {key:'6m',label:'6 months'},{key:'1y',label:'1 year'},
     {key:'custom',label:'Custom…'},
   ];
 
   const customRow = document.createElement('div');
-  customRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:6px;' + (_sgPreset==='custom'?'':'display:none;');
-  customRow.id = 'sg-custom-row';
-
-  // Default dates for custom
-  const earliest = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt).getTime()))) : new Date();
-  const fromInput = document.createElement('input'); fromInput.type='date'; fromInput.id='sg-from';
-  fromInput.style.cssText='flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;';
-  fromInput.value = earliest.toISOString().slice(0,10);
-  const sep = document.createElement('span'); sep.textContent='→'; sep.style.color='#4b5563';
-  const toInput = document.createElement('input'); toInput.type='date'; toInput.id='sg-to';
-  toInput.style.cssText='flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 10px;font-size:12px;color:#f0ede8;font-family:inherit;outline:none;';
-  toInput.value = new Date().toISOString().slice(0,10);
-  const goBtn = document.createElement('button');
-  goBtn.textContent='Go'; goBtn.style.cssText='background:rgba(0,180,255,0.1);color:#00b4ff;border:1px solid rgba(0,180,255,0.2);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;';
-  goBtn.addEventListener('click', () => { _sgPreset='custom'; renderSGFiltered(allSessions, container, subtabRow); });
-  customRow.appendChild(fromInput); customRow.appendChild(sep); customRow.appendChild(toInput); customRow.appendChild(goBtn);
+  customRow.className = 'sg2-filter-row';
+  customRow.style.display = _sgPreset === 'custom' ? 'flex' : 'none';
+  const earliest = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt)))) : new Date();
+  const fromIn = document.createElement('input'); fromIn.type='date'; fromIn.className='sg2-date-input'; fromIn.value=earliest.toISOString().slice(0,10);
+  const sep = document.createElement('span'); sep.textContent='→'; sep.style.cssText='font-size:11px;color:rgba(241,236,226,0.28);';
+  const toIn = document.createElement('input'); toIn.type='date'; toIn.className='sg2-date-input'; toIn.value=new Date().toISOString().slice(0,10);
+  const goBtn = document.createElement('button'); goBtn.className='sg2-apply-btn'; goBtn.textContent='Go';
+  goBtn.addEventListener('click', () => { _sgPreset='custom'; sg2Render(allSessions); });
+  customRow.appendChild(fromIn); customRow.appendChild(sep); customRow.appendChild(toIn); customRow.appendChild(goBtn);
 
   presets.forEach(p => {
     const btn = document.createElement('button');
-    btn.style.cssText = `padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ${_sgPreset===p.key?'#00b4ff':'rgba(255,255,255,0.1)'};background:${_sgPreset===p.key?'rgba(0,180,255,0.15)':'transparent'};color:${_sgPreset===p.key?'#00b4ff':'#9ca3af'};transition:all 0.15s;`;
+    btn.className = 'sg2-preset-btn' + (_sgPreset===p.key?' active':'');
     btn.textContent = p.label;
     btn.addEventListener('click', () => {
       _sgPreset = p.key;
-      presetRow.querySelectorAll('button').forEach(b => {
-        const active = b.textContent === p.label;
-        b.style.borderColor = active?'#00b4ff':'rgba(255,255,255,0.1)';
-        b.style.background  = active?'rgba(0,180,255,0.15)':'transparent';
-        b.style.color       = active?'#00b4ff':'#9ca3af';
-      });
+      presetRow.querySelectorAll('.sg2-preset-btn').forEach(b => b.classList.toggle('active', b.textContent===p.label));
       customRow.style.display = p.key==='custom' ? 'flex' : 'none';
-      if (p.key !== 'custom') renderSGFiltered(allSessions, container, subtabRow);
+      if (p.key !== 'custom') sg2Render(allSessions);
     });
     presetRow.appendChild(btn);
   });
 
-  filterBar.appendChild(presetRow);
-  filterBar.appendChild(customRow);
-  container.appendChild(filterBar);
+  fb.appendChild(presetRow);
+  fb.appendChild(customRow);
+  container.appendChild(fb);
 
-  // ── Sub-tabs ────────────────────────────────────────────────────────────
-  const subtabRow = document.createElement('div');
-  subtabRow.style.cssText = 'display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:10px;padding:3px;margin-bottom:12px;';
+  // ── Sub-tabs ──
+  const subtabs = document.createElement('div');
+  subtabs.className = 'sg2-subtabs';
   ['Overview','Routines','Exercise'].forEach(tab => {
     const btn = document.createElement('button');
-    btn.textContent = tab; btn.dataset.tab = tab.toLowerCase();
-    btn.style.cssText = `flex:1;background:${_sgSubtab===tab.toLowerCase()?'#16181c':'none'};border:none;padding:8px 4px;font-size:12px;font-weight:600;color:${_sgSubtab===tab.toLowerCase()?'#e0ddd8':'#6b7280'};cursor:pointer;border-radius:8px;font-family:inherit;transition:all 0.15s;box-shadow:${_sgSubtab===tab.toLowerCase()?'0 1px 4px rgba(0,0,0,0.2)':'none'};`;
+    btn.className = 'sg2-subtab' + (_sgSubtab===tab.toLowerCase()?' active':'');
+    btn.textContent = tab;
+    btn.dataset.tab = tab.toLowerCase();
     btn.addEventListener('click', () => {
       _sgSubtab = tab.toLowerCase();
-      subtabRow.querySelectorAll('button').forEach(b => {
-        const a = b.dataset.tab===_sgSubtab;
-        b.style.background = a?'#16181c':'none';
-        b.style.color      = a?'#e0ddd8':'#6b7280';
-        b.style.boxShadow  = a?'0 1px 4px rgba(0,0,0,0.2)':'none';
-      });
-      renderSGFiltered(allSessions, container, subtabRow);
+      subtabs.querySelectorAll('.sg2-subtab').forEach(b => b.classList.toggle('active', b.dataset.tab===_sgSubtab));
+      sg2Render(allSessions);
     });
-    subtabRow.appendChild(btn);
+    subtabs.appendChild(btn);
   });
-  container.appendChild(subtabRow);
+  container.appendChild(subtabs);
 
-  // Content area
-  const contentArea = document.createElement('div');
-  contentArea.id = 'sg-content-area';
-  container.appendChild(contentArea);
+  // ── Content area ──
+  const area = document.createElement('div');
+  area.id = 'sg2-area';
+  area.className = 'sg2-body';
+  container.appendChild(area);
 
-  renderSGFiltered(allSessions, container, subtabRow);
+  // Store refs for date range reading
+  container._sgFromIn = fromIn;
+  container._sgToIn   = toIn;
+
+  sg2Render(allSessions);
 }
 
-function getSGDateRange(allSessions) {
+function sg2GetRange(allSessions) {
   const now = new Date(); now.setHours(23,59,59,999);
   if (_sgPreset === 'all') {
-    const earliest = allSessions.length
-      ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt).getTime())))
-      : new Date();
-    earliest.setHours(0,0,0,0);
-    return {from:earliest, to:now};
+    const from = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt)))) : new Date(0);
+    from.setHours(0,0,0,0);
+    return {from, to:now};
   }
   if (_sgPreset === 'custom') {
-    const from = document.getElementById('sg-from')?.value;
-    const to   = document.getElementById('sg-to')?.value;
+    const fromEl = document.querySelector('#stats-content .sg2-date-input');
+    const toEl   = document.querySelectorAll('#stats-content .sg2-date-input')[1];
     return {
-      from: from ? new Date(from+'T00:00:00') : new Date(0),
-      to:   to   ? new Date(to+'T23:59:59')   : now,
+      from: fromEl?.value ? new Date(fromEl.value+'T00:00:00') : new Date(0),
+      to:   toEl?.value   ? new Date(toEl.value+'T23:59:59')   : now,
     };
   }
-  const days = {'1w':7,'1m':30,'3m':90,'6m':180,'1y':365}[_sgPreset]||90;
+  const days = {'1w':7,'1m':30,'3m':90,'6m':180,'1y':365}[_sgPreset]||30;
   const from = new Date(now); from.setDate(from.getDate()-days); from.setHours(0,0,0,0);
   return {from, to:now};
 }
 
-function renderSGFiltered(allSessions, container, subtabRow) {
-  const {from,to} = getSGDateRange(allSessions);
+function sg2Render(allSessions) {
+  const {from,to} = sg2GetRange(allSessions);
   const sessions = allSessions.filter(s => {
     const d = new Date(s.started_at||s.startedAt);
     return d >= from && d <= to;
   });
-  const area = document.getElementById('sg-content-area');
+  const area = document.getElementById('sg2-area');
   if (!area) return;
   area.innerHTML = '';
-
-  if (_sgSubtab === 'overview') renderSGOverview(sessions, from, to, area);
-  if (_sgSubtab === 'routines') renderSGRoutines(sessions, allSessions, area);
-  if (_sgSubtab === 'exercise') renderSGExerciseTab(sessions, area);
+  if (_sgSubtab === 'overview')  sg2RenderOverview(sessions, area);
+  if (_sgSubtab === 'routines')  sg2RenderRoutines(sessions, allSessions, area);
+  if (_sgSubtab === 'exercise')  sg2RenderExerciseTab(sessions, area);
 }
 
-function renderSGOverview(sessions, fromDate, toDate, area) {
+// ── Overview ──────────────────────────────────────────────────────────────────
+function sg2RenderOverview(sessions, area) {
   const n = sessions.length;
-  let totalSets=0, totalDuration=0;
-  const prMap={}, muscleMap={}, weekMap={};
-  sessions.forEach(s => {
-    const d=new Date(s.started_at||s.startedAt);
-    totalDuration+=(s.duration||0);
-    const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
-    weekMap[mon.toISOString().slice(0,10)]=(weekMap[mon.toISOString().slice(0,10)]||0)+1;
-    (s.exercises||[]).forEach(ex=>{
-      const logged=(ex.sets||[]).filter(st=>st.logged);
-      totalSets+=logged.length;
-      muscleMap[ex.muscle||'Other']=(muscleMap[ex.muscle||'Other']||0)+logged.length;
-      logged.forEach(st=>{const w=parseFloat(st.weight)||0;if(!prMap[ex.name]||w>prMap[ex.name].weight) prMap[ex.name]={weight:w,reps:st.reps||'',muscle:ex.muscle||''};});
-    });
-  });
-  const weeksWithSessions = Object.keys(weekMap).length || 1;
-  const avgSets  = n?(totalSets/n).toFixed(1):0;
-  const freq     = (n/weeksWithSessions).toFixed(1);
-  const avgDur   = n?Math.round(totalDuration/n/60):0;
+  const allSets = sessions.reduce((a,s)=>a+(s.exercises||[]).reduce((b,ex)=>b+(ex.sets||[]).filter(st=>st.logged).length,0),0);
+  const avgSets = n ? (allSets/n).toFixed(1) : 0;
   const totalVol = Math.round(sessions.reduce((a,s)=>a+sgCalcVolume(s),0));
+  const totalDur = sessions.reduce((a,s)=>a+(s.duration||0),0);
+  const avgDur = n ? Math.round(totalDur/n/60) : 0;
+  const weekCounts = {};
+  sessions.forEach(s => {
+    const d = new Date(s.started_at||s.startedAt);
+    const mon = new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+    const k = mon.toISOString().slice(0,10);
+    weekCounts[k] = (weekCounts[k]||0)+1;
+  });
+  const totalWeeks = Object.keys(weekCounts).length || 1;
+  const freq = (n/totalWeeks).toFixed(1);
 
-  // KPIs
-  const kpiGrid=document.createElement('div'); kpiGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;';
-  [{val:n,lbl:'Sessions',sub:'in period',color:'#00b4ff'},
-   {val:avgSets,lbl:'Avg sets',sub:'per session',color:'#00ffcc'},
-   {val:freq,lbl:'Sessions/week',sub:`over ${weeksWithSessions} active week${weeksWithSessions!==1?'s':''}`,color:'#f0a96e'},
-   {val:avgDur+'m',lbl:'Avg duration',sub:'per session',color:'#7c6aff'},
-   {val:totalVol.toLocaleString()+'kg',lbl:'Total volume',sub:'sets×reps×kg',color:'#00ffcc'},
-   {val:totalSets,lbl:'Total sets',sub:'logged',color:'#00b4ff'},
-  ].forEach(k=>{
-    const c=document.createElement('div'); c.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;';
-    c.innerHTML=`<div style="font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;color:${k.color};margin-bottom:4px;">${k.val}</div><div style="font-size:11px;font-weight:600;color:#c8c4be;letter-spacing:0.04em;">${k.lbl}</div><div style="font-size:10px;color:#6b7280;margin-top:2px;">${k.sub}</div>`;
+  // KPI grid
+  const kpiGrid = document.createElement('div');
+  kpiGrid.className = 'sg2-kpi-grid';
+  [
+    {val:n,             lbl:'Sessions',      sub:'in period',   color:'#c8f06e'},
+    {val:avgSets,       lbl:'Avg sets',      sub:'per session', color:'#00ffcc'},
+    {val:freq,          lbl:'Sess/week',     sub:`${totalWeeks} weeks`,color:'#f0a96e'},
+    {val:avgDur+'m',    lbl:'Avg duration',  sub:'per session', color:'#7c6aff'},
+    {val:Math.round(totalVol/1000)+'t', lbl:'Total volume', sub:'sets×reps×kg', color:'#00ffcc'},
+    {val:allSets,       lbl:'Total sets',    sub:'logged',      color:'#c8f06e'},
+  ].forEach(k => {
+    const c = document.createElement('div');
+    c.className = 'sg2-kpi-card';
+    c.innerHTML = `<div class="sg2-kpi-val" style="color:${k.color}">${k.val}</div><div class="sg2-kpi-lbl">${k.lbl}</div><div class="sg2-kpi-sub">${k.sub}</div>`;
     kpiGrid.appendChild(c);
   });
   area.appendChild(kpiGrid);
 
-  // Muscle volume
-  const ms=document.createElement('div'); ms.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
-  ms.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:14px;">Volume by muscle group</div>';
-  const sortedM=Object.entries(muscleMap).sort((a,b)=>b[1]-a[1]);
-  const maxM=sortedM[0]?.[1]||1;
-  sortedM.forEach(([m,v])=>{
-    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
-    row.innerHTML=`<span style="font-size:11px;color:#9ca3af;min-width:110px;">${m}</span><div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:#00b4ff;width:${Math.round(v/maxM*100)}%"></div></div><span style="font-size:11px;color:#6b7280;min-width:24px;text-align:right;">${v}</span>`;
-    ms.appendChild(row);
-  });
-  area.appendChild(ms);
+  // Weekly sessions chart
+  const wc = document.createElement('div'); wc.className = 'sg2-stat-card';
+  wc.innerHTML = '<div class="sg2-card-title">Weekly sessions</div><div style="position:relative;width:100%;height:120px;overflow:hidden;"><canvas id="sg2-chart-weekly" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
+  area.appendChild(wc);
 
-  // Weekly sessions bar
-  const ws=document.createElement('div'); ws.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
-  ws.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:10px;">Weekly sessions</div>';
-  const sortedWks=Object.keys(weekMap).sort();
-  const maxWk=Math.max(...Object.values(weekMap),1);
-  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const chartEl=document.createElement('div'); chartEl.style.cssText='display:flex;align-items:flex-end;gap:3px;height:80px;';
-  sortedWks.forEach(wk=>{
-    const cnt=weekMap[wk]; const h=Math.round((cnt/maxWk)*72);
-    const [,m]=wk.split('-');
-    const col=document.createElement('div'); col.style.cssText='flex:1;display:flex;flex-direction:column;align-items:stretch;';
-    const bar=document.createElement('div'); bar.style.cssText=`display:flex;flex-direction:column;justify-content:flex-end;height:72px;`;
-    const fill=document.createElement('div'); fill.style.cssText=`height:${h}px;background:#00b4ff88;border-radius:2px 2px 0 0;`; fill.title=`${wk}: ${cnt}`;
-    bar.appendChild(fill);
-    const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;color:#4b5563;text-align:center;margin-top:2px;overflow:hidden;';
-    lbl.textContent=MONTHS[parseInt(m,10)-1];
-    col.appendChild(bar); col.appendChild(lbl); chartEl.appendChild(col);
+  // Muscle volume bars
+  const muscles = {};
+  sessions.forEach(s => {
+    (s.exercises||[]).forEach(ex => {
+      const sets = (ex.sets||[]).filter(st=>st.logged).length;
+      if (!sets) return;
+      const m = sg2NormMuscle(ex.muscle) || 'Other';
+      muscles[m] = (muscles[m]||0) + sets;
+    });
   });
-  ws.appendChild(chartEl); area.appendChild(ws);
+  const muscleSorted = Object.entries(muscles).sort((a,b) => {
+    const ai=SG2_MUSCLE_GROUPS.indexOf(a[0]), bi=SG2_MUSCLE_GROUPS.indexOf(b[0]);
+    if (ai>=0&&bi>=0) return ai-bi; if (ai>=0) return -1; if (bi>=0) return 1;
+    return b[1]-a[1];
+  });
+  const maxM = Math.max(...muscleSorted.map(e=>e[1]), 1);
 
-  // PRs
-  const ps=document.createElement('div'); ps.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;margin-bottom:12px;';
-  ps.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;padding:14px 16px 10px;">Personal records</div>';
-  Object.entries(prMap).sort((a,b)=>b[1].weight-a[1].weight).forEach(([name,pr])=>{
-    const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04);';
-    row.innerHTML=`<div><div style="font-size:13px;color:#d1d5db;">${name}</div><div style="font-size:10px;color:#4b5563;">${pr.muscle}</div></div><div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#00ffcc;">${pr.weight} kg</div><div style="font-size:10px;color:#4b5563;">${pr.reps} reps</div></div>`;
-    ps.appendChild(row);
+  const mc = document.createElement('div'); mc.className = 'sg2-stat-card';
+  mc.innerHTML = '<div class="sg2-card-title">Muscle volume (sets)</div>';
+  if (!muscleSorted.length) {
+    mc.innerHTML += '<div style="font-size:11px;color:rgba(241,236,226,0.28);letter-spacing:0.06em;padding:4px 0;">No data yet</div>';
+  } else {
+    muscleSorted.forEach(([m,v]) => {
+      const row = document.createElement('div'); row.className = 'sg2-muscle-row';
+      row.innerHTML = `<span class="sg2-muscle-lbl">${m}</span><div class="sg2-muscle-track"><div class="sg2-muscle-fill" data-pct="${Math.round(v/maxM*100)}"></div></div><span class="sg2-muscle-val">${v}</span>`;
+      mc.appendChild(row);
+    });
+  }
+  area.appendChild(mc);
+
+  // Body map
+  const bmc = document.createElement('div'); bmc.className = 'sg2-stat-card'; bmc.style.marginBottom='8px';
+  bmc.innerHTML = '<div class="sg2-card-title">Muscle heatmap</div><div id="sg2-body-map" class="sg2-body-map"></div><div class="sg2-map-legend"><span class="sg2-legend-dot" style="background:rgba(200,240,110,0.2)"></span><span>Low</span><span class="sg2-legend-dot" style="background:rgba(200,240,110,0.6)"></span><span>Med</span><span class="sg2-legend-dot" style="background:#c8f06e"></span><span>High</span></div>';
+  area.appendChild(bmc);
+
+  // Animate muscle bars
+  requestAnimationFrame(() => {
+    area.querySelectorAll('.sg2-muscle-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
   });
-  if (!Object.keys(prMap).length) ps.innerHTML+='<div style="color:#4b5563;font-size:12px;padding:14px 16px;">No data.</div>';
-  area.appendChild(ps);
+
+  // Draw weekly chart
+  setTimeout(() => {
+    const canvas = document.getElementById('sg2-chart-weekly');
+    if (!canvas || !canvas.offsetWidth) return;
+    const weekKeys = Object.keys(weekCounts).sort();
+    const data = weekKeys.map(k => weekCounts[k]);
+    sg2DrawBarChart(canvas, weekKeys.map(l=>l.slice(5)), data, '#c8f06e');
+  }, 100);
+
+  // Render body map
+  sg2RenderBodyMap(sessions, document.getElementById('sg2-body-map'));
 }
 
-function renderSGRoutines(sessions, allSessions, area) {
-  const routineMap={};
-  sessions.forEach(s=>{
-    // Supabase returns snake_case — handle both
+async function sg2RenderBodyMap(sessions, container) {
+  if (!container) return;
+  const primaryData = {};
+  sessions.forEach(s => {
+    (s.exercises||[]).forEach(ex => {
+      const logged = (ex.sets||[]).filter(st=>st.logged).length;
+      if (!logged || !ex.primaryMuscle) return;
+      primaryData[ex.primaryMuscle] = (primaryData[ex.primaryMuscle]||0) + logged;
+    });
+  });
+  container.innerHTML = '';
+  if (!Object.keys(primaryData).length) {
+    container.innerHTML = '<div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);letter-spacing:0.06em;padding:12px 0;text-align:center;">Set primary muscles on exercises to see the heatmap</div>';
+    return;
+  }
+  const mod = await getBodyMuscleMod();
+  if (!mod.BodyChart || !mod.ViewSide) {
+    container.innerHTML = '<div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);letter-spacing:0.06em;padding:12px 0;text-align:center;">Body map unavailable</div>';
+    return;
+  }
+  const maxVal = Math.max(...Object.values(primaryData));
+  const bodyState = {};
+  Object.entries(primaryData).forEach(([pm,val]) => {
+    const ids = SG2_PM_TO_BODY[pm]; if (!ids) return;
+    const intensity = Math.max(1, Math.round((val/maxVal)*10));
+    ids.forEach(id => { if (!bodyState[id]||bodyState[id].intensity<intensity) bodyState[id]={intensity,selected:false}; });
+  });
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:4px;justify-content:center;';
+  const frontEl = document.createElement('div'); frontEl.style.cssText = 'flex:1;max-width:48%;';
+  const backEl  = document.createElement('div'); backEl.style.cssText  = 'flex:1;max-width:48%;';
+  wrap.appendChild(frontEl); wrap.appendChild(backEl);
+  container.appendChild(wrap);
+  try {
+    new mod.BodyChart(frontEl, {view:mod.ViewSide.FRONT, bodyState, enableTransitions:false});
+    new mod.BodyChart(backEl,  {view:mod.ViewSide.BACK,  bodyState, enableTransitions:false});
+  } catch(e) { console.warn('BodyChart error', e); }
+}
+
+// ── Routines tab ──────────────────────────────────────────────────────────────
+function sg2RenderRoutines(sessions, allSessions, area) {
+  const routineMap = {};
+  sessions.forEach(s => {
     const routineName = s.routine_name || s.routineName || null;
     const routineId   = s.routine_id   || s.routineId   || null;
     const key  = routineId || routineName || 'Unknown';
     const name = routineName || routineId || 'Unknown routine';
-    if(!routineMap[key]) routineMap[key]={name,count:0,totalSets:0,totalVol:0,totalDur:0,sessions:[]};
-    const sets=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
+    if (!routineMap[key]) routineMap[key] = {name, count:0, totalSets:0, totalVol:0, totalDur:0, sessions:[]};
+    const sets = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length, 0);
     routineMap[key].count++;
-    routineMap[key].totalSets+=sets;
-    routineMap[key].totalVol+=sgCalcVolume(s);
-    routineMap[key].totalDur+=(s.duration||0);
+    routineMap[key].totalSets += sets;
+    routineMap[key].totalVol  += sgCalcVolume(s);
+    routineMap[key].totalDur  += (s.duration||0);
     routineMap[key].sessions.push(s);
   });
-
-  const entries=Object.values(routineMap).sort((a,b)=>b.count-a.count);
-  const maxCount=entries[0]?.count||1;
-
+  const entries = Object.values(routineMap).sort((a,b) => b.count-a.count);
+  const maxCount = entries[0]?.count || 1;
   if (!entries.length) {
-    area.innerHTML='<div style="color:#6b7280;font-size:13px;padding:20px 0;text-align:center;">No sessions in this period.</div>';
+    area.innerHTML = '<div style="font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);font-size:12px;padding:20px 0;text-align:center;letter-spacing:0.06em;">No sessions in this period.</div>';
     return;
   }
-
-  entries.forEach(r=>{
-    const avgSets=r.count?(r.totalSets/r.count).toFixed(1):0;
-    const avgDur=r.count?Math.round(r.totalDur/r.count/60):0;
-    const pct=Math.round((r.count/maxCount)*100);
-    const card=document.createElement('div');
-    card.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s;';
-    card.innerHTML=`
-      <div style="font-size:14px;font-weight:700;color:#e0ddd8;margin-bottom:8px;">${r.name}</div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
-        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${r.count}</span> sessions</div>
-        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${avgSets}</span> avg sets</div>
-        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${avgDur}m</span> avg dur</div>
-        <div style="font-size:11px;color:#6b7280;"><span style="color:#c8c4be;font-weight:600;">${Math.round(r.totalVol/1000)}t</span> vol</div>
+  entries.forEach(r => {
+    const avgSets = r.count ? (r.totalSets/r.count).toFixed(1) : 0;
+    const avgDur  = r.count ? Math.round(r.totalDur/r.count/60) : 0;
+    const pct     = Math.round((r.count/maxCount)*100);
+    const card = document.createElement('div');
+    card.className = 'sg2-routine-card';
+    card.innerHTML = `
+      <div class="sg2-routine-name">${r.name}</div>
+      <div class="sg2-routine-meta">
+        <div class="sg2-routine-item"><span>${r.count}</span> sessions</div>
+        <div class="sg2-routine-item"><span>${avgSets}</span> avg sets</div>
+        <div class="sg2-routine-item"><span>${avgDur}m</span> avg dur</div>
+        <div class="sg2-routine-item"><span>${Math.round(r.totalVol/1000)}t</span> vol</div>
       </div>
-      <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;"><div style="height:100%;border-radius:2px;background:#00b4ff;width:${pct}%"></div></div>`;
-    card.addEventListener('mouseenter',()=>card.style.borderColor='rgba(0,180,255,0.3)');
-    card.addEventListener('mouseleave',()=>card.style.borderColor='rgba(255,255,255,0.07)');
-    card.addEventListener('click',()=>showSGRoutineProgress(r,area,sessions,allSessions));
+      <div class="sg2-routine-bar-track"><div class="sg2-routine-bar-fill" style="width:${pct}%"></div></div>`;
+    card.addEventListener('click', () => sg2ShowRoutineProgress(r, area, sessions, allSessions));
     area.appendChild(card);
   });
 }
 
-function showSGRoutineProgress(routineData, area, sessions, allSessions) {
-  area.innerHTML='';
-  const back=document.createElement('button');
-  back.style.cssText='background:none;border:none;color:#00b4ff;font-size:13px;cursor:pointer;font-family:inherit;padding:0 0 16px;';
-  back.textContent='← Back to routines';
-  back.addEventListener('click',()=>{area.innerHTML='';renderSGRoutines(sessions,allSessions,area);});
+function sg2ShowRoutineProgress(routineData, area, sessions, allSessions) {
+  area.innerHTML = '';
+  const back = document.createElement('button');
+  back.style.cssText = 'background:none;border:none;font-family:"JetBrains Mono",monospace;color:#c8f06e;font-size:10px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;cursor:pointer;padding:0 0 16px;';
+  back.textContent = '← Back to routines';
+  back.addEventListener('click', () => { area.innerHTML=''; sg2RenderRoutines(sessions, allSessions, area); });
   area.appendChild(back);
 
-  const title=document.createElement('div');
-  title.style.cssText='font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:2px;color:#e0ddd8;margin-bottom:16px;';
-  title.textContent=routineData.name;
+  const title = document.createElement('div');
+  title.style.cssText = 'font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:16px;';
+  title.textContent = routineData.name;
   area.appendChild(title);
 
-  // Volume trend
-  const sortedSess=routineData.sessions.sort((a,b)=>new Date(a.started_at||a.startedAt)-new Date(b.started_at||b.startedAt));
-  const volData=sortedSess.map(s=>Math.round(sgCalcVolume(s)));
-  const volLabels=sortedSess.map(s=>new Date(s.started_at||s.startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
-  const setData=sortedSess.map(s=>(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0));
+  const sorted = routineData.sessions.sort((a,b) => new Date(a.started_at||a.startedAt) - new Date(b.started_at||b.startedAt));
+  const volData   = sorted.map(s => Math.round(sgCalcVolume(s)));
+  const setData   = sorted.map(s => (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0));
+  const labels    = sorted.map(s => new Date(s.started_at||s.startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
 
-  const vc=document.createElement('div'); vc.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
-  vc.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:8px;">Volume load per session</div>';
-  const cw1=document.createElement('div'); cw1.style.cssText='position:relative;width:100%;height:140px;overflow:hidden;';
-  const c1=document.createElement('canvas'); c1.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;';
-  cw1.appendChild(c1); vc.appendChild(cw1); area.appendChild(vc);
+  const vc = document.createElement('div'); vc.className = 'sg2-stat-card';
+  vc.innerHTML = '<div class="sg2-card-title">Volume load per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-vol-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
+  area.appendChild(vc);
 
-  const sc=document.createElement('div'); sc.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;margin-bottom:12px;';
-  sc.innerHTML='<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c8c4be;font-weight:600;margin-bottom:8px;">Sets per session</div>';
-  const cw2=document.createElement('div'); cw2.style.cssText='position:relative;width:100%;height:140px;overflow:hidden;';
-  const c2=document.createElement('canvas'); c2.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;';
-  cw2.appendChild(c2); sc.appendChild(cw2); area.appendChild(sc);
+  const sc = document.createElement('div'); sc.className = 'sg2-stat-card';
+  sc.innerHTML = '<div class="sg2-card-title">Sets per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-set-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
+  area.appendChild(sc);
 
-  setTimeout(()=>{
-    if(c1.offsetWidth) drawSGLine(c1,volLabels,volData,'#7c6aff');
-    if(c2.offsetWidth) drawSGLine(c2,volLabels,setData,'#00b4ff');
-  },100);
+  setTimeout(() => {
+    const c1 = document.getElementById('sg2-vol-chart');
+    const c2 = document.getElementById('sg2-set-chart');
+    if (c1 && c1.offsetWidth) drawSGLine(c1, labels, volData, '#7c6aff');
+    if (c2 && c2.offsetWidth) drawSGLine(c2, labels, setData, '#c8f06e');
+  }, 100);
 }
 
-function renderSGExerciseTab(sessions, area) {
-  const card=document.createElement('div'); card.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
-  const exNames=[...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
-  const sel=document.createElement('select');
-  sel.style.cssText='width:100%;background:#0e0f11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:13px;color:#f0ede8;font-family:inherit;outline:none;margin-bottom:14px;appearance:auto;cursor:pointer;';
-  sel.innerHTML='<option value="">— Select exercise —</option>'+exNames.map(n=>`<option value="${n}">${n}</option>`).join('');
-  const exBody=document.createElement('div');
-  sel.addEventListener('change',()=>renderSGExerciseProgress(sessions,sel.value,exBody));
-  card.appendChild(sel); card.appendChild(exBody); area.appendChild(card);
+// ── Exercise tab ──────────────────────────────────────────────────────────────
+function sg2RenderExerciseTab(sessions, area) {
+  const card = document.createElement('div'); card.className = 'sg2-stat-card';
+  const exNames = [...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
+  const sel = document.createElement('select');
+  sel.className = 'sg2-ex-select';
+  sel.innerHTML = '<option value="">— Select exercise —</option>' + exNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+  const exBody = document.createElement('div');
+  sel.addEventListener('change', () => {
+    if (!sel.value) { exBody.innerHTML=''; return; }
+    const points = buildExercisePoints(sessions, sel.value, null);
+    exBody.innerHTML = '';
+    renderExerciseAnalysis(exBody, points, sel.value, points[0]?.equipment||null);
+  });
+  card.appendChild(sel);
+  card.appendChild(exBody);
+  area.appendChild(card);
 }
 
-function sgCalcVolume(s) {
-  return (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).reduce((b,st)=>{
-    if(!st.logged) return b;
-    const w=parseFloat(st.weight)||0;
-    const r=ex.unilateral?((parseFloat(st.repsL)||0)+(parseFloat(st.repsR)||0)):(parseFloat(st.reps)||0);
-    return b+w*r;
-  },0),0);
-}
-
-function renderSGExerciseProgress(sessions, exName, body) {
-  if (!exName) { body.innerHTML = ''; return; }
-  const points = buildExercisePoints(sessions, exName, null);
-  const equipment = points[0]?.equipment || null;
-  body.innerHTML = '';
-  renderExerciseAnalysis(body, points, exName, equipment);
+// ── Chart helpers ─────────────────────────────────────────────────────────────
+function sg2DrawBarChart(canvas, labels, data, color) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth, h = canvas.offsetHeight;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  if (!data.length) return;
+  const n = data.length, max = Math.max(...data, 1);
+  const pad = {top:8, bottom:18, left:4, right:4};
+  const chartH = h - pad.top - pad.bottom;
+  const barW = Math.max(2, Math.floor((w-pad.left-pad.right)/n)-3);
+  const step = Math.max(1, Math.ceil(n/5));
+  data.forEach((v,i) => {
+    const bh = Math.max(2, (v/max)*chartH);
+    const x = pad.left + i*((w-pad.left-pad.right)/n);
+    ctx.fillStyle = color + '33'; ctx.fillRect(x, pad.top, barW, chartH);
+    ctx.fillStyle = color; ctx.fillRect(x, pad.top+chartH-bh, barW, bh);
+    if (i%step===0 || i===n-1) {
+      ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='8px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(labels[i], x+barW/2, h-4);
+    }
+  });
 }
 
 function drawSGLine(canvas, labels, data, color) {
-  const dpr=devicePixelRatio;
-  canvas.width=canvas.offsetWidth*dpr; canvas.height=canvas.offsetHeight*dpr;
-  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const dpr = devicePixelRatio;
+  canvas.width = canvas.offsetWidth*dpr; canvas.height = canvas.offsetHeight*dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
   const w=canvas.offsetWidth, h=canvas.offsetHeight;
   const pad={top:10,right:10,bottom:24,left:44};
   const cW=w-pad.left-pad.right, cH=h-pad.top-pad.bottom;
@@ -7865,19 +7717,18 @@ function drawSGLine(canvas, labels, data, color) {
   [0,0.5,1].forEach(t=>{
     const y=pad.top+t*cH;
     ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(w-pad.right,y);ctx.stroke();
-    ctx.fillStyle='#4b5563';ctx.font='9px sans-serif';ctx.textAlign='right';
+    ctx.fillStyle='rgba(241,236,226,0.28)';ctx.font='9px sans-serif';ctx.textAlign='right';
     ctx.fillText(Math.round(maxV-t*(maxV-minV)),pad.left-4,y+4);
   });
-  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineJoin='round';ctx.lineCap='round';
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.beginPath();
   data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
   ctx.stroke();
   data.forEach((v,i)=>{ctx.fillStyle=color;ctx.beginPath();ctx.arc(xS(i),yS(v),3,0,Math.PI*2);ctx.fill();});
-  ctx.fillStyle='#4b5563';ctx.textAlign='center';ctx.font='8px sans-serif';
+  ctx.fillStyle='rgba(241,236,226,0.28)'; ctx.textAlign='center'; ctx.font='8px sans-serif';
   const step=Math.ceil(n/6);
   data.forEach((_,i)=>{if(i%step===0||i===n-1)ctx.fillText(labels[i],xS(i),h-6);});
 }
-
 
 function buildStatsWeeks() {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -8088,262 +7939,22 @@ function renderMobileView() {
   const mc = document.getElementById('mobile-cal');
   mc.innerHTML = '';
 
-  // Always clear body overlay modes on mobile — shop/tasks render inline here
-  document.body.classList.remove('shop-mode', 'todo-mode');
-
-  // Mode toggle bar
+  // Mode toggle
   const modeBar = document.createElement('div'); modeBar.className = 'mob-mode-bar';
   const raceBtn = document.createElement('button');
-  raceBtn.className = 'mob-mode-btn' + (mobMode==='race'||mobMode==='month'?' active':'');
+  raceBtn.className = 'mob-mode-btn active';
   raceBtn.textContent = '🏃 Plan';
-  raceBtn.addEventListener('click', () => { mobMode='race'; renderMobileView(); });
+  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
   modeBar.appendChild(raceBtn);
   const shopBtn = document.createElement('button');
-  shopBtn.className = 'mob-mode-btn' + (mobMode==='shop'?' active':'');
+  shopBtn.className = 'mob-mode-btn';
   shopBtn.textContent = '🛒 Shop';
-  shopBtn.addEventListener('click', () => { mobMode='shop'; renderMobileView(); });
+  shopBtn.addEventListener('click', () => setView('shop'));
   modeBar.appendChild(shopBtn);
-  const todoTabBtn = document.createElement('button');
-  todoTabBtn.className = 'mob-mode-btn' + (mobMode==='todo'?' active':'');
-  todoTabBtn.textContent = '✅ Tasks';
-  todoTabBtn.addEventListener('click', () => { mobMode='todo'; renderMobileView(); });
-  modeBar.appendChild(todoTabBtn);
   mc.appendChild(modeBar);
 
   if (mobMode === 'race') renderMobileRaceWeek();
-  else if (mobMode === 'month') renderMobileMonth();
-  else if (mobMode === 'shop') renderMobileShopInline(mc);
-  else if (mobMode === 'todo') renderMobileTodoInline(mc);
-}
-
-function renderMobileShopInline(mc) {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'padding-bottom:40px;';
-
-  // Header row
-  const head = document.createElement('div');
-  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
-  head.innerHTML = `
-    <h2 style="font-size:17px;font-weight:700;color:var(--text);margin:0;">🛒 Shopping</h2>
-    <div style="display:flex;gap:6px;">
-      <button class="shop-clear" id="mob-shop-notif-btn" onclick="enableShoppingNotifications();updateMobShopNotifBtn()">🔔 Notify</button>
-      <button class="shop-clear" onclick="clearBoughtItems()">Clear bought</button>
-    </div>`;
-  wrap.appendChild(head);
-
-  // Add item row
-  const addRow = document.createElement('div');
-  addRow.className = 'shop-add';
-  addRow.innerHTML = `
-    <input id="mob-shop-input" type="text" placeholder="Add item…" autocomplete="off" enterkeyhint="done"
-      onkeydown="if(event.key==='Enter'){event.preventDefault();addMobShopItem();}"/>
-    <button onclick="addMobShopItem()">Add</button>`;
-  wrap.appendChild(addRow);
-
-  // List container
-  const listEl = document.createElement('div');
-  listEl.id = 'mob-shop-list';
-  wrap.appendChild(listEl);
-
-  mc.appendChild(wrap);
-
-  // Render current list
-  renderMobShopList();
-  updateMobShopNotifBtn();
-}
-
-function renderMobShopList() {
-  const el = document.getElementById('mob-shop-list');
-  if (!el) return;
-  // Sync with main shop-list content
-  const src = document.getElementById('shop-list');
-  if (src) el.innerHTML = src.innerHTML;
-  // Re-wire toggle/delete clicks to use the inline list element
-  el.querySelectorAll('[onclick]').forEach(btn => {
-    // onclick attributes already reference global functions, they work as-is
-  });
-}
-
-function updateMobShopNotifBtn() {
-  pushStatus().then(s => {
-    const btn = document.getElementById('mob-shop-notif-btn');
-    if (!btn) return;
-    btn.textContent = s === 'on' ? '🔔 On' : '🔔 Notify';
-    btn.classList.toggle('on', s === 'on');
-  });
-}
-
-async function addMobShopItem() {
-  const input = document.getElementById('mob-shop-input');
-  if (!input) return;
-  const val = input.value.trim();
-  if (!val) return;
-  input.value = '';
-  // Use the same addShoppingItem logic but with our value
-  const temp = { id:'tmp_'+Date.now()+'_'+Math.random(), item:val, done:false };
-  shoppingItems.push(temp);
-  renderShoppingList();
-  renderMobShopList();
-  try {
-    const res = await fetch(SUPA_BASE + 'shopping_list', {
-      method:'POST', headers:{...SUPA_HDR,'Prefer':'return=representation'},
-      body: JSON.stringify({ item:val, done:false })
-    });
-    if (res.ok) {
-      const saved = (await res.json())[0];
-      const idx = shoppingItems.findIndex(i=>i.id===temp.id);
-      if (idx>=0 && saved) shoppingItems[idx] = saved;
-      renderShoppingList();
-      renderMobShopList();
-    }
-  } catch(e) { console.warn('addMobShopItem failed:', e); }
-}
-
-function renderMobileTodoInline(mc) {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'padding-bottom:40px;';
-
-  // Header row
-  const head = document.createElement('div');
-  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
-  head.innerHTML = `
-    <h2 style="font-size:17px;font-weight:700;color:var(--text);margin:0;">✅ Tasks</h2>
-    <button class="shop-clear" id="mob-todo-notif-btn" onclick="enableTodoNotifications()">🔔 Notify</button>`;
-  wrap.appendChild(head);
-
-  // Week nav
-  const weekNav = document.createElement('div');
-  weekNav.className = 'todo-week-nav';
-  weekNav.innerHTML = `
-    <button class="todo-week-btn" onclick="todoWeekOffset--;renderMobileView()">‹</button>
-    <div class="todo-week-lbl" id="mob-todo-week-lbl"></div>
-    <button class="todo-week-btn" onclick="todoWeekOffset++;renderMobileView()">›</button>`;
-  wrap.appendChild(weekNav);
-
-  // Add task row
-  const addWrap = document.createElement('div');
-  addWrap.className = 'todo-add-wrap';
-  addWrap.innerHTML = `
-    <input id="mob-todo-input" class="todo-add-input" type="text" placeholder="Add a task…" autocomplete="off" enterkeyhint="done"
-      onkeydown="if(event.key==='Enter'){event.preventDefault();addMobTodoItem();}"/>
-    <div class="todo-add-row">
-      <div class="todo-assignee-btns">
-        <button class="todo-assignee-btn on" id="mob-todo-ass-marius" onclick="setMobTodoAssignee('marius')">Marius</button>
-        <button class="todo-assignee-btn" id="mob-todo-ass-vilde" onclick="setMobTodoAssignee('vilde')">Vilde</button>
-        <button class="todo-assignee-btn" id="mob-todo-ass-both" onclick="setMobTodoAssignee('both')">Both</button>
-      </div>
-      <div class="todo-day-chips" id="mob-todo-day-chips"></div>
-      <button class="todo-add-btn" onclick="addMobTodoItem()">Add</button>
-    </div>`;
-  wrap.appendChild(addWrap);
-
-  // Task list
-  const listEl = document.createElement('div');
-  listEl.id = 'mob-todo-list';
-  wrap.appendChild(listEl);
-
-  mc.appendChild(wrap);
-
-  // Init state
-  window._mobTodoAssignee = window._mobTodoAssignee || 'marius';
-  window._mobTodoDay = window._mobTodoDay || null;
-  setMobTodoAssignee(window._mobTodoAssignee, true);
-
-  // Render week label + day chips + list
-  renderMobTodoWeekLabel();
-  renderMobTodoDayChips();
-  renderMobTodoList();
-
-  // Update notify btn
-  pushStatus().then(s => {
-    const btn = document.getElementById('mob-todo-notif-btn');
-    if (btn) { btn.textContent = s==='on'?'🔔 On':'🔔 Notify'; btn.classList.toggle('on', s==='on'); }
-  });
-}
-
-function renderMobTodoWeekLabel() {
-  const el = document.getElementById('mob-todo-week-lbl');
-  if (!el) return;
-  const days = todoWeekDays(todoWeekOffset);
-  const fmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  const label = todoWeekOffset === 0 ? 'This week' : todoWeekOffset === 1 ? 'Next week' : todoWeekOffset === -1 ? 'Last week' : `${fmt(days[0])} – ${fmt(days[6])}`;
-  el.textContent = label;
-}
-
-function renderMobTodoDayChips() {
-  const el = document.getElementById('mob-todo-day-chips');
-  if (!el) return;
-  const days = todoWeekDays(todoWeekOffset);
-  el.innerHTML = '';
-  days.forEach((d, i) => {
-    const ds = fmtDate(d);
-    const btn = document.createElement('button');
-    btn.className = 'todo-day-chip' + (window._mobTodoDay === ds ? ' active' : '');
-    btn.textContent = ['M','T','W','T','F','S','S'][i];
-    btn.addEventListener('click', () => {
-      window._mobTodoDay = (window._mobTodoDay === ds) ? null : ds;
-      renderMobTodoDayChips();
-    });
-    el.appendChild(btn);
-  });
-}
-
-function setMobTodoAssignee(a, silent) {
-  window._mobTodoAssignee = a;
-  ['marius','vilde','both'].forEach(x => {
-    const b = document.getElementById('mob-todo-ass-'+x);
-    if (b) b.classList.toggle('on', x === a);
-  });
-}
-
-async function addMobTodoItem() {
-  const input = document.getElementById('mob-todo-input');
-  if (!input) return;
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  const assignee = window._mobTodoAssignee || 'marius';
-  const day = window._mobTodoDay || null;
-  const temp = { id:'tmp_'+Date.now(), text, assignee, day, done:false };
-  todoItems.push(temp);
-  renderMobTodoList();
-  try {
-    const res = await fetch(SUPA_BASE + 'todo_list', {
-      method:'POST', headers:{...SUPA_HDR,'Prefer':'return=representation'},
-      body: JSON.stringify({ text, assignee, day, done:false })
-    });
-    if (res.ok) {
-      const saved = (await res.json())[0];
-      const idx = todoItems.findIndex(i=>i.id===temp.id);
-      if (idx>=0 && saved) todoItems[idx] = saved;
-      renderMobTodoList();
-      renderTodoView();
-      if (typeof notifyTodoAssignee === 'function') notifyTodoAssignee(saved);
-    }
-  } catch(e) { console.warn('addMobTodoItem failed:', e); }
-}
-
-function renderMobTodoList() {
-  const el = document.getElementById('mob-todo-list');
-  if (!el) return;
-  const days = todoWeekDays(todoWeekOffset);
-  const weekDates = days.map(fmtDate);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const weekItems = todoItems.filter(i => i.day ? weekDates.includes(i.day) : todoWeekOffset === 0);
-  if (!weekItems.length) { el.innerHTML = '<div class="todo-empty">No tasks this week — add one above.</div>'; return; }
-  const DAY_LABELS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  let html = '';
-  const nodayItems = weekItems.filter(i => !i.day);
-  if (nodayItems.length) html += renderTodoGroup('Anytime this week', nodayItems);
-  days.forEach((d, i) => {
-    const ds = fmtDate(d);
-    const dayItems = weekItems.filter(it => it.day === ds);
-    if (!dayItems.length) return;
-    const isToday = d.toDateString() === today.toDateString();
-    const label = (isToday ? 'Today — ' : '') + DAY_LABELS[i] + ', ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    html += renderTodoGroup(label, dayItems);
-  });
-  el.innerHTML = html || '<div class="todo-empty">No tasks this week.</div>';
+  else renderMobileMonth();
 }
 
 function openMobFlagMenu(dateStr) {
@@ -9186,16 +8797,10 @@ let weekViewIndex = 0; // which week is shown in week view
 let dayViewDate = new Date(); // which day is shown in day view
 
 function setView(view) {
-  // On mobile portrait, shop and tasks render inline — don't trigger overlay modes
-  if ((view === 'shop' || view === 'todo') && typeof isMobilePortrait === 'function' && isMobilePortrait()) {
-    mobMode = view; renderMobileView(); return;
-  }
   currentView = view;
   document.body.classList.toggle('shop-mode', view === 'shop');
-  document.body.classList.toggle('todo-mode', view === 'todo');
-  if (view === 'todo') { renderTodoDayChips(); renderTodoWeekLabel(); registerTodoPushForUser(); }
   document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
-  const _monthCal = document.getElementById('month-cal'); if (_monthCal) _monthCal.style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
+  document.getElementById('month-cal').style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
   document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
   document.getElementById('day-view').style.display   = view === 'day'      ? '' : 'none';
   ['calendar','week','day','shop'].forEach(v => {
@@ -9635,16 +9240,6 @@ function renderBriefing() {
     rows += briefRow('📅', 'Calendar', ev);
   }
 
-  // Todo tasks for today/tomorrow — filtered to current profile only
-  const todayTasks = (todoItems||[]).filter(i =>
-    !i.done && i.day === dateStr &&
-    (i.assignee === activeProfile || i.assignee === 'both')
-  );
-  if (todayTasks.length) {
-    const taskHtml = todayTasks.map(t => escShop(t.text)).join(', ');
-    rows += `<div class="brief-row brief-row-tap" onclick="setView('todo')"><div class="ic">✅</div><div class="bd"><div class="bl">Tasks</div><div class="bv">${taskHtml}</div></div></div>`;
-  }
-
   // Shopping list reminder (shared, not day-specific) — tap to open the list
   const pendingShop = (shoppingItems || []).filter(i => !i.done);
   if (pendingShop.length) {
@@ -9656,7 +9251,7 @@ function renderBriefing() {
 
   // Solo-evening heuristic (partner working evening / long / night)
   let alert = '';
-  if ((wifePrefix === 'eve' || wifePrefix === 'other') && activeProfile === 'marius') {
+  if (wifePrefix === 'eve' || wifePrefix === 'other') {
     alert = `<div class="brief-alert">🧒 You're likely on kids tonight — partner working late.</div>`;
   }
 
@@ -9684,18 +9279,8 @@ let shoppingItems = [];
 
 function exitShop() {
   document.body.classList.remove('shop-mode');
-  document.body.classList.remove('todo-mode');
   const b = document.getElementById('view-btn-shop'); if (b) b.classList.remove('active');
-  const bt = document.getElementById('view-btn-todo'); if (bt) bt.classList.remove('active');
-  if (isMobilePortrait()) { mobMode='race'; renderMobileView(); }
-  else setView('calendar');
-}
-
-function exitTodo() {
-  document.body.classList.remove('todo-mode');
-  document.body.classList.remove('shop-mode');
-  const bt = document.getElementById('view-btn-todo'); if (bt) bt.classList.remove('active');
-  if (isMobilePortrait()) { mobMode='race'; renderMobileView(); }
+  if (isMobilePortrait()) renderMobileView();
   else setView('calendar');
 }
 
@@ -9713,8 +9298,6 @@ async function loadShoppingList() {
 }
 
 function renderShoppingList() {
-  // Sync mobile inline shop list if visible
-  setTimeout(() => { if (typeof renderMobShopList === 'function') renderMobShopList(); }, 0);
   const el = document.getElementById('shop-list');
   if (!el) return;
   if (!shoppingItems.length) {
@@ -10077,79 +9660,6 @@ async function enableShoppingNotifications() {
     alert('Notifications enabled \uD83C\uDF89 You\u2019ll get a heads-up when items are added to the list.');
   } catch(e) {
     console.warn('Enable notifications failed:', e);
-    alert('Could not enable notifications: ' + (e && e.message ? e.message : e));
-  }
-}
-
-
-// ── TODO PUSH NOTIFICATIONS ──────────────────────────────────────────────────
-
-// Save push subscription tagged with user id so the other person can be notified
-async function registerTodoPushForUser() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (VAPID_PUBLIC_KEY.startsWith('REPLACE')) return;
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (isIOS && !isStandalonePWA()) return;
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
-    }
-    const subJson = sub.toJSON();
-    // Store with user_id so targeted notifications work
-    await fetch(SUPA_BASE + 'push_subscriptions', {
-      method:'POST',
-      headers:{...SUPA_HDR, 'Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile })
-    });
-  } catch(e) { console.warn('registerTodoPushForUser failed:', e); }
-}
-
-// Send a push notification to a specific user via Supabase Edge Function
-async function sendTodoNotification(toUser, taskText) {
-  try {
-    const SUPA_FN_BASE = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
-    const fromName = activeProfile === 'marius' ? 'Marius' : 'Vilde';
-    await fetch(SUPA_FN_BASE + 'send-todo-push', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+SUPA_KEY },
-      body: JSON.stringify({ to_user: toUser, from_name: fromName, task: taskText })
-    });
-  } catch(e) { console.warn('sendTodoNotification failed:', e); }
-}
-
-// Enable todo notifications for the current user
-async function enableTodoNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert('Push notifications aren\'t supported on this device or browser.'); return;
-  }
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (isIOS && !isStandalonePWA()) {
-    alert('On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), then open it from there and tap 🔔 again.');
-    return;
-  }
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { alert('Notification permission not granted.'); return; }
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
-    }
-    const subJson = sub.toJSON();
-    const res = await fetch(SUPA_BASE + 'push_subscriptions', {
-      method:'POST',
-      headers:{...SUPA_HDR,'Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile })
-    });
-    if (!res.ok && res.status !== 409) throw new Error('save failed: ' + res.status);
-    const btn = document.getElementById('todo-notif-btn');
-    if (btn) { btn.textContent = '🔔 On'; btn.classList.add('on'); }
-    alert('Notifications enabled 🎉 You\'ll get a heads-up when ' + (activeProfile==='marius'?'Vilde':'Marius') + ' adds a task for you.');
-  } catch(e) {
     alert('Could not enable notifications: ' + (e && e.message ? e.message : e));
   }
 }
