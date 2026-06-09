@@ -1167,51 +1167,50 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-pill-empty { background:var(--bg); border:1px dashed var(--border-mid); border-radius:8px; padding:8px 12px; cursor:pointer; }
 .mob-add-btn { font-size:12px; color:var(--muted); font-style:italic; }
 
-/* ── Sterk Gutt Stats v2 (dark neon-green aesthetic) ── */
-.sg2-filter-bar { padding:14px 16px 12px; border-bottom:1px solid rgba(255,255,255,0.06); background:#0a0907; }
-.sg2-filter-title { font-family:'JetBrains Mono',monospace; font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(241,236,226,0.28);margin-bottom:10px; }
-.sg2-preset-row { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px; }
-.sg2-preset-btn { padding:5px 12px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(241,236,226,0.38);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;cursor:pointer;transition:all 0.12s;border-radius:2px; }
-.sg2-preset-btn.active { border-color:#c8f06e;background:rgba(200,240,110,0.08);color:#c8f06e; }
-.sg2-filter-row { display:flex;align-items:center;gap:8px;margin-top:8px; }
-.sg2-date-input { flex:1;background:#111113;border:1px solid rgba(255,255,255,0.10);padding:7px 10px;font-size:12px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;color-scheme:dark;border-radius:2px; }
-.sg2-apply-btn { padding:7px 14px;border:1px solid #c8f06e;background:rgba(200,240,110,0.08);color:#c8f06e;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;flex-shrink:0; }
-.sg2-subtabs { display:flex;border-bottom:1px solid rgba(255,255,255,0.06);padding:0 16px;background:#0a0907; }
-.sg2-subtab { flex:1;padding:12px 0;background:none;border:none;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.10em;text-transform:uppercase;color:rgba(241,236,226,0.32);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s; }
-.sg2-subtab.active { color:#c8f06e;border-bottom-color:#c8f06e; }
-.sg2-body { padding:14px 12px 60px; }
-.sg2-kpi-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px; }
-.sg2-kpi-card { background:#111113;border:1px solid rgba(255,255,255,0.07);padding:12px 10px 10px;text-align:center; }
-.sg2-kpi-val { font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;line-height:1;letter-spacing:0.02em;margin-bottom:4px; }
-.sg2-kpi-lbl { font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:2px; }
-.sg2-kpi-sub { font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.06em;color:rgba(241,236,226,0.28); }
-.sg2-stat-card { background:#111113;border:1px solid rgba(255,255,255,0.07);padding:14px;margin-bottom:8px; }
-.sg2-card-title { font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(241,236,226,0.28);margin-bottom:14px; }
-.sg2-muscle-row { display:grid;grid-template-columns:88px 1fr 34px;align-items:center;gap:10px;margin-bottom:9px; }
-.sg2-muscle-row:last-child { margin-bottom:0; }
-.sg2-muscle-lbl { font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.04em;color:rgba(241,236,226,0.55);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.sg2-muscle-track { height:6px;background:rgba(255,255,255,0.06);overflow:hidden; }
-.sg2-muscle-fill { height:6px;background:linear-gradient(90deg,#c8f06e,#a8d84e);border-radius:0 2px 2px 0;transition:width 0.65s cubic-bezier(0.16,1,0.3,1);width:0%; }
-.sg2-muscle-val { font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#c8f06e;text-align:right; }
-.sg2-routine-card { background:#111113;border:1px solid rgba(255,255,255,0.07);padding:14px;margin-bottom:6px;cursor:pointer;transition:border-color 0.15s; }
-.sg2-routine-card:hover { border-color:rgba(200,240,110,0.3); }
-.sg2-routine-name { font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#f4efe5;letter-spacing:0.02em;margin-bottom:8px; }
-.sg2-routine-meta { display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px; }
-.sg2-routine-item { font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(241,236,226,0.38);letter-spacing:0.04em; }
-.sg2-routine-item span { color:#f4efe5;font-weight:700;margin-right:2px; }
-.sg2-routine-bar-track { height:3px;background:rgba(255,255,255,0.06);overflow:hidden; }
-.sg2-routine-bar-fill { height:3px;background:#c8f06e;border-radius:0 2px 2px 0;transition:width 0.5s cubic-bezier(0.16,1,0.3,1); }
-.sg2-ex-select { width:100%;background:#0a0907;border:1px solid rgba(255,255,255,0.10);padding:11px 14px;font-size:14px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;margin-bottom:14px;cursor:pointer;-webkit-appearance:none;appearance:none;border-radius:2px; }
-.sg2-ex-select:focus { border-color:#c8f06e; }
-.sg2-back-running { display:flex;align-items:center;gap:8px;padding:10px 16px 0;margin-bottom:2px; }
-.sg2-back-running-btn { background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:rgba(241,236,226,0.55);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:5px 12px;cursor:pointer;transition:all 0.15s;border-radius:2px; }
-.sg2-back-running-btn:hover { background:rgba(255,255,255,0.1);color:#f4efe5; }
-.sg2-body-map { width:100%;max-width:460px;margin:0 auto;padding-bottom:16px; --bm-color-0:#111113; --bm-color-1:rgba(200,240,110,0.12); --bm-color-2:rgba(200,240,110,0.24); --bm-color-3:rgba(200,240,110,0.36); --bm-color-4:rgba(200,240,110,0.48); --bm-color-5:rgba(200,240,110,0.58); --bm-color-6:rgba(200,240,110,0.68); --bm-color-7:rgba(200,240,110,0.76); --bm-color-8:rgba(200,240,110,0.84); --bm-color-9:rgba(200,240,110,0.92); --bm-color-10:#c8f06e; }
-.sg2-body-map>div { width:100%!important;justify-content:center!important; }
-.sg2-body-map>div>div { max-width:50%!important;flex:1 1 0!important;min-width:0!important; }
-.sg2-body-map svg { width:100%!important;height:auto!important;display:block; }
-.sg2-map-legend { display:flex;align-items:center;justify-content:center;gap:14px;font-size:9px;letter-spacing:0.10em;color:rgba(241,236,226,0.38);text-transform:uppercase;margin-top:8px; }
-.sg2-legend-dot { display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+/* ── Sterk Gutt Stats v2 ── */
+.sg2-filter-bar{padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.06);background:#0a0907;}
+.sg2-filter-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(241,236,226,.28);margin-bottom:10px;}
+.sg2-preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
+.sg2-preset-btn{padding:5px 12px;border:1px solid rgba(255,255,255,.08);background:transparent;color:rgba(241,236,226,.38);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;cursor:pointer;transition:all .12s;border-radius:2px;}
+.sg2-preset-btn.active{border-color:#c8f06e;background:rgba(200,240,110,.08);color:#c8f06e;}
+.sg2-filter-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.sg2-date-input{flex:1;background:#111113;border:1px solid rgba(255,255,255,.10);padding:7px 10px;font-size:12px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;color-scheme:dark;border-radius:2px;}
+.sg2-apply-btn{padding:7px 14px;border:1px solid #c8f06e;background:rgba(200,240,110,.08);color:#c8f06e;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;flex-shrink:0;}
+.sg2-subtabs{display:flex;border-bottom:1px solid rgba(255,255,255,.06);padding:0 16px;background:#0a0907;}
+.sg2-subtab{flex:1;padding:12px 0;background:none;border:none;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:rgba(241,236,226,.32);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;}
+.sg2-subtab.active{color:#c8f06e;border-bottom-color:#c8f06e;}
+.sg2-body{padding:14px 12px 60px;}
+.sg2-kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;}
+.sg2-kpi-card{background:#111113;border:1px solid rgba(255,255,255,.07);padding:12px 10px 10px;text-align:center;}
+.sg2-kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;line-height:1;letter-spacing:.02em;margin-bottom:4px;}
+.sg2-kpi-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:2px;}
+.sg2-kpi-sub{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.06em;color:rgba(241,236,226,.28);}
+.sg2-stat-card{background:#111113;border:1px solid rgba(255,255,255,.07);padding:14px;margin-bottom:8px;}
+.sg2-card-title{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(241,236,226,.28);margin-bottom:14px;}
+.sg2-muscle-row{display:grid;grid-template-columns:88px 1fr 34px;align-items:center;gap:10px;margin-bottom:9px;}
+.sg2-muscle-row:last-child{margin-bottom:0;}
+.sg2-muscle-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;color:rgba(241,236,226,.55);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sg2-muscle-track{height:6px;background:rgba(255,255,255,.06);overflow:hidden;}
+.sg2-muscle-fill{height:6px;background:linear-gradient(90deg,#c8f06e,#a8d84e);border-radius:0 2px 2px 0;transition:width .65s cubic-bezier(.16,1,.3,1);width:0%;}
+.sg2-muscle-val{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#c8f06e;text-align:right;}
+.sg2-routine-card{background:#111113;border:1px solid rgba(255,255,255,.07);padding:14px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
+.sg2-routine-card:hover{border-color:rgba(200,240,110,.3);}
+.sg2-routine-name{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#f4efe5;letter-spacing:.02em;margin-bottom:8px;}
+.sg2-routine-meta{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;}
+.sg2-routine-item{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(241,236,226,.38);letter-spacing:.04em;}
+.sg2-routine-item span{color:#f4efe5;font-weight:700;margin-right:2px;}
+.sg2-routine-bar-track{height:3px;background:rgba(255,255,255,.06);overflow:hidden;}
+.sg2-routine-bar-fill{height:3px;background:#c8f06e;border-radius:0 2px 2px 0;transition:width .5s cubic-bezier(.16,1,.3,1);}
+.sg2-ex-select{width:100%;background:#0a0907;border:1px solid rgba(255,255,255,.10);padding:11px 14px;font-size:14px;color:#f4efe5;font-family:'JetBrains Mono',monospace;outline:none;margin-bottom:14px;cursor:pointer;-webkit-appearance:none;appearance:none;border-radius:2px;}
+.sg2-ex-select:focus{border-color:#c8f06e;}
+.sg2-back-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(241,236,226,.55);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;cursor:pointer;transition:all .15s;border-radius:2px;margin:10px 16px 2px;display:inline-block;}
+.sg2-back-btn:hover{background:rgba(255,255,255,.1);color:#f4efe5;}
+.sg2-body-map{width:100%;max-width:460px;margin:0 auto;padding-bottom:16px;--bm-color-0:#111113;--bm-color-1:rgba(200,240,110,.12);--bm-color-2:rgba(200,240,110,.24);--bm-color-3:rgba(200,240,110,.36);--bm-color-4:rgba(200,240,110,.48);--bm-color-5:rgba(200,240,110,.58);--bm-color-6:rgba(200,240,110,.68);--bm-color-7:rgba(200,240,110,.76);--bm-color-8:rgba(200,240,110,.84);--bm-color-9:rgba(200,240,110,.92);--bm-color-10:#c8f06e;}
+.sg2-body-map>div{width:100%!important;justify-content:center!important;}
+.sg2-body-map>div>div{max-width:50%!important;flex:1 1 0!important;min-width:0!important;}
+.sg2-body-map svg{width:100%!important;height:auto!important;display:block;}
+.sg2-map-legend{display:flex;align-items:center;justify-content:center;gap:14px;font-size:9px;letter-spacing:.10em;color:rgba(241,236,226,.38);text-transform:uppercase;margin-top:8px;}
+.sg2-legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
@@ -7274,25 +7273,21 @@ function drawProgressLine(canvas, labels, data, color, showAnnotations) {
 }
 
 
-// ── STERK GUTT STATS v2 (rich dashboard) ────────────────────────────────────
-// Uses body-muscles CDN for muscle heatmap. State:
+// ── STERK GUTT STATS v2 ─────────────────────────────────────────────────────
 let _sgPreset = 'all';
 let _sgSubtab = 'overview';
 
-// body-muscles import (lazy, once)
 let _bodyMuscleMod = null;
 async function getBodyMuscleMod() {
   if (_bodyMuscleMod) return _bodyMuscleMod;
-  try {
-    _bodyMuscleMod = await import('https://cdn.jsdelivr.net/npm/body-muscles@1/dist/body-muscles.es.js');
-  } catch(e) { console.warn('body-muscles load failed', e); _bodyMuscleMod = {}; }
+  try { _bodyMuscleMod = await import('https://cdn.jsdelivr.net/npm/body-muscles@1/dist/body-muscles.es.js'); }
+  catch(e) { console.warn('body-muscles load failed',e); _bodyMuscleMod = {}; }
   return _bodyMuscleMod;
 }
 
 const SG2_MUSCLE_GROUPS = ['Abs','Arms','Back','Chest','Legs','Shoulders'];
 const SG2_NORMALISE = {'Quads':'Legs','Hamstrings':'Legs','Glutes':'Legs','Calves':'Legs','Biceps':'Arms','Triceps':'Arms'};
 function sg2NormMuscle(m) { return SG2_NORMALISE[m] || m; }
-
 const SG2_PM_TO_BODY = {
   'Pecs':['chest_l','chest_r'],'Upper Pecs':['chest_l','chest_r'],'Lower Pecs':['chest_l','chest_r'],
   'Lats':['lats_l','lats_r'],'Traps':['traps_upper_l','traps_upper_r','traps_lower_l','traps_lower_r'],
@@ -7310,17 +7305,14 @@ const SG2_PM_TO_BODY = {
 async function renderSGStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
-
   const loadEl = document.createElement('div');
-  loadEl.style.cssText = 'font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.10em;color:rgba(241,236,226,0.28);text-align:center;padding:40px 0;';
+  loadEl.style.cssText = 'font-size:12px;letter-spacing:.06em;color:rgba(241,236,226,.28);text-align:center;padding:40px 0;';
   loadEl.textContent = 'Loading Sterk Gutt data…';
   container.appendChild(loadEl);
-
   const allSessions = await fetchSGSessions();
   loadEl.remove();
-
   if (!allSessions.length) {
-    container.innerHTML = '<div style="font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);font-size:12px;padding:40px 20px;text-align:center;letter-spacing:0.06em;">No sessions found in Sterk Gutt.</div>';
+    container.innerHTML = '<div style="color:rgba(241,236,226,.28);font-size:12px;padding:40px 20px;text-align:center;letter-spacing:.06em;">No sessions found in Sterk Gutt.</div>';
     return;
   }
   window._sgAllSessions = allSessions;
@@ -7330,69 +7322,47 @@ async function renderSGStats() {
 function sg2BuildUI(container, allSessions) {
   container.innerHTML = '';
 
-  // ── Back to Running button ──
-  const backRow = document.createElement('div');
-  backRow.className = 'sg2-back-running';
+  // Back to running button
   const backBtn = document.createElement('button');
-  backBtn.className = 'sg2-back-running-btn';
+  backBtn.className = 'sg2-back-btn';
   backBtn.textContent = '← Running stats';
   backBtn.addEventListener('click', () => setStatsTab('running'));
-  backRow.appendChild(backBtn);
-  container.appendChild(backRow);
+  container.appendChild(backBtn);
 
-  // ── Filter bar ──
-  const fb = document.createElement('div');
-  fb.className = 'sg2-filter-bar';
-  const ft = document.createElement('div');
-  ft.className = 'sg2-filter-title';
-  ft.textContent = 'Time period';
+  // Filter bar
+  const fb = document.createElement('div'); fb.className = 'sg2-filter-bar';
+  const ft = document.createElement('div'); ft.className = 'sg2-filter-title'; ft.textContent = 'Time period';
   fb.appendChild(ft);
+  const presetRow = document.createElement('div'); presetRow.className = 'sg2-preset-row';
 
-  const presetRow = document.createElement('div');
-  presetRow.className = 'sg2-preset-row';
-  const presets = [
-    {key:'all',label:'All time'},{key:'1w',label:'Last week'},
-    {key:'1m',label:'Last month'},{key:'3m',label:'3 months'},
-    {key:'6m',label:'6 months'},{key:'1y',label:'1 year'},
-    {key:'custom',label:'Custom…'},
-  ];
-
-  const customRow = document.createElement('div');
-  customRow.className = 'sg2-filter-row';
-  customRow.style.display = _sgPreset === 'custom' ? 'flex' : 'none';
   const earliest = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt)))) : new Date();
+  const customRow = document.createElement('div'); customRow.className = 'sg2-filter-row'; customRow.style.display = _sgPreset==='custom'?'flex':'none';
   const fromIn = document.createElement('input'); fromIn.type='date'; fromIn.className='sg2-date-input'; fromIn.value=earliest.toISOString().slice(0,10);
-  const sep = document.createElement('span'); sep.textContent='→'; sep.style.cssText='font-size:11px;color:rgba(241,236,226,0.28);';
+  const sep = document.createElement('span'); sep.textContent='→'; sep.style.cssText='font-size:11px;color:rgba(241,236,226,.28);';
   const toIn = document.createElement('input'); toIn.type='date'; toIn.className='sg2-date-input'; toIn.value=new Date().toISOString().slice(0,10);
   const goBtn = document.createElement('button'); goBtn.className='sg2-apply-btn'; goBtn.textContent='Go';
   goBtn.addEventListener('click', () => { _sgPreset='custom'; sg2Render(allSessions); });
   customRow.appendChild(fromIn); customRow.appendChild(sep); customRow.appendChild(toIn); customRow.appendChild(goBtn);
 
-  presets.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'sg2-preset-btn' + (_sgPreset===p.key?' active':'');
-    btn.textContent = p.label;
+  const PRESETS = [{key:'all',label:'All time'},{key:'1w',label:'Last week'},{key:'1m',label:'Last month'},{key:'3m',label:'3 months'},{key:'6m',label:'6 months'},{key:'1y',label:'1 year'},{key:'custom',label:'Custom…'}];
+  PRESETS.forEach(p => {
+    const btn = document.createElement('button'); btn.className='sg2-preset-btn'+(_sgPreset===p.key?' active':''); btn.textContent=p.label;
     btn.addEventListener('click', () => {
       _sgPreset = p.key;
       presetRow.querySelectorAll('.sg2-preset-btn').forEach(b => b.classList.toggle('active', b.textContent===p.label));
-      customRow.style.display = p.key==='custom' ? 'flex' : 'none';
+      customRow.style.display = p.key==='custom'?'flex':'none';
       if (p.key !== 'custom') sg2Render(allSessions);
     });
     presetRow.appendChild(btn);
   });
+  fb.appendChild(presetRow); fb.appendChild(customRow); container.appendChild(fb);
 
-  fb.appendChild(presetRow);
-  fb.appendChild(customRow);
-  container.appendChild(fb);
-
-  // ── Sub-tabs ──
-  const subtabs = document.createElement('div');
-  subtabs.className = 'sg2-subtabs';
+  // Sub-tabs
+  const subtabs = document.createElement('div'); subtabs.className='sg2-subtabs';
   ['Overview','Routines','Exercise'].forEach(tab => {
     const btn = document.createElement('button');
-    btn.className = 'sg2-subtab' + (_sgSubtab===tab.toLowerCase()?' active':'');
-    btn.textContent = tab;
-    btn.dataset.tab = tab.toLowerCase();
+    btn.className = 'sg2-subtab'+(_sgSubtab===tab.toLowerCase()?' active':'');
+    btn.textContent = tab; btn.dataset.tab = tab.toLowerCase();
     btn.addEventListener('click', () => {
       _sgSubtab = tab.toLowerCase();
       subtabs.querySelectorAll('.sg2-subtab').forEach(b => b.classList.toggle('active', b.dataset.tab===_sgSubtab));
@@ -7402,16 +7372,8 @@ function sg2BuildUI(container, allSessions) {
   });
   container.appendChild(subtabs);
 
-  // ── Content area ──
-  const area = document.createElement('div');
-  area.id = 'sg2-area';
-  area.className = 'sg2-body';
+  const area = document.createElement('div'); area.id='sg2-area'; area.className='sg2-body';
   container.appendChild(area);
-
-  // Store refs for date range reading
-  container._sgFromIn = fromIn;
-  container._sgToIn   = toIn;
-
   sg2Render(allSessions);
 }
 
@@ -7419,293 +7381,241 @@ function sg2GetRange(allSessions) {
   const now = new Date(); now.setHours(23,59,59,999);
   if (_sgPreset === 'all') {
     const from = allSessions.length ? new Date(Math.min(...allSessions.map(s=>new Date(s.started_at||s.startedAt)))) : new Date(0);
-    from.setHours(0,0,0,0);
-    return {from, to:now};
+    from.setHours(0,0,0,0); return {from,to:now};
   }
   if (_sgPreset === 'custom') {
-    const fromEl = document.querySelector('#stats-content .sg2-date-input');
-    const toEl   = document.querySelectorAll('#stats-content .sg2-date-input')[1];
+    const inputs = document.querySelectorAll('#stats-content .sg2-date-input');
     return {
-      from: fromEl?.value ? new Date(fromEl.value+'T00:00:00') : new Date(0),
-      to:   toEl?.value   ? new Date(toEl.value+'T23:59:59')   : now,
+      from: inputs[0]?.value ? new Date(inputs[0].value+'T00:00:00') : new Date(0),
+      to:   inputs[1]?.value ? new Date(inputs[1].value+'T23:59:59') : now,
     };
   }
   const days = {'1w':7,'1m':30,'3m':90,'6m':180,'1y':365}[_sgPreset]||30;
   const from = new Date(now); from.setDate(from.getDate()-days); from.setHours(0,0,0,0);
-  return {from, to:now};
+  return {from,to:now};
 }
 
 function sg2Render(allSessions) {
   const {from,to} = sg2GetRange(allSessions);
-  const sessions = allSessions.filter(s => {
-    const d = new Date(s.started_at||s.startedAt);
-    return d >= from && d <= to;
-  });
+  const sessions = allSessions.filter(s => { const d=new Date(s.started_at||s.startedAt); return d>=from&&d<=to; });
   const area = document.getElementById('sg2-area');
   if (!area) return;
   area.innerHTML = '';
-  if (_sgSubtab === 'overview')  sg2RenderOverview(sessions, area);
-  if (_sgSubtab === 'routines')  sg2RenderRoutines(sessions, allSessions, area);
-  if (_sgSubtab === 'exercise')  sg2RenderExerciseTab(sessions, area);
+  if (_sgSubtab==='overview')  sg2RenderOverview(sessions, area);
+  if (_sgSubtab==='routines')  sg2RenderRoutines(sessions, allSessions, area);
+  if (_sgSubtab==='exercise')  sg2RenderExerciseTab(sessions, area);
 }
 
-// ── Overview ──────────────────────────────────────────────────────────────────
 function sg2RenderOverview(sessions, area) {
   const n = sessions.length;
   const allSets = sessions.reduce((a,s)=>a+(s.exercises||[]).reduce((b,ex)=>b+(ex.sets||[]).filter(st=>st.logged).length,0),0);
-  const avgSets = n ? (allSets/n).toFixed(1) : 0;
+  const avgSets = n?(allSets/n).toFixed(1):0;
   const totalVol = Math.round(sessions.reduce((a,s)=>a+sgCalcVolume(s),0));
   const totalDur = sessions.reduce((a,s)=>a+(s.duration||0),0);
-  const avgDur = n ? Math.round(totalDur/n/60) : 0;
+  const avgDur = n?Math.round(totalDur/n/60):0;
   const weekCounts = {};
   sessions.forEach(s => {
-    const d = new Date(s.started_at||s.startedAt);
-    const mon = new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
-    const k = mon.toISOString().slice(0,10);
-    weekCounts[k] = (weekCounts[k]||0)+1;
+    const d=new Date(s.started_at||s.startedAt);
+    const mon=new Date(d); mon.setDate(d.getDate()-((d.getDay()+6)%7));
+    const k=mon.toISOString().slice(0,10);
+    weekCounts[k]=(weekCounts[k]||0)+1;
   });
-  const totalWeeks = Object.keys(weekCounts).length || 1;
-  const freq = (n/totalWeeks).toFixed(1);
+  const totalWeeks=Object.keys(weekCounts).length||1;
+  const freq=(n/totalWeeks).toFixed(1);
 
   // KPI grid
-  const kpiGrid = document.createElement('div');
-  kpiGrid.className = 'sg2-kpi-grid';
-  [
-    {val:n,             lbl:'Sessions',      sub:'in period',   color:'#c8f06e'},
-    {val:avgSets,       lbl:'Avg sets',      sub:'per session', color:'#00ffcc'},
-    {val:freq,          lbl:'Sess/week',     sub:`${totalWeeks} weeks`,color:'#f0a96e'},
-    {val:avgDur+'m',    lbl:'Avg duration',  sub:'per session', color:'#7c6aff'},
-    {val:Math.round(totalVol/1000)+'t', lbl:'Total volume', sub:'sets×reps×kg', color:'#00ffcc'},
-    {val:allSets,       lbl:'Total sets',    sub:'logged',      color:'#c8f06e'},
-  ].forEach(k => {
-    const c = document.createElement('div');
-    c.className = 'sg2-kpi-card';
-    c.innerHTML = `<div class="sg2-kpi-val" style="color:${k.color}">${k.val}</div><div class="sg2-kpi-lbl">${k.lbl}</div><div class="sg2-kpi-sub">${k.sub}</div>`;
+  const kpiGrid=document.createElement('div'); kpiGrid.className='sg2-kpi-grid';
+  [{val:n,lbl:'Sessions',sub:'in period',color:'#c8f06e'},
+   {val:avgSets,lbl:'Avg sets',sub:'per session',color:'#00ffcc'},
+   {val:freq,lbl:'Sess/week',sub:totalWeeks+' weeks',color:'#f0a96e'},
+   {val:avgDur+'m',lbl:'Avg duration',sub:'per session',color:'#7c6aff'},
+   {val:Math.round(totalVol/1000)+'t',lbl:'Total volume',sub:'sets×reps×kg',color:'#00ffcc'},
+   {val:allSets,lbl:'Total sets',sub:'logged',color:'#c8f06e'},
+  ].forEach(k=>{
+    const c=document.createElement('div'); c.className='sg2-kpi-card';
+    c.innerHTML='<div class="sg2-kpi-val" style="color:'+k.color+'">'+k.val+'</div><div class="sg2-kpi-lbl">'+k.lbl+'</div><div class="sg2-kpi-sub">'+k.sub+'</div>';
     kpiGrid.appendChild(c);
   });
   area.appendChild(kpiGrid);
 
-  // Weekly sessions chart
-  const wc = document.createElement('div'); wc.className = 'sg2-stat-card';
-  wc.innerHTML = '<div class="sg2-card-title">Weekly sessions</div><div style="position:relative;width:100%;height:120px;overflow:hidden;"><canvas id="sg2-chart-weekly" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
+  // Weekly bar chart card
+  const wc=document.createElement('div'); wc.className='sg2-stat-card';
+  wc.innerHTML='<div class="sg2-card-title">Weekly sessions</div><div style="position:relative;width:100%;height:120px;overflow:hidden;"><canvas id="sg2-weekly" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
   area.appendChild(wc);
 
   // Muscle volume bars
-  const muscles = {};
-  sessions.forEach(s => {
-    (s.exercises||[]).forEach(ex => {
-      const sets = (ex.sets||[]).filter(st=>st.logged).length;
-      if (!sets) return;
-      const m = sg2NormMuscle(ex.muscle) || 'Other';
-      muscles[m] = (muscles[m]||0) + sets;
-    });
+  const muscles={};
+  sessions.forEach(s=>(s.exercises||[]).forEach(ex=>{
+    const sets=(ex.sets||[]).filter(st=>st.logged).length; if(!sets) return;
+    const m=sg2NormMuscle(ex.muscle)||'Other'; muscles[m]=(muscles[m]||0)+sets;
+  }));
+  const muscleSorted=Object.entries(muscles).sort((a,b)=>{
+    const ai=SG2_MUSCLE_GROUPS.indexOf(a[0]),bi=SG2_MUSCLE_GROUPS.indexOf(b[0]);
+    if(ai>=0&&bi>=0) return ai-bi; if(ai>=0) return -1; if(bi>=0) return 1; return b[1]-a[1];
   });
-  const muscleSorted = Object.entries(muscles).sort((a,b) => {
-    const ai=SG2_MUSCLE_GROUPS.indexOf(a[0]), bi=SG2_MUSCLE_GROUPS.indexOf(b[0]);
-    if (ai>=0&&bi>=0) return ai-bi; if (ai>=0) return -1; if (bi>=0) return 1;
-    return b[1]-a[1];
-  });
-  const maxM = Math.max(...muscleSorted.map(e=>e[1]), 1);
-
-  const mc = document.createElement('div'); mc.className = 'sg2-stat-card';
-  mc.innerHTML = '<div class="sg2-card-title">Muscle volume (sets)</div>';
-  if (!muscleSorted.length) {
-    mc.innerHTML += '<div style="font-size:11px;color:rgba(241,236,226,0.28);letter-spacing:0.06em;padding:4px 0;">No data yet</div>';
+  const maxM=Math.max(...muscleSorted.map(e=>e[1]),1);
+  const mc=document.createElement('div'); mc.className='sg2-stat-card';
+  mc.innerHTML='<div class="sg2-card-title">Muscle volume (sets)</div>';
+  if(!muscleSorted.length) {
+    const nd=document.createElement('div'); nd.style.cssText='font-size:11px;color:rgba(241,236,226,.28);padding:4px 0;letter-spacing:.06em;'; nd.textContent='No data yet'; mc.appendChild(nd);
   } else {
-    muscleSorted.forEach(([m,v]) => {
-      const row = document.createElement('div'); row.className = 'sg2-muscle-row';
-      row.innerHTML = `<span class="sg2-muscle-lbl">${m}</span><div class="sg2-muscle-track"><div class="sg2-muscle-fill" data-pct="${Math.round(v/maxM*100)}"></div></div><span class="sg2-muscle-val">${v}</span>`;
+    muscleSorted.forEach(([m,v])=>{
+      const row=document.createElement('div'); row.className='sg2-muscle-row';
+      row.innerHTML='<span class="sg2-muscle-lbl">'+m+'</span><div class="sg2-muscle-track"><div class="sg2-muscle-fill" data-pct="'+Math.round(v/maxM*100)+'"></div></div><span class="sg2-muscle-val">'+v+'</span>';
       mc.appendChild(row);
     });
   }
   area.appendChild(mc);
 
-  // Body map
-  const bmc = document.createElement('div'); bmc.className = 'sg2-stat-card'; bmc.style.marginBottom='8px';
-  bmc.innerHTML = '<div class="sg2-card-title">Muscle heatmap</div><div id="sg2-body-map" class="sg2-body-map"></div><div class="sg2-map-legend"><span class="sg2-legend-dot" style="background:rgba(200,240,110,0.2)"></span><span>Low</span><span class="sg2-legend-dot" style="background:rgba(200,240,110,0.6)"></span><span>Med</span><span class="sg2-legend-dot" style="background:#c8f06e"></span><span>High</span></div>';
+  // Body heatmap
+  const bmc=document.createElement('div'); bmc.className='sg2-stat-card';
+  bmc.innerHTML='<div class="sg2-card-title">Muscle heatmap</div><div id="sg2-body-map" class="sg2-body-map"></div><div class="sg2-map-legend"><span class="sg2-legend-dot" style="background:rgba(200,240,110,.2)"></span><span>Low</span><span class="sg2-legend-dot" style="background:rgba(200,240,110,.6)"></span><span>Med</span><span class="sg2-legend-dot" style="background:#c8f06e"></span><span>High</span></div>';
   area.appendChild(bmc);
 
-  // Animate muscle bars
-  requestAnimationFrame(() => {
-    area.querySelectorAll('.sg2-muscle-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
+  // Animate bars
+  requestAnimationFrame(()=>{
+    area.querySelectorAll('.sg2-muscle-fill').forEach(el=>{ el.style.width=el.dataset.pct+'%'; });
   });
 
   // Draw weekly chart
-  setTimeout(() => {
-    const canvas = document.getElementById('sg2-chart-weekly');
-    if (!canvas || !canvas.offsetWidth) return;
-    const weekKeys = Object.keys(weekCounts).sort();
-    const data = weekKeys.map(k => weekCounts[k]);
-    sg2DrawBarChart(canvas, weekKeys.map(l=>l.slice(5)), data, '#c8f06e');
-  }, 100);
+  setTimeout(()=>{
+    const canvas=document.getElementById('sg2-weekly');
+    if(!canvas||!canvas.offsetWidth) return;
+    const wkKeys=Object.keys(weekCounts).sort();
+    sg2DrawBarChart(canvas, wkKeys.map(l=>l.slice(5)), wkKeys.map(k=>weekCounts[k]), '#c8f06e');
+  },100);
 
-  // Render body map
+  // Body map
   sg2RenderBodyMap(sessions, document.getElementById('sg2-body-map'));
 }
 
 async function sg2RenderBodyMap(sessions, container) {
   if (!container) return;
-  const primaryData = {};
-  sessions.forEach(s => {
-    (s.exercises||[]).forEach(ex => {
-      const logged = (ex.sets||[]).filter(st=>st.logged).length;
-      if (!logged || !ex.primaryMuscle) return;
-      primaryData[ex.primaryMuscle] = (primaryData[ex.primaryMuscle]||0) + logged;
-    });
-  });
-  container.innerHTML = '';
-  if (!Object.keys(primaryData).length) {
-    container.innerHTML = '<div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);letter-spacing:0.06em;padding:12px 0;text-align:center;">Set primary muscles on exercises to see the heatmap</div>';
-    return;
+  const primaryData={};
+  sessions.forEach(s=>(s.exercises||[]).forEach(ex=>{
+    const logged=(ex.sets||[]).filter(st=>st.logged).length;
+    if(!logged||!ex.primaryMuscle) return;
+    primaryData[ex.primaryMuscle]=(primaryData[ex.primaryMuscle]||0)+logged;
+  }));
+  container.innerHTML='';
+  if(!Object.keys(primaryData).length){
+    const nd=document.createElement('div'); nd.style.cssText='font-size:10px;color:rgba(241,236,226,.28);letter-spacing:.06em;padding:12px 0;text-align:center;'; nd.textContent='Set primary muscles on exercises to see heatmap'; container.appendChild(nd); return;
   }
-  const mod = await getBodyMuscleMod();
-  if (!mod.BodyChart || !mod.ViewSide) {
-    container.innerHTML = '<div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);letter-spacing:0.06em;padding:12px 0;text-align:center;">Body map unavailable</div>';
-    return;
+  const mod=await getBodyMuscleMod();
+  if(!mod.BodyChart||!mod.ViewSide){
+    const nd=document.createElement('div'); nd.style.cssText='font-size:10px;color:rgba(241,236,226,.28);letter-spacing:.06em;padding:12px 0;text-align:center;'; nd.textContent='Body map unavailable'; container.appendChild(nd); return;
   }
-  const maxVal = Math.max(...Object.values(primaryData));
-  const bodyState = {};
-  Object.entries(primaryData).forEach(([pm,val]) => {
-    const ids = SG2_PM_TO_BODY[pm]; if (!ids) return;
-    const intensity = Math.max(1, Math.round((val/maxVal)*10));
-    ids.forEach(id => { if (!bodyState[id]||bodyState[id].intensity<intensity) bodyState[id]={intensity,selected:false}; });
+  const maxVal=Math.max(...Object.values(primaryData));
+  const bodyState={};
+  Object.entries(primaryData).forEach(([pm,val])=>{
+    const ids=SG2_PM_TO_BODY[pm]; if(!ids) return;
+    const intensity=Math.max(1,Math.round((val/maxVal)*10));
+    ids.forEach(id=>{ if(!bodyState[id]||bodyState[id].intensity<intensity) bodyState[id]={intensity,selected:false}; });
   });
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;gap:4px;justify-content:center;';
-  const frontEl = document.createElement('div'); frontEl.style.cssText = 'flex:1;max-width:48%;';
-  const backEl  = document.createElement('div'); backEl.style.cssText  = 'flex:1;max-width:48%;';
-  wrap.appendChild(frontEl); wrap.appendChild(backEl);
-  container.appendChild(wrap);
+  const wrap=document.createElement('div'); wrap.style.cssText='display:flex;gap:4px;justify-content:center;';
+  const frontEl=document.createElement('div'); frontEl.style.cssText='flex:1;max-width:48%;';
+  const backEl=document.createElement('div');  backEl.style.cssText='flex:1;max-width:48%;';
+  wrap.appendChild(frontEl); wrap.appendChild(backEl); container.appendChild(wrap);
   try {
-    new mod.BodyChart(frontEl, {view:mod.ViewSide.FRONT, bodyState, enableTransitions:false});
-    new mod.BodyChart(backEl,  {view:mod.ViewSide.BACK,  bodyState, enableTransitions:false});
-  } catch(e) { console.warn('BodyChart error', e); }
+    new mod.BodyChart(frontEl,{view:mod.ViewSide.FRONT,bodyState,enableTransitions:false});
+    new mod.BodyChart(backEl, {view:mod.ViewSide.BACK, bodyState,enableTransitions:false});
+  } catch(e){ console.warn('BodyChart error',e); }
 }
 
-// ── Routines tab ──────────────────────────────────────────────────────────────
 function sg2RenderRoutines(sessions, allSessions, area) {
-  const routineMap = {};
-  sessions.forEach(s => {
-    const routineName = s.routine_name || s.routineName || null;
-    const routineId   = s.routine_id   || s.routineId   || null;
-    const key  = routineId || routineName || 'Unknown';
-    const name = routineName || routineId || 'Unknown routine';
-    if (!routineMap[key]) routineMap[key] = {name, count:0, totalSets:0, totalVol:0, totalDur:0, sessions:[]};
-    const sets = (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length, 0);
-    routineMap[key].count++;
-    routineMap[key].totalSets += sets;
-    routineMap[key].totalVol  += sgCalcVolume(s);
-    routineMap[key].totalDur  += (s.duration||0);
+  const routineMap={};
+  sessions.forEach(s=>{
+    const routineName=s.routine_name||s.routineName||null;
+    const routineId=s.routine_id||s.routineId||null;
+    const key=routineId||routineName||'Unknown';
+    const name=routineName||routineId||'Unknown routine';
+    if(!routineMap[key]) routineMap[key]={name,count:0,totalSets:0,totalVol:0,totalDur:0,sessions:[]};
+    const sets=(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0);
+    routineMap[key].count++; routineMap[key].totalSets+=sets;
+    routineMap[key].totalVol+=sgCalcVolume(s); routineMap[key].totalDur+=(s.duration||0);
     routineMap[key].sessions.push(s);
   });
-  const entries = Object.values(routineMap).sort((a,b) => b.count-a.count);
-  const maxCount = entries[0]?.count || 1;
-  if (!entries.length) {
-    area.innerHTML = '<div style="font-family:'JetBrains Mono',monospace;color:rgba(241,236,226,0.28);font-size:12px;padding:20px 0;text-align:center;letter-spacing:0.06em;">No sessions in this period.</div>';
-    return;
+  const entries=Object.values(routineMap).sort((a,b)=>b.count-a.count);
+  const maxCount=entries[0]?.count||1;
+  if(!entries.length){
+    const nd=document.createElement('div'); nd.style.cssText='color:rgba(241,236,226,.28);font-size:12px;padding:20px 0;text-align:center;letter-spacing:.06em;'; nd.textContent='No sessions in this period.'; area.appendChild(nd); return;
   }
-  entries.forEach(r => {
-    const avgSets = r.count ? (r.totalSets/r.count).toFixed(1) : 0;
-    const avgDur  = r.count ? Math.round(r.totalDur/r.count/60) : 0;
-    const pct     = Math.round((r.count/maxCount)*100);
-    const card = document.createElement('div');
-    card.className = 'sg2-routine-card';
-    card.innerHTML = `
-      <div class="sg2-routine-name">${r.name}</div>
-      <div class="sg2-routine-meta">
-        <div class="sg2-routine-item"><span>${r.count}</span> sessions</div>
-        <div class="sg2-routine-item"><span>${avgSets}</span> avg sets</div>
-        <div class="sg2-routine-item"><span>${avgDur}m</span> avg dur</div>
-        <div class="sg2-routine-item"><span>${Math.round(r.totalVol/1000)}t</span> vol</div>
-      </div>
-      <div class="sg2-routine-bar-track"><div class="sg2-routine-bar-fill" style="width:${pct}%"></div></div>`;
-    card.addEventListener('click', () => sg2ShowRoutineProgress(r, area, sessions, allSessions));
+  entries.forEach(r=>{
+    const avgSets=r.count?(r.totalSets/r.count).toFixed(1):0;
+    const avgDur=r.count?Math.round(r.totalDur/r.count/60):0;
+    const pct=Math.round((r.count/maxCount)*100);
+    const card=document.createElement('div'); card.className='sg2-routine-card';
+    card.innerHTML='<div class="sg2-routine-name">'+r.name+'</div><div class="sg2-routine-meta"><div class="sg2-routine-item"><span>'+r.count+'</span> sessions</div><div class="sg2-routine-item"><span>'+avgSets+'</span> avg sets</div><div class="sg2-routine-item"><span>'+avgDur+'m</span> avg dur</div><div class="sg2-routine-item"><span>'+Math.round(r.totalVol/1000)+'t</span> vol</div></div><div class="sg2-routine-bar-track"><div class="sg2-routine-bar-fill" style="width:'+pct+'%"></div></div>';
+    card.addEventListener('click',()=>sg2ShowRoutineProgress(r,area,sessions,allSessions));
     area.appendChild(card);
   });
 }
 
 function sg2ShowRoutineProgress(routineData, area, sessions, allSessions) {
-  area.innerHTML = '';
-  const back = document.createElement('button');
-  back.style.cssText = 'background:none;border:none;font-family:"JetBrains Mono",monospace;color:#c8f06e;font-size:10px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;cursor:pointer;padding:0 0 16px;';
-  back.textContent = '← Back to routines';
-  back.addEventListener('click', () => { area.innerHTML=''; sg2RenderRoutines(sessions, allSessions, area); });
+  area.innerHTML='';
+  const back=document.createElement('button'); back.style.cssText='background:none;border:none;color:#c8f06e;font-size:10px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;cursor:pointer;padding:0 0 16px;';
+  back.textContent='← Back to routines';
+  back.addEventListener('click',()=>{ area.innerHTML=''; sg2RenderRoutines(sessions,allSessions,area); });
   area.appendChild(back);
-
-  const title = document.createElement('div');
-  title.style.cssText = 'font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:16px;';
-  title.textContent = routineData.name;
-  area.appendChild(title);
-
-  const sorted = routineData.sessions.sort((a,b) => new Date(a.started_at||a.startedAt) - new Date(b.started_at||b.startedAt));
-  const volData   = sorted.map(s => Math.round(sgCalcVolume(s)));
-  const setData   = sorted.map(s => (s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0));
-  const labels    = sorted.map(s => new Date(s.started_at||s.startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
-
-  const vc = document.createElement('div'); vc.className = 'sg2-stat-card';
-  vc.innerHTML = '<div class="sg2-card-title">Volume load per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-vol-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
+  const title=document.createElement('div'); title.style.cssText='font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#f4efe5;margin-bottom:16px;';
+  title.textContent=routineData.name; area.appendChild(title);
+  const sorted=routineData.sessions.slice().sort((a,b)=>new Date(a.started_at||a.startedAt)-new Date(b.started_at||b.startedAt));
+  const volData=sorted.map(s=>Math.round(sgCalcVolume(s)));
+  const setData=sorted.map(s=>(s.exercises||[]).reduce((a,ex)=>a+(ex.sets||[]).filter(st=>st.logged).length,0));
+  const labels=sorted.map(s=>new Date(s.started_at||s.startedAt).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
+  const vc=document.createElement('div'); vc.className='sg2-stat-card';
+  vc.innerHTML='<div class="sg2-card-title">Volume load per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-vol-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
   area.appendChild(vc);
-
-  const sc = document.createElement('div'); sc.className = 'sg2-stat-card';
-  sc.innerHTML = '<div class="sg2-card-title">Sets per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-set-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
+  const sc=document.createElement('div'); sc.className='sg2-stat-card';
+  sc.innerHTML='<div class="sg2-card-title">Sets per session</div><div style="position:relative;width:100%;height:140px;overflow:hidden;"><canvas id="sg2-set-chart" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas></div>';
   area.appendChild(sc);
-
-  setTimeout(() => {
-    const c1 = document.getElementById('sg2-vol-chart');
-    const c2 = document.getElementById('sg2-set-chart');
-    if (c1 && c1.offsetWidth) drawSGLine(c1, labels, volData, '#7c6aff');
-    if (c2 && c2.offsetWidth) drawSGLine(c2, labels, setData, '#c8f06e');
-  }, 100);
+  setTimeout(()=>{
+    const c1=document.getElementById('sg2-vol-chart'), c2=document.getElementById('sg2-set-chart');
+    if(c1&&c1.offsetWidth) drawSGLine(c1,labels,volData,'#7c6aff');
+    if(c2&&c2.offsetWidth) drawSGLine(c2,labels,setData,'#c8f06e');
+  },100);
 }
 
-// ── Exercise tab ──────────────────────────────────────────────────────────────
 function sg2RenderExerciseTab(sessions, area) {
-  const card = document.createElement('div'); card.className = 'sg2-stat-card';
-  const exNames = [...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
-  const sel = document.createElement('select');
-  sel.className = 'sg2-ex-select';
-  sel.innerHTML = '<option value="">— Select exercise —</option>' + exNames.map(n=>`<option value="${n}">${n}</option>`).join('');
-  const exBody = document.createElement('div');
-  sel.addEventListener('change', () => {
-    if (!sel.value) { exBody.innerHTML=''; return; }
-    const points = buildExercisePoints(sessions, sel.value, null);
-    exBody.innerHTML = '';
-    renderExerciseAnalysis(exBody, points, sel.value, points[0]?.equipment||null);
+  const card=document.createElement('div'); card.className='sg2-stat-card';
+  const exNames=[...new Set(sessions.flatMap(s=>(s.exercises||[]).map(e=>e.name)))].sort();
+  const sel=document.createElement('select'); sel.className='sg2-ex-select';
+  sel.innerHTML='<option value="">— Select exercise —</option>'+exNames.map(n=>'<option value="'+n+'">'+n+'</option>').join('');
+  const exBody=document.createElement('div');
+  sel.addEventListener('change',()=>{
+    if(!sel.value){ exBody.innerHTML=''; return; }
+    const points=buildExercisePoints(sessions,sel.value,null);
+    exBody.innerHTML='';
+    renderExerciseAnalysis(exBody,points,sel.value,points[0]?.equipment||null);
   });
-  card.appendChild(sel);
-  card.appendChild(exBody);
-  area.appendChild(card);
+  card.appendChild(sel); card.appendChild(exBody); area.appendChild(card);
 }
 
-// ── Chart helpers ─────────────────────────────────────────────────────────────
 function sg2DrawBarChart(canvas, labels, data, color) {
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.offsetWidth, h = canvas.offsetHeight;
-  canvas.width = w*dpr; canvas.height = h*dpr;
-  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const dpr=window.devicePixelRatio||1;
+  const w=canvas.offsetWidth, h=canvas.offsetHeight;
+  canvas.width=w*dpr; canvas.height=h*dpr;
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,w,h);
-  if (!data.length) return;
-  const n = data.length, max = Math.max(...data, 1);
-  const pad = {top:8, bottom:18, left:4, right:4};
-  const chartH = h - pad.top - pad.bottom;
-  const barW = Math.max(2, Math.floor((w-pad.left-pad.right)/n)-3);
-  const step = Math.max(1, Math.ceil(n/5));
-  data.forEach((v,i) => {
-    const bh = Math.max(2, (v/max)*chartH);
-    const x = pad.left + i*((w-pad.left-pad.right)/n);
-    ctx.fillStyle = color + '33'; ctx.fillRect(x, pad.top, barW, chartH);
-    ctx.fillStyle = color; ctx.fillRect(x, pad.top+chartH-bh, barW, bh);
-    if (i%step===0 || i===n-1) {
-      ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='8px sans-serif'; ctx.textAlign='center';
-      ctx.fillText(labels[i], x+barW/2, h-4);
-    }
+  if(!data.length) return;
+  const n=data.length, max=Math.max(...data,1);
+  const pad={top:8,bottom:18,left:4,right:4};
+  const chartH=h-pad.top-pad.bottom;
+  const barW=Math.max(2,Math.floor((w-pad.left-pad.right)/n)-3);
+  const step=Math.max(1,Math.ceil(n/5));
+  data.forEach((v,i)=>{
+    const bh=Math.max(2,(v/max)*chartH);
+    const x=pad.left+i*((w-pad.left-pad.right)/n);
+    ctx.fillStyle=color+'33'; ctx.fillRect(x,pad.top,barW,chartH);
+    ctx.fillStyle=color; ctx.fillRect(x,pad.top+chartH-bh,barW,bh);
+    if(i%step===0||i===n-1){ ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font='8px sans-serif'; ctx.textAlign='center'; ctx.fillText(labels[i],x+barW/2,h-4); }
   });
 }
 
 function drawSGLine(canvas, labels, data, color) {
-  const dpr = devicePixelRatio;
-  canvas.width = canvas.offsetWidth*dpr; canvas.height = canvas.offsetHeight*dpr;
-  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const dpr=devicePixelRatio;
+  canvas.width=canvas.offsetWidth*dpr; canvas.height=canvas.offsetHeight*dpr;
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
   const w=canvas.offsetWidth, h=canvas.offsetHeight;
   const pad={top:10,right:10,bottom:24,left:44};
   const cW=w-pad.left-pad.right, cH=h-pad.top-pad.bottom;
@@ -7713,11 +7623,11 @@ function drawSGLine(canvas, labels, data, color) {
   const n=data.length;
   const xS=i=>pad.left+(n===1?cW/2:i/(n-1)*cW);
   const yS=v=>pad.top+cH-((v-minV)/(maxV-minV||1))*cH;
-  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
-  [0,0.5,1].forEach(t=>{
+  ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=1;
+  [0,.5,1].forEach(t=>{
     const y=pad.top+t*cH;
     ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(w-pad.right,y);ctx.stroke();
-    ctx.fillStyle='rgba(241,236,226,0.28)';ctx.font='9px sans-serif';ctx.textAlign='right';
+    ctx.fillStyle='rgba(241,236,226,.28)';ctx.font='9px sans-serif';ctx.textAlign='right';
     ctx.fillText(Math.round(maxV-t*(maxV-minV)),pad.left-4,y+4);
   });
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
@@ -7725,7 +7635,7 @@ function drawSGLine(canvas, labels, data, color) {
   data.forEach((v,i)=>i===0?ctx.moveTo(xS(i),yS(v)):ctx.lineTo(xS(i),yS(v)));
   ctx.stroke();
   data.forEach((v,i)=>{ctx.fillStyle=color;ctx.beginPath();ctx.arc(xS(i),yS(v),3,0,Math.PI*2);ctx.fill();});
-  ctx.fillStyle='rgba(241,236,226,0.28)'; ctx.textAlign='center'; ctx.font='8px sans-serif';
+  ctx.fillStyle='rgba(241,236,226,.28)'; ctx.textAlign='center'; ctx.font='8px sans-serif';
   const step=Math.ceil(n/6);
   data.forEach((_,i)=>{if(i%step===0||i===n-1)ctx.fillText(labels[i],xS(i),h-6);});
 }
