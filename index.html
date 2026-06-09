@@ -16,7 +16,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <title>Training Calendar 2026</title>
-<!-- App version: 1.1.0 -->
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -46,8 +45,8 @@
 
   /* ── WIFE & KINDER MATCHED PAIRS ─────────────────────── */
   /* Morning shift + Deliver → warm amber-orange */
-  --wearly-bg:#FFF3E0; --wearly-c:#7B3200; --wearly-b:#FB8C00;
-  --kgd-bg:#FFF3E0;    --kgd-c:#7B3200;    --kgd-b:#FB8C00;
+  --wearly-bg:#B2DFDB; --wearly-c:#00695C; --wearly-b:#26A69A;
+  --kgd-bg:#B2DFDB;    --kgd-c:#00695C;    --kgd-b:#26A69A;
 
   /* Evening shift + Pick up → soft purple */
   --weve-bg:#F3E5F5;   --weve-c:#4A148C;   --weve-b:#AB47BC;
@@ -485,7 +484,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .pill.kinder-run  { background:linear-gradient(180deg,#BBDEFB,#90CAF9); color:#0D47A1; border-color:#42A5F5; }
 .pill.upper       { background:linear-gradient(180deg,#2A4E7F,#1E3A5F); color:#E3EAF4; border-color:#3A6EA8; }
 .pill.lower       { background:linear-gradient(180deg,#3D2780,#2D1B69); color:#E8E6F0; border-color:#6B4FC4; }
-.pill.wife-early  { background:linear-gradient(180deg,#FFE0B2,#FFCC80); color:#7B3200; border-color:#FB8C00; }
+.pill.wife-early  { background:linear-gradient(180deg,#B2DFDB,#80CBC4); color:#00695C; border-color:#26A69A; }
 .pill.wife-eve    { background:linear-gradient(180deg,#E1BEE7,#CE93D8); color:#4A148C; border-color:#AB47BC; }
 .pill.wife-off    { background:linear-gradient(180deg,#DCEDC8,#C5E1A5); color:#1B5E20; border-color:#7CB342; font-style:italic; }
 .pill.wife-other  { background:linear-gradient(180deg,#ECEFF1,#CFD8DC); color:#263238; border-color:#78909C; }
@@ -493,7 +492,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .pill.cross       { background:linear-gradient(180deg,#B2EBF2,#80DEEA); color:#004D5B; border-color:#00ACC1; }
 .pill.kinder-drop   { background:linear-gradient(180deg,#FFF8E1,#FFE082); color:#7A4100; border-color:#F0B429; }
 .pill.kinder-blank  { background:rgba(255,255,255,0.5); color:#999; border-color:#ddd; font-style:italic; }
-.pill.kinder-deliver { background:linear-gradient(180deg,#FFE0B2,#FFCC80); color:#7B3200; border-color:#FB8C00; }
+.pill.kinder-deliver { background:linear-gradient(180deg,#B2DFDB,#80CBC4); color:#00695C; border-color:#26A69A; }
 .pill.kinder-pickup  { background:linear-gradient(180deg,#E1BEE7,#CE93D8); color:#4A148C; border-color:#AB47BC; }
 .pill.kinder-both    { background:linear-gradient(180deg,#FCE4EC,#F48FB1); color:#A0004B; border-color:#E07FAA; }
 
@@ -545,6 +544,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #weather-panel {
   background:#ffffff; border:0.5px solid rgba(0,0,0,0.06); border-radius:14px; padding:20px;
   width:100%; max-width:320px; box-shadow:0 8px 32px rgba(0,0,0,0.15);
+  max-height:80vh; overflow-y:auto;
 }
 #weather-header {
   display:flex; align-items:flex-start; justify-content:space-between;
@@ -707,7 +707,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .run-target-unit { font-size:12px; color:var(--muted); }
 .run-target-btn { background:var(--text); color:var(--bg); border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
 .run-target-clear { background:var(--border); color:var(--muted); }
-.run-target-sub { font-size:9px; color:var(--easy-c); opacity:0.85; margin-top:1px; display:block; }
+.run-target-sub { font-size:9px; color:inherit; opacity:0.85; margin-top:1px; display:block; }
 #run-panel-overlay { display:none; position:fixed; inset:0; z-index:11000; background:rgba(100,80,140,0.15); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; }
 @media(min-width:600px){#run-panel-overlay{align-items:center;}}
 #run-panel-overlay.open { display:flex; }
@@ -1088,6 +1088,25 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 }
 #mobile-cal { display:none; padding-bottom:80px; }
 .mob-mode-bar { display:flex; background:var(--bg); border:1px solid var(--border-mid); border-radius:10px; padding:3px; margin-bottom:14px; gap:3px; }
+.todo-view { padding:0 0 40px; }
+.todo-group { margin-bottom:18px; }
+.todo-group-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; padding:0 2px; }
+.todo-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--glass); border:0.5px solid var(--border-mid); border-radius:10px; margin-bottom:6px; cursor:pointer; }
+.todo-item.done { opacity:0.45; }
+.tck { width:20px; height:20px; border-radius:50%; border:2px solid var(--border-mid); display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; }
+.todo-item.done .tck { background:var(--text); border-color:var(--text); color:var(--bg); }
+.ttx { flex:1; font-size:13px; line-height:1.4; }
+.todo-item.done .ttx { text-decoration:line-through; color:var(--muted); }
+.tass { font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; flex-shrink:0; }
+.tass.marius { background:rgba(100,120,255,0.15); color:#6478ff; }
+.tass.vilde  { background:rgba(255,100,150,0.15); color:#ff6496; }
+.tass.both   { background:rgba(120,200,120,0.15); color:#54a854; }
+.trm { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:0 2px; flex-shrink:0; }
+.todo-add-wrap { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.todo-add-input { flex:1; min-width:0; padding:10px 12px; border:0.5px solid var(--border-mid); border-radius:10px; font-size:13px; font-family:inherit; background:var(--bg); color:var(--text); outline:none; }
+.todo-add-select { padding:10px 8px; border:0.5px solid var(--border-mid); border-radius:10px; font-size:12px; font-family:inherit; background:var(--bg); color:var(--text); outline:none; cursor:pointer; }
+.todo-add-btn { padding:10px 16px; background:var(--text); color:var(--bg); border:none; border-radius:10px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
+.todo-day-select { padding:8px 10px; border:0.5px solid var(--border-mid); border-radius:10px; font-size:12px; font-family:inherit; background:var(--bg); color:var(--text); outline:none; cursor:pointer; margin-bottom:12px; width:100%; }
 .mob-mode-btn { flex:1; background:none; border:none; padding:8px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:7px; font-family:inherit; transition:all 0.15s; }
 .mob-mode-btn.active { background:var(--text); color:var(--bg); }
 .mob-week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:8px; }
@@ -1192,7 +1211,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v2.2.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.5.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1234,8 +1253,14 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <button class="btn" onclick="openStatsPage()">📊 Stats</button>
     <button class="btn" id="partner-toggle-btn" onclick="togglePartnerTraining()">👁 Partner</button>
     <button class="btn is-violet" onclick="openClaudePanel()">✦ Claude</button>
-    <button class="btn" id="shop-open-btn" onclick="openShopOverlay()">🛒 Shop</button>
   </div>
+  <button class="btn" id="shop-open-btn" onclick="openShopOverlay()">🛒 Shop</button>
+</div>
+
+<!-- SHOP OVERLAY -->
+<div class="shop-overlay-backdrop" id="shop-overlay-backdrop" onclick="closeShopOverlay()"></div>
+<div class="shop-overlay-sheet" id="shop-overlay-sheet">
+  <div class="shop-overlay-drag"></div>
 </div>
 
 <!-- PLAN DROPDOWN -->
@@ -1676,15 +1701,25 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .brief-row .bl { font-size:9.5px; letter-spacing:0.07em; text-transform:uppercase; color:var(--ink-meta); margin-bottom:2px; }
 .brief-row .bv { font-size:13px; color:var(--ink-display); font-weight:500; line-height:1.45; }
 .brief-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600; margin:1px 4px 1px 0; border:0.5px solid rgba(0,0,0,0.06); }
+/* Shop Overlay */
+.shop-overlay-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.45); backdrop-filter:blur(4px); z-index:900; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+.shop-overlay-backdrop.open { opacity:1; pointer-events:all; }
+.shop-overlay-sheet { position:fixed; bottom:0; left:0; right:0; max-height:90vh; background:var(--bg); border-radius:20px 20px 0 0; z-index:901; overflow-y:auto; padding:0 0 env(safe-area-inset-bottom,0); transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.32,0.72,0,1); }
+.shop-overlay-sheet.open { transform:translateY(0); }
+@media (min-width:600px) {
+  .shop-overlay-sheet { bottom:auto; top:50%; left:50%; right:auto; transform:translate(-50%,-40%); width:480px; max-height:80vh; border-radius:20px; opacity:0; transition:opacity 0.2s,transform 0.2s; }
+  .shop-overlay-sheet.open { transform:translate(-50%,-50%); opacity:1; }
+}
+.shop-overlay-drag { width:40px; height:4px; background:var(--border-mid); border-radius:2px; margin:12px auto 0; }
 .brief-alert { margin-top:12px; padding:9px 11px; border-radius:10px; background:#FFF3E0; color:#7B3200; font-size:12px; font-weight:600; display:flex; gap:7px; align-items:center; }
 .brief-empty { color:var(--muted); font-style:italic; font-size:12.5px; }
 .brief-row-tap { cursor:pointer; } .brief-row-tap:active { opacity:0.55; }
 
-/* ── SHOPPING LIST (OVERLAY) ─────────────────────────────────── */
-#shop-overlay { display:none; position:fixed; inset:0; z-index:8000; background:rgba(0,0,0,0.35); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; }
-#shop-overlay.open { display:flex; }
-#shop-view { width:100%; max-width:680px; max-height:88vh; overflow-y:auto; border-radius:24px 24px 0 0; background:#f6f9fc; padding:20px 16px 40px; box-shadow:0 -4px 40px rgba(0,0,0,0.18); }
-@media (min-width:640px) { #shop-overlay { align-items:center; } #shop-view { border-radius:20px; max-height:80vh; } }
+/* ── SHOPPING LIST ───────────────────────────────────────────── */
+#shop-view { display:none; max-width:680px; margin:0 auto; padding-bottom:40px; }
+body.shop-mode #desktop-cal-wrap, body.shop-mode #mobile-cal { display:none !important; }
+body.shop-mode #shop-view { display:block !important; }
+body.shop-mode #briefing-card { display:none !important; }
 .shop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; }
 .shop-head h2 { font-size:23px; font-weight:700; color:var(--ink-display); letter-spacing:-0.02em; }
 .shop-clear { background:none; border:0.5px solid var(--border-mid); border-radius:9px; padding:7px 13px; font-size:12px; color:var(--ink-sub); cursor:pointer; font-family:inherit; }
@@ -1815,7 +1850,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 
 <div id="briefing-card" class="glass"></div>
 
-<div id="shop-overlay">
 <div id="shop-view">
   <div class="shop-head">
     <button class="shop-clear" onclick="exitShop()">‹ Back</button>
@@ -1832,7 +1866,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   </div>
   <div id="shop-list"></div>
 </div>
-</div><!-- #shop-overlay -->
 
 <div id="desktop-cal-wrap">
 <div id="cal"></div>
@@ -1865,83 +1898,83 @@ const WEEK_MONDAYS = [
 const WEEKS = [
   { phase:"Pre-plan", num:"Pre 1", dates:"14–20 Apr", km:47, moved:false,
     wife:["","","","","","",""],
-    runs:[null,"easy:Easy 10 km","quality:Sub-threshold",null,"easy:Easy 10 km + strides",null,"long:Long run 14 km"],
+    runs:[null,"easy:Easy","quality:Sub-threshold",null,"easy:Easy + strides",null,"long:Long run"],
     str:["upper:Upper 1",null,"lower:Lower 1",null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Pre 2", dates:"21–27 Apr", km:50, moved:false,
     wife:["","","","","","",""],
-    runs:[null,"easy:Easy 10 km","quality:Sub-threshold",null,"easy:Easy 10 km","quality:Sub-threshold","long:Long run 16 km"],
+    runs:[null,"easy:Easy","quality:Sub-threshold",null,"easy:Easy","quality:Sub-threshold","long:Long run"],
     str:["upper:Upper 1","lower:Lower 1",null,"upper:Upper 2","lower:Lower 2",null,null]},
   { phase:null, num:"Pre 3", dates:"28 Apr–4 May", km:54, moved:false,
     wife:["","early:OD4","eve:OK4","eve:OKR4","early:D2","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy 10 km (PM)","kinder:Kindergarten run",null,null,"quality:Sub-threshold","long:Long run 18 km"],
+    runs:["quality:Sub-threshold","easy-pm:Easy (PM)","kinder:Kindergarten run",null,null,"quality:Sub-threshold","long:Long run"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Pre 4", dates:"5–11 May", km:42, moved:false,
     wife:["early:ODR4","early:ODR4","early:ODR4","eve:OKR4","","","off:F1 (off)"],
-    runs:[null,"easy-pm:Easy 8 km (PM)",null,"kinder:Kindergarten run","easy:Easy 8 km","quality:Sub-threshold","long:Long run 14 km"],
+    runs:[null,"easy-pm:Easy (PM)",null,"kinder:Kindergarten run","easy:Easy","quality:Sub-threshold","long:Long run"],
     str:["upper:Upper 1",null,"upper:Upper 2","lower:Lower 1",null,"lower:Lower 2",null]},
   { phase:null, num:"Pre 5", dates:"12–18 May", km:58, moved:true,
     wife:["","","early:OD4","early:OD4","off:F1 (off)","other:M2L","other:M2L"],
-    runs:["quality:Sub-threshold","easy:Easy 12 km","easy-pm:Easy 10 km (PM)",null,"long:Long run 21 km ↑","quality:Sub-threshold",null],
+    runs:["quality:Sub-threshold","easy:Easy","easy-pm:Easy (PM)",null,"long:Long run ↑","quality:Sub-threshold",null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:"Build", num:"Week 1", dates:"19–25 May", km:61, moved:false,
     wife:["","eve:OK4","eve:OK4","early:D2","early:ODR4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","kinder:Kindergarten run",null,"easy-pm:Easy 10 km (PM)","quality:Sub-threshold",null,"long:Long run 23 km"],
+    runs:["quality:Sub-threshold","kinder:Kindergarten run",null,"easy-pm:Easy (PM)","quality:Sub-threshold",null,"long:Long run"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 2", dates:"26 May–1 Jun", km:64, moved:false,
     wife:["other:F3 (?)","early:OD4","early:OD4","eve:OK4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy 12 km (PM)",null,"kinder:Kindergarten run","quality:Sub-threshold",null,"long:Long run 25 km"],
+    runs:["quality:Sub-threshold","easy-pm:Easy (PM)",null,"kinder:Kindergarten run","quality:Sub-threshold",null,"long:Long run"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 3", dates:"2–8 Jun", km:66, moved:true,
     wife:["","early:ODR4","early:ODR4","off:F1 (off)","","early:OD4L","early:OD4L"],
-    runs:["easy:Easy 12 km","easy-pm:Easy 11 km (PM)","easy-pm:Easy 10 km (PM)","quality:Sub-threshold","long:Long run 27 km ↑ (last 6 km MP)",null,null],
+    runs:["easy:Easy","easy-pm:Easy (PM)","easy-pm:Easy (PM)","quality:Sub-threshold","long:Long run ↑ (last 6 km MP)",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:null, num:"Week 4", dates:"9–15 Jun", km:48, moved:false,
     wife:["","","eve:OKR4","eve:OKR4","","","off:F1 (off)"],
-    runs:[null,"quality:Sub-threshold","kinder:Kindergarten run",null,"easy:Easy 8 km + strides",null,"long:Long run 18 km"],
+    runs:[null,"quality:Sub-threshold","kinder:Kindergarten run",null,"easy:Easy + strides",null,"long:Long run"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 5", dates:"16–22 Jun", km:68, moved:false,
     wife:["eve:OK4","eve:OK4","early:OD4","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","kinder:Kindergarten run","easy-pm:Easy 12 km (PM)",null,"quality:Sub-threshold",null,"long:Long run 29 km"],
+    runs:["quality:Sub-threshold","kinder:Kindergarten run","easy-pm:Easy (PM)",null,"quality:Sub-threshold",null,"long:Long run"],
     str:[null,null,"upper:Upper 1","lower:Lower 2",null,"upper:Upper 2","lower:Lower 1"]},
   { phase:null, num:"Week 6", dates:"23–29 Jun", km:69, moved:true,
     wife:["","early:OD4","","off:F1 (off)","eve:OK4L","early:OD4L","early:OD4L"],
-    runs:["easy:Easy 13 km","easy-pm:Easy 12 km (PM)","quality:Sub-threshold","easy:Easy 12 km","long:Long run 29 km ↑ (last 8 km MP)",null,null],
+    runs:["easy:Easy","easy-pm:Easy (PM)","quality:Sub-threshold","easy:Easy","long:Long run ↑ (last 8 km MP)",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:"Peak", num:"Week 7", dates:"30 Jun–6 Jul", km:71, moved:false,
     wife:["","eve:K2","other:N2 (night)","other:N2 (night)","","","off:F1 (off)"],
-    runs:["easy:Easy 13 km","kinder:Kindergarten run","quality:Near-threshold","easy:Easy 12 km","quality:Sub-threshold",null,"long:Long run 31 km"],
+    runs:["easy:Easy","kinder:Kindergarten run","quality:Near-threshold","easy:Easy","quality:Sub-threshold",null,"long:Long run"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 8", dates:"7–13 Jul", km:73, moved:false,
     wife:["eve:K2","eve:K2","","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["kinder:Kindergarten run",null,"quality:Near-threshold","easy-pm:Easy 12 km (PM)","easy:Easy 10 km + strides",null,"long:Long run 33 km (last 10 km MP)"],
+    runs:["kinder:Kindergarten run",null,"quality:Near-threshold","easy-pm:Easy (PM)","easy:Easy + strides",null,"long:Long run (last 10 km MP)"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2",null,"upper:Upper 2",null]},
   { phase:null, num:"Week 9", dates:"14–20 Jul", km:51, moved:true,
     wife:["","","","off:F1 (off)","early:D2L","early:D2L","early:D2L"],
-    runs:["easy:Easy 12 km","easy:Easy 10 km","quality:Sub-threshold","easy:Easy 10 km + strides","long:Long run 21 km ↑",null,null],
+    runs:["easy:Easy","easy:Easy","quality:Sub-threshold","easy:Easy + strides","long:Long run ↑",null,null],
     str:["lower:Lower 1",null,"upper:Upper 1",null,null,"upper:Upper 2","lower:Lower 2"]},
   { phase:null, num:"Week 10", dates:"21–27 Jul", km:73, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy 14 km","quality:Near-threshold","easy:Easy 12 km","quality:Sub-threshold",null,"long:PEAK — 33 km easy"],
+    runs:[null,"easy:Easy","quality:Near-threshold","easy:Easy","quality:Sub-threshold",null,"long:PEAK long run"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 11", dates:"28 Jul–3 Aug", km:75, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy 14 km","quality:Near-threshold","easy:Easy 12 km","easy:Easy 10 km + strides",null,"long:PEAK LONG RUN — 37 km"],
+    runs:[null,"easy:Easy","quality:Near-threshold","easy:Easy","easy:Easy + strides",null,"long:PEAK LONG RUN"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 12", dates:"4–10 Aug", km:50, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy 12 km","quality:Sub-threshold","easy:Easy 10 km",null,"easy:Easy 8 km + strides","long:Long run 18 km"],
+    runs:[null,"easy:Easy","quality:Sub-threshold","easy:Easy",null,"easy:Easy + strides","long:Long run"],
     str:["upper:Upper 1","lower:Lower 1",null,"lower:Lower 2","upper:Upper 2",null,null]},
   { phase:"Taper", num:"Week 13", dates:"11–17 Aug", km:56, moved:false,
     wife:["vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation","vac:Vacation"],
-    runs:[null,"easy:Easy 12 km","quality:Sub-threshold","easy:Easy 10 km","easy:Easy 8 km + strides",null,"long:Long run 25 km (mid 10 km MP)"],
+    runs:[null,"easy:Easy","quality:Sub-threshold","easy:Easy","easy:Easy + strides",null,"long:Long run (mid 10 km MP)"],
     str:["upper:Upper 1","lower:Lower 1",null,null,"lower:Lower 2","upper:Upper 2",null]},
   { phase:null, num:"Week 14", dates:"18–24 Aug", km:38, moved:false,
     wife:["","early:FAGD","early:OD4","early:OD4","early:OD4","","off:F1 (off)"],
-    runs:["quality:Sub-threshold","easy-pm:Easy 10 km (PM)",null,"easy-pm:Easy 8 km (PM)",null,"easy:Easy 6 km","easy:Easy 10 km relaxed"],
+    runs:["quality:Sub-threshold","easy-pm:Easy (PM)",null,"easy-pm:Easy (PM)",null,"easy:Easy 6 km","easy:Easy relaxed"],
     str:["upper:Upper 1","lower:Lower 1","upper:Upper 2","lower:Lower 2",null,null,null]},
   { phase:null, num:"Week 15", dates:"25–29 Aug", km:18, moved:false,
     wife:["","early:ODR4","early:ODR4","off:F1 (off)","early:OD4","early:OD4L","early:OD4L"],
-    runs:["easy:Easy 8 km + strides","easy-pm:Easy 5 km (PM)","easy-pm:Easy 3 km (PM)",null,"easy:Easy 4 km shake-out",null,"race:RACE DAY — Stavanger Marathon"],
+    runs:["easy:Easy + strides","easy-pm:Easy 5 km (PM)","easy-pm:Easy 3 km (PM)",null,"easy:Easy 4 km shake-out",null,"race:RACE DAY — Stavanger Marathon"],
     str:[null,null,null,null,null,null,null]},
 ];
 
@@ -3306,6 +3339,15 @@ async function seedWeekPlan() {
   } catch(e) { console.error('Seed failed:', e); }
 }
 
+function sanitiseKmLabels(arr) {
+  if (!Array.isArray(arr)) return arr;
+  return arr.map(v => {
+    if (typeof v !== 'string') return v;
+    // Strip " N km" or " N.N km" suffixes from pill labels
+    return v.replace(/ \d+(\.\d+)? km/g, '').trim();
+  });
+}
+
 function applyWeekPlan(loaded) {
   if (!loaded) return;
 
@@ -3361,8 +3403,10 @@ function applyWeekPlan(loaded) {
     }
 
     if (w.wife) wifeState[wi] = [...w.wife];
-    if (w.runs) state[wi].runs = [...w.runs];
-    if (w.str)  state[wi].str  = [...w.str];
+    // Do NOT overwrite user-edited state[wi].runs/str from plan data
+    // Only apply if state looks like it hasn't been edited (all null)
+    if (w.runs && loaded.source !== 'plans') state[wi].runs = sanitiseKmLabels([...w.runs]);
+    if (w.str  && loaded.source !== 'plans') state[wi].str  = [...w.str];
   });
 
   console.log('Plan applied:', plan.length, 'weeks from', loaded.source);
@@ -3471,6 +3515,7 @@ if (_local) applyState(JSON.parse(_local));
   // 9. Family briefing + shared shopping list + recipe library
   renderBriefing();
   loadShoppingList();
+  loadTodoItems().then(() => renderBriefing());
   loadRecipeLibrary();
 
   // Auto-refresh recipes when switching back to the app (e.g. added on another device)
@@ -3489,6 +3534,136 @@ if (_local) applyState(JSON.parse(_local));
     fetchGCal().then(() => { if (isMobilePortrait()) renderMobileRaceWeek(); });
   }, 5 * 60 * 1000);
 })();
+
+// ── TODO LIST ──────────────────────────────────────────────────────────────
+let todoItems = [];
+
+function escTodo(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadTodoItems() {
+  try {
+    const res = await fetch(SUPA_BASE + 'todos?select=*&order=created_at', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error('todos ' + res.status);
+    todoItems = await res.json();
+  } catch(e) { console.warn('Load todos failed:', e); todoItems = []; }
+}
+
+async function addTodoItem(text, assignee, day) {
+  if (!text.trim()) return;
+  try {
+    const res = await fetch(SUPA_BASE + 'todos', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify({ text: text.trim(), assignee, day: day||null, done: false })
+    });
+    if (!res.ok) throw new Error('add todo ' + res.status);
+    await loadTodoItems();
+    renderBriefing();
+  } catch(e) { console.warn('Add todo failed:', e); }
+}
+
+async function toggleTodoItem(id) {
+  const item = todoItems.find(i => i.id === id);
+  if (!item) return;
+  try {
+    await fetch(SUPA_BASE + 'todos?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { ...SUPA_HDR },
+      body: JSON.stringify({ done: !item.done })
+    });
+    await loadTodoItems();
+    renderBriefing();
+  } catch(e) { console.warn('Toggle todo failed:', e); }
+}
+
+async function deleteTodoItem(id) {
+  try {
+    await fetch(SUPA_BASE + 'todos?id=eq.' + id, { method: 'DELETE', headers: SUPA_HDR });
+    await loadTodoItems();
+    renderBriefing();
+  } catch(e) { console.warn('Delete todo failed:', e); }
+}
+
+function renderTodoView(container) {
+  const wrap = document.createElement('div');
+  wrap.className = 'todo-view';
+
+  // Day filter
+  const DAYS_OF_WEEK = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const daySelect = document.createElement('select');
+  daySelect.className = 'todo-day-select';
+  daySelect.innerHTML = '<option value="">All days</option>' +
+    DAYS_OF_WEEK.map(d => '<option value="' + d + '">' + d + '</option>').join('');
+  wrap.appendChild(daySelect);
+
+  // Add form
+  const addWrap = document.createElement('div');
+  addWrap.className = 'todo-add-wrap';
+  const inp = document.createElement('input');
+  inp.className = 'todo-add-input';
+  inp.placeholder = 'Add task…';
+  const assSelect = document.createElement('select');
+  assSelect.className = 'todo-add-select';
+  assSelect.innerHTML = '<option value="both">Both</option><option value="marius">Marius</option><option value="vilde">Vilde</option>';
+  const addBtn = document.createElement('button');
+  addBtn.className = 'todo-add-btn';
+  addBtn.textContent = 'Add';
+  addWrap.appendChild(inp); addWrap.appendChild(assSelect); addWrap.appendChild(addBtn);
+  wrap.appendChild(addWrap);
+
+  const listWrap = document.createElement('div');
+  listWrap.id = 'todo-list-wrap';
+  wrap.appendChild(listWrap);
+
+  function refresh() {
+    const filterDay = daySelect.value;
+    const filtered = filterDay ? todoItems.filter(i => i.day === filterDay) : todoItems;
+    const active = filtered.filter(i => !i.done);
+    const done   = filtered.filter(i =>  i.done);
+    listWrap.innerHTML = '';
+    if (!active.length && !done.length) {
+      listWrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center;">No tasks yet</div>';
+      return;
+    }
+    if (active.length) listWrap.innerHTML += renderTodoGroup('To do', active);
+    if (done.length)   listWrap.innerHTML += renderTodoGroup('Done', done);
+    listWrap.querySelectorAll('.todo-item').forEach(el => {
+      el.addEventListener('click', async () => { await toggleTodoItem(el.dataset.id); refresh(); });
+    });
+    listWrap.querySelectorAll('.trm').forEach(btn => {
+      btn.addEventListener('click', async e => { e.stopPropagation(); await deleteTodoItem(btn.dataset.id); refresh(); });
+    });
+  }
+
+  daySelect.addEventListener('change', refresh);
+  addBtn.addEventListener('click', async () => {
+    await addTodoItem(inp.value, assSelect.value, daySelect.value||null);
+    inp.value = '';
+    refresh();
+  });
+  inp.addEventListener('keydown', async e => {
+    if (e.key === 'Enter') { await addTodoItem(inp.value, assSelect.value, daySelect.value||null); inp.value = ''; refresh(); }
+  });
+
+  container.appendChild(wrap);
+  refresh();
+}
+
+function renderTodoGroup(label, items) {
+  const rows = items.map(i => {
+    const assCls = i.assignee === 'marius' ? 'marius' : i.assignee === 'vilde' ? 'vilde' : 'both';
+    const assLabel = i.assignee === 'marius' ? 'Marius' : i.assignee === 'vilde' ? 'Vilde' : 'Both';
+    return '<div class="todo-item' + (i.done?' done':'') + '" data-id="' + i.id + '">' +
+      '<div class="tck">' + (i.done?'✓':'') + '</div>' +
+      '<div class="ttx">' + escTodo(i.text) + (i.day ? '<br><span style="font-size:10px;color:var(--muted);">' + i.day + '</span>' : '') + '</div>' +
+      '<span class="tass ' + assCls + '">' + assLabel + '</span>' +
+      '<button class="trm" data-id="' + i.id + '">×</button>' +
+    '</div>';
+  }).join('');
+  return '<div class="todo-group"><div class="todo-group-label">' + label + '</div>' + rows + '</div>';
+}
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
 const SUPA_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
@@ -4407,54 +4582,54 @@ function openWeather(dateStr) {
     const winds = entries.map(e=>e.wind).filter(v=>v!=null);
     const symbol = entries.find(e=>e.symbol)?.symbol || null;
     const avgTemp = temps.length ? Math.round(avg(temps)) : null;
+    const minTemp = temps.length ? Math.round(Math.min(...temps)) : null;
+    const maxTemp = temps.length ? Math.round(Math.max(...temps)) : null;
     const avgWind = winds.length ? Math.round(avg(winds)*10)/10 : null;
+    const curHour = new Date().getHours();
+    const isCurrentSection = curHour >= start && curHour < end;
 
-    const slot = document.createElement('div');
-    slot.className = 'weather-slot';
+    const section = document.createElement('div');
+    section.style.cssText = 'border-bottom:0.5px solid var(--border);';
 
-    const summary = document.createElement('div');
-    summary.style.cssText = 'display:flex;align-items:center;gap:14px;width:100%;cursor:pointer;';
-    summary.innerHTML = `
-      <div class="weather-slot-time">${label}</div>
-      <div class="weather-slot-icon">${yrSymbol(symbol)}</div>
-      <div class="weather-slot-info">
-        <div class="weather-slot-temp">${avgTemp != null ? avgTemp+'°C' : '—'}</div>
-        <div class="weather-slot-wind">${avgWind != null ? avgWind+' m/s' : '—'}</div>
-        <div class="weather-slot-desc">${yrDesc(symbol)}</div>
-      </div>
-      <div style="margin-left:auto;font-size:11px;color:var(--muted);">▸</div>`;
-    slot.appendChild(summary);
+    const hdr = document.createElement('div');
+    hdr.className = 'weather-section-hdr' + (isCurrentSection ? ' open' : '');
+    hdr.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 0;cursor:pointer;user-select:none;';
+    const tempRange = (minTemp != null && maxTemp != null) ? `${minTemp}–${maxTemp}°` : '—';
+    hdr.innerHTML = `
+      <span style="font-size:18px;line-height:1;">${yrSymbol(symbol)}</span>
+      <span style="font-weight:600;font-size:13px;flex:1;">${label}</span>
+      <span style="font-size:12px;color:var(--muted);">${tempRange}</span>
+      <span style="font-size:10px;color:var(--muted);">${isCurrentSection ? '▾' : '▸'}</span>`;
 
-    // Hourly detail (hidden by default)
-    const hourly = document.createElement('div');
-    hourly.style.cssText = 'display:none;margin-top:10px;border-top:0.5px solid var(--border);padding-top:8px;width:100%;';
+    const rows = document.createElement('div');
+    rows.style.cssText = 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;';
+    if (isCurrentSection) rows.style.maxHeight = '400px';
 
     entries.forEach(e => {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:3px 0;font-size:12px;';
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px;';
       row.innerHTML = `
-        <span style="color:var(--muted);min-width:32px;">${String(e.hour).padStart(2,'0')}:00</span>
-        <span>${yrSymbol(e.symbol)}</span>
-        <span style="font-weight:600;">${e.temp != null ? Math.round(e.temp)+'°C' : '—'}</span>
-        <span style="color:var(--muted);">${e.wind != null ? e.wind+' m/s' : '—'}</span>
-        <span style="color:var(--muted);font-size:10px;">${yrDesc(e.symbol)}</span>`;
-      hourly.appendChild(row);
+        <span style="color:var(--muted);min-width:36px;font-weight:600;">${String(e.hour).padStart(2,'0')}:00</span>
+        <span style="font-size:16px;">${yrSymbol(e.symbol)}</span>
+        <span style="font-weight:700;min-width:38px;">${e.temp != null ? Math.round(e.temp)+'°C' : '—'}</span>
+        <span style="color:var(--muted);">${e.wind != null ? e.wind+' m/s 💨' : ''}</span>
+        <span style="color:var(--muted);font-size:10px;margin-left:auto;">${yrDesc(e.symbol)}</span>`;
+      rows.appendChild(row);
     });
 
     if (!entries.length) {
-      hourly.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0;">No data for this interval</div>';
+      rows.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0;">No data</div>';
     }
 
-    slot.appendChild(hourly);
-
-    let expanded = false;
-    summary.addEventListener('click', () => {
-      expanded = !expanded;
-      hourly.style.display = expanded ? 'block' : 'none';
-      summary.querySelector('div:last-child').textContent = expanded ? '▾' : '▸';
+    hdr.addEventListener('click', () => {
+      const open = hdr.classList.toggle('open');
+      rows.style.maxHeight = open ? '400px' : '0';
+      hdr.querySelector('span:last-child').textContent = open ? '▾' : '▸';
     });
 
-    slots.appendChild(slot);
+    section.appendChild(hdr);
+    section.appendChild(rows);
+    slots.appendChild(section);
   });
 
   weatherOverlay.classList.add('open');
@@ -7807,14 +7982,24 @@ function renderMobileView() {
   // Mode toggle
   const modeBar = document.createElement('div'); modeBar.className = 'mob-mode-bar';
   const raceBtn = document.createElement('button');
-  raceBtn.className = 'mob-mode-btn active';
+  raceBtn.className = 'mob-mode-btn' + (mobMode==='race'?' active':'');
   raceBtn.textContent = '🏃 Plan';
-  raceBtn.addEventListener('click', () => { mobMode='race'; renderMobileView(); });
+  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
   modeBar.appendChild(raceBtn);
-
+  const shopBtn = document.createElement('button');
+  shopBtn.className = 'mob-mode-btn';
+  shopBtn.textContent = '🛒 Shop';
+  shopBtn.addEventListener('click', () => openShopOverlay());
+  modeBar.appendChild(shopBtn);
+  const todoBtn = document.createElement('button');
+  todoBtn.className = 'mob-mode-btn';
+  todoBtn.textContent = '✅ Tasks';
+  todoBtn.addEventListener('click', () => { mobMode='todo'; renderMobileView(); });
+  modeBar.appendChild(todoBtn);
   mc.appendChild(modeBar);
 
   if (mobMode === 'race') renderMobileRaceWeek();
+  else if (mobMode === 'todo') renderTodoView(mc);
   else renderMobileMonth();
 }
 
@@ -8288,6 +8473,8 @@ function applyPastWeeks() {
 }
 
 function setCalMode(mode) {
+  document.body.classList.remove('shop-mode');
+  const _shopBtn = document.getElementById('view-btn-shop'); if (_shopBtn) _shopBtn.classList.remove('active');
   setView('calendar');
 }
 
@@ -8657,13 +8844,14 @@ let dayViewDate = new Date(); // which day is shown in day view
 
 function setView(view) {
   currentView = view;
+  document.body.classList.toggle('shop-mode', view === 'shop');
   document.getElementById('cal').style.display        = (view === 'calendar' && calMode === 'race') ? '' : 'none';
-  document.getElementById('month-cal').style.display  = (calMode === 'month') ? '' : 'none';
+  document.getElementById('month-cal').style.display  = (view !== 'shop' && calMode === 'month') ? '' : 'none';
   document.getElementById('week-view').style.display  = view === 'week'     ? '' : 'none';
   document.getElementById('day-view').style.display   = view === 'day'      ? '' : 'none';
-  ['calendar','week','day'].forEach(v => {
+  ['calendar','week','day','shop'].forEach(v => {
     const b = document.getElementById('view-btn-' + v);
-    if (b) b.classList.toggle('active', v === view && calMode !== 'month');
+    if (b) b.classList.toggle('active', v === view && (view === 'shop' || calMode !== 'month'));
   });
 
   if (view === 'week') {
@@ -8679,7 +8867,11 @@ function setView(view) {
   } else if (view === 'day') {
     dayViewDate = new Date();
     renderDayView();
-
+  } else if (view === 'shop') {
+    renderShoppingList();
+    loadShoppingList();
+    updatePushButton();
+  }
 }
 
 // ── WEEK VIEW ──────────────────────────────────────────────────────────────
@@ -9094,13 +9286,27 @@ function renderBriefing() {
     rows += briefRow('📅', 'Calendar', ev);
   }
 
+  // Todo tasks for today
+  if (todoItems && todoItems.length) {
+    const todayTasks = todoItems.filter(i => !i.done && i.day === new Date().toLocaleDateString('en-GB',{weekday:'long'}));
+    if (todayTasks.length) {
+      const byPerson = {};
+      todayTasks.forEach(t => { (byPerson[t.assignee] = byPerson[t.assignee]||[]).push(t); });
+      const taskHtml = Object.entries(byPerson).map(([who, ts]) => {
+        const name = who === 'marius' ? 'Marius' : who === 'vilde' ? 'Vilde' : 'Both';
+        return '<b>' + name + ':</b> ' + ts.map(t => escTodo(t.text)).join(', ');
+      }).join('<br>');
+      rows += '<div class="brief-row brief-row-tap" onclick="mobMode=&apos;todo&apos;;renderMobileView();"><div class="ic">✅</div><div class="bd"><div class="bl">Tasks today</div><div class="bv">' + taskHtml + '</div></div></div>';
+    }
+  }
+
   // Shopping list reminder (shared, not day-specific) — tap to open the list
   const pendingShop = (shoppingItems || []).filter(i => !i.done);
   if (pendingShop.length) {
     const preview = pendingShop.slice(0,3).map(i => escShop(i.item)).join(', ');
     const more = pendingShop.length > 3 ? ` +${pendingShop.length-3}` : '';
     const val = `${pendingShop.length} to buy<span style="color:var(--ink-meta);font-weight:400;"> · ${preview}${more}</span> ›`;
-    rows += `<div class="brief-row brief-row-tap" onclick="openShopOverlay()"><div class="ic">🛒</div><div class="bd"><div class="bl">Shopping</div><div class="bv">${val}</div></div></div>`;
+    rows += `<div class="brief-row brief-row-tap" onclick="setView('shop')"><div class="ic">🛒</div><div class="bd"><div class="bl">Shopping</div><div class="bv">${val}</div></div></div>`;
   }
 
   // Solo-evening heuristic (partner working evening / long / night)
@@ -9131,22 +9337,34 @@ function renderBriefing() {
 // ── SHOPPING LIST (shared, synced via Supabase) ─────────────────────────────
 let shoppingItems = [];
 
-function openShopOverlay() {
-  const overlay = document.getElementById('shop-overlay');
-  if (overlay) overlay.classList.add('open');
-  renderShoppingList();
-  loadShoppingList();
-  updatePushButton();
-  overlay.onclick = function(e) { if (e.target === overlay) closeShopOverlay(); };
+function exitShop() {
+  document.body.classList.remove('shop-mode');
+  const b = document.getElementById('view-btn-shop'); if (b) b.classList.remove('active');
+  if (isMobilePortrait()) renderMobileView();
+  else setView('calendar');
 }
-function closeShopOverlay() {
-  const overlay = document.getElementById('shop-overlay');
-  if (overlay) overlay.classList.remove('open');
-}
-function exitShop() { closeShopOverlay(); }
 
 function escShop(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function openShopOverlay() {
+  const backdrop = document.getElementById('shop-overlay-backdrop');
+  const sheet    = document.getElementById('shop-overlay-sheet');
+  // Move #shop-view into the overlay sheet
+  const shopView = document.getElementById('shop-view');
+  if (shopView && sheet) {
+    if (!sheet.contains(shopView)) sheet.appendChild(shopView);
+    shopView.style.display = 'block';
+  }
+  backdrop.classList.add('open');
+  sheet.classList.add('open');
+  loadShoppingList();
+  updatePushButton();
+}
+function closeShopOverlay() {
+  document.getElementById('shop-overlay-backdrop')?.classList.remove('open');
+  document.getElementById('shop-overlay-sheet')?.classList.remove('open');
 }
 
 async function loadShoppingList() {
@@ -9514,7 +9732,7 @@ async function enableShoppingNotifications() {
     const res = await fetch(SUPA_BASE + 'push_subscriptions', {
       method: 'POST',
       headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson })
+      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile || 'marius' })
     });
     if (!res.ok && res.status !== 409) throw new Error('save failed: ' + res.status);
     updatePushButton('on');
@@ -9525,11 +9743,37 @@ async function enableShoppingNotifications() {
   }
 }
 
+async function autoResubscribePush() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) return; // already subscribed
+    // Check if we have a stored subscription in Supabase
+    const res = await fetch(SUPA_BASE + 'push_subscriptions?select=subscription&limit=1', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length) return;
+    // Re-subscribe silently
+    const newSub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    const subJson = newSub.toJSON();
+    await fetch(SUPA_BASE + 'push_subscriptions', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson })
+    });
+    console.log('Push subscription auto-restored');
+  } catch(e) { console.warn('autoResubscribePush failed:', e); }
+}
+
 // ── SERVICE WORKER ─────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(r => console.log('SW registered:', r.scope))
+      .then(r => { console.log('SW registered:', r.scope); autoResubscribePush().catch(console.warn); })
       .catch(e => console.warn('SW failed:', e));
   });
 }
