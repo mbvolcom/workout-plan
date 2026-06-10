@@ -1087,6 +1087,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
   #mobile-cal { display: none !important; }
 }
 #mobile-cal { display:none; padding-bottom:80px; }
+#mob-tab-bar { display:none; padding:0 12px 0; margin-bottom:0; }
+@media (max-width:600px) and (orientation:portrait) { #mob-tab-bar { display:block; } }
 .mob-mode-bar { display:flex; background:var(--bg); border:1px solid var(--border-mid); border-radius:10px; padding:3px; margin-bottom:14px; gap:3px; }
 .todo-view { padding:0 0 40px; }
 .todo-group { margin-bottom:18px; }
@@ -1214,7 +1216,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.7</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.7.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1859,6 +1861,7 @@ body.shop-mode #briefing-card { display:none !important; }
 <div id="week-view" style="display:none;"></div>
 <div id="day-view" style="display:none;"></div>
 </div>
+<div id="mob-tab-bar"></div>
 <div id="mobile-cal"></div>
 
 <script>
@@ -3739,27 +3742,41 @@ async function addShoppingItemInline() {
 function renderInlineShopList() {
   const listDiv = document.getElementById('inline-shop-list');
   if (!listDiv) return;
-  // Re-render by copying from the real shop-list or rebuilding
-  const realList = document.getElementById('shop-list');
-  if (realList) {
-    listDiv.innerHTML = realList.innerHTML;
-    // Re-attach click handlers
-    listDiv.querySelectorAll('.shop-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = +el.dataset.id;
-        const item = shoppingItems.find(i => i.id === id);
-        if (item) { item.done = !item.done; saveShoppingList(); renderInlineShopList(); }
-      });
-    });
-    listDiv.querySelectorAll('.shop-del').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const id = +btn.dataset.id;
-        shoppingItems = shoppingItems.filter(i => i.id !== id);
-        saveShoppingList(); renderInlineShopList();
-      });
-    });
+  if (!shoppingItems || !shoppingItems.length) {
+    listDiv.innerHTML = '<div class="shop-empty">List is empty — add something above.</div>';
+    return;
   }
+  const pending = shoppingItems.filter(i => !i.done);
+  const done    = shoppingItems.filter(i =>  i.done);
+  listDiv.innerHTML = '';
+  [...pending, ...(done.length ? [{_divider: true, count: done.length}] : []), ...done].forEach(item => {
+    if (item._divider) {
+      const d = document.createElement('div');
+      d.className = 'shop-count';
+      d.style.cssText = 'margin:16px 0 7px;';
+      d.textContent = item.count + ' bought';
+      listDiv.appendChild(d);
+      return;
+    }
+    const row = document.createElement('div');
+    row.className = 'shop-item' + (item.done ? ' done' : '');
+    row.innerHTML =
+      '<div class="cb">' + (item.done ? '✓' : '') + '</div>' +
+      '<div class="tx">' + escShop(item.item) + '</div>' +
+      '<button class="rm">×</button>';
+    row.querySelector('.cb').addEventListener('click', () => {
+      item.done = !item.done;
+      toggleShoppingItem(item.id, item.done);
+      renderInlineShopList();
+    });
+    row.querySelector('.rm').addEventListener('click', e => {
+      e.stopPropagation();
+      shoppingItems = shoppingItems.filter(i => i.id !== item.id);
+      deleteShoppingItem(item.id);
+      renderInlineShopList();
+    });
+    listDiv.appendChild(row);
+  });
 }
 
 function updateInlineNotifBtn() {
@@ -3889,32 +3906,65 @@ function renderTodoView(container) {
 
 function refreshTodoList(listWrap, todayISOArg, filterDay, wrap) {
   if (!listWrap) return;
-  const filtered = todoItems.filter(i => i.day === filterDay);
-  const active = filtered.filter(i => !i.done);
-  const done   = filtered.filter(i =>  i.done);
+  const tISO = todayISOArg || todayISO();
+  // Show ALL tasks for the week, grouped by day
+  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+  const DAYS_OF_WEEK_R = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   listWrap.innerHTML = '';
-  if (!active.length && !done.length) {
-    const isToday = filterDay === (todayISOArg || todayISO());
-    const d = new Date(filterDay + 'T12:00:00');
-    const label = isToday ? 'today' : d.toLocaleDateString('en-GB', {weekday:'long'});
-    listWrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center;">No tasks for ' + label + '</div>';
-    return;
+  let hasAny = false;
+  DAYS_OF_WEEK_R.forEach((dayName_, di) => {
+    const iso = getWeekDateISO(wi, di);
+    if (!iso) return;
+    const dayTasks = todoItems.filter(i => i.day === iso);
+    if (!dayTasks.length) return;
+    hasAny = true;
+    const isSelected = iso === filterDay;
+    const isToday = iso === tISO;
+    // Day header
+    const dayHdr = document.createElement('div');
+    dayHdr.id = 'todo-day-' + iso;
+    dayHdr.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;' +
+      'color:' + (isSelected ? 'var(--text)' : 'var(--muted)') + ';' +
+      'margin:' + (di === 0 ? '0' : '14px') + ' 0 6px;' +
+      'padding:4px 0;' +
+      (isSelected ? 'border-bottom:2px solid #26A69A;' : '');
+    dayHdr.textContent = isToday ? 'Today — ' + dayName_ : dayName_;
+    listWrap.appendChild(dayHdr);
+    // Tasks for this day
+    const active = dayTasks.filter(i => !i.done);
+    const done   = dayTasks.filter(i =>  i.done);
+    [...active, ...done].forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'todo-item' + (item.done ? ' done' : '');
+      el.dataset.id = item.id;
+      const assCls = item.assignee === 'marius' ? 'marius' : item.assignee === 'vilde' ? 'vilde' : 'both';
+      const assLabel = item.assignee === 'marius' ? 'Marius' : item.assignee === 'vilde' ? 'Vilde' : 'Both';
+      el.innerHTML =
+        '<div class="tck">' + (item.done ? '✓' : '') + '</div>' +
+        '<div class="ttx">' + escTodo(item.text) + '</div>' +
+        '<span class="tass ' + assCls + '">' + assLabel + '</span>' +
+        '<button class="trm" data-id="' + item.id + '">×</button>';
+      el.addEventListener('click', async () => {
+        await toggleTodoItem(item.id, mobWeekIndex);
+        refreshTodoList(listWrap, tISO, filterDay, wrap);
+      });
+      el.querySelector('.trm').addEventListener('click', async e => {
+        e.stopPropagation();
+        await deleteTodoItem(item.id, mobWeekIndex);
+        refreshTodoList(listWrap, tISO, filterDay, wrap);
+      });
+      listWrap.appendChild(el);
+    });
+  });
+  if (!hasAny) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'color:var(--muted);font-size:13px;padding:20px 0;text-align:center;';
+    empty.textContent = 'No tasks this week';
+    listWrap.appendChild(empty);
   }
-  if (active.length) listWrap.innerHTML += renderTodoGroup('To do', active);
-  if (done.length)   listWrap.innerHTML += renderTodoGroup('Done', done);
-  listWrap.querySelectorAll('.todo-item').forEach(el => {
-    el.addEventListener('click', async () => {
-      await toggleTodoItem(el.dataset.id, mobWeekIndex);
-      refreshTodoList(listWrap, todayName, filterDay, wrap);
-    });
-  });
-  listWrap.querySelectorAll('.trm').forEach(btn => {
-    btn.addEventListener('click', async e => {
-      e.stopPropagation();
-      await deleteTodoItem(btn.dataset.id, mobWeekIndex);
-      refreshTodoList(listWrap, todayName, filterDay, wrap);
-    });
-  });
+  // Scroll selected day into view
+  const selectedHdr = document.getElementById('todo-day-' + filterDay);
+  if (selectedHdr) setTimeout(() => selectedHdr.scrollIntoView({behavior:'smooth', block:'nearest'}), 50);
 }
 
   const wrap = document.createElement('div');
@@ -3936,6 +3986,23 @@ function renderTodoGroup(label, items) {
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
 const SUPA_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
+
+async function ensurePushUserIdUpdated() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return; // not subscribed
+    const subJson = sub.toJSON();
+    // Upsert with current user_id — fixes subscriptions saved without it
+    await fetch(SUPA_BASE + 'push_subscriptions?on_conflict=endpoint', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile || 'marius' })
+    });
+    console.log('[push] subscription user_id ensured for:', activeProfile);
+  } catch(e) { console.warn('[push] ensurePushUserIdUpdated failed:', e); }
+}
 
 function triggerNotifications() {
   // Small delay so Supabase has committed the new row before the Edge Function reads it
@@ -8210,6 +8277,36 @@ function isMobilePortrait() {
   return window.innerWidth <= 600 && window.innerHeight > window.innerWidth;
 }
 
+function updateMobTabBar() {
+  const bar = document.getElementById('mob-tab-bar');
+  if (!bar) return;
+  bar.querySelectorAll('.mob-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mobMode);
+  });
+}
+
+function initMobTabBar() {
+  const bar = document.getElementById('mob-tab-bar');
+  if (!bar || bar.dataset.init) return;
+  bar.dataset.init = '1';
+  const modeBar = document.createElement('div');
+  modeBar.className = 'mob-mode-bar';
+  [['race','🏃 Plan'],['shop','🛒 Shop'],['todo','✅ Tasks']].forEach(([mode, label]) => {
+    const btn = document.createElement('button');
+    btn.className = 'mob-mode-btn' + (mobMode === mode ? ' active' : '');
+    btn.textContent = label;
+    btn.dataset.mode = mode;
+    btn.addEventListener('click', () => {
+      mobMode = mode;
+      if (mode === 'race') document.body.classList.remove('shop-mode');
+      updateMobTabBar();
+      renderMobileView();
+    });
+    modeBar.appendChild(btn);
+  });
+  bar.appendChild(modeBar);
+}
+
 function initMobileView() {
   if (!isMobilePortrait()) return;
 
@@ -8222,7 +8319,10 @@ function initMobileView() {
     if (today >= mon && today <= sun) mobWeekIndex = wi;
   });
 
+  initMobTabBar();
   renderMobileView();
+  // Ensure push subscription has correct user_id
+  ensurePushUserIdUpdated();
 
   // Swipe detection — add only once
   if (!window._mobSwipeInit) {
@@ -8263,25 +8363,7 @@ function initMobileView() {
 function renderMobileView() {
   const mc = document.getElementById('mobile-cal');
   mc.innerHTML = '';
-
-  // Mode toggle
-  const modeBar = document.createElement('div'); modeBar.className = 'mob-mode-bar';
-  const raceBtn = document.createElement('button');
-  raceBtn.className = 'mob-mode-btn' + (mobMode==='race'?' active':'');
-  raceBtn.textContent = '🏃 Plan';
-  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; setTimeout(renderMobileView, 0); });
-  modeBar.appendChild(raceBtn);
-  const shopBtn = document.createElement('button');
-  shopBtn.className = 'mob-mode-btn' + (mobMode==='shop'?' active':'');
-  shopBtn.textContent = '🛒 Shop';
-  shopBtn.addEventListener('click', () => { mobMode='shop'; setTimeout(renderMobileView, 0); });
-  modeBar.appendChild(shopBtn);
-  const todoBtn = document.createElement('button');
-  todoBtn.className = 'mob-mode-btn' + (mobMode==='todo'?' active':'');
-  todoBtn.textContent = '✅ Tasks';
-  todoBtn.addEventListener('click', () => { mobMode='todo'; setTimeout(renderMobileView, 0); });
-  modeBar.appendChild(todoBtn);
-  mc.appendChild(modeBar);
+  updateMobTabBar();
 
   if (mobMode === 'race') renderMobileRaceWeek();
   else if (mobMode === 'todo') {
