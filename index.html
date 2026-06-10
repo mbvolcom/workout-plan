@@ -1104,7 +1104,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .trm { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:0 2px; flex-shrink:0; }
 .todo-add-wrap { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
 .todo-add-input { flex:1; min-width:0; padding:10px 12px; border:0.5px solid var(--border-mid); border-radius:10px; font-size:13px; font-family:inherit; background:var(--bg); color:var(--text); outline:none; }
-.todo-pill-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.todo-pill-row { display:flex; gap:4px; flex-wrap:nowrap; margin-bottom:10px; }
 .todo-pill { padding:6px 12px; border-radius:20px; border:1px solid var(--border-mid); font-size:12px; font-weight:600; background:none; color:var(--muted); cursor:pointer; font-family:inherit; transition:all 0.15s; }
 .todo-pill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
 .todo-pill.today-pill.active { background:#26A69A; border-color:#26A69A; color:#fff; }
@@ -1214,7 +1214,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3502,6 +3502,10 @@ if (_local) applyState(JSON.parse(_local));
   // 9. Family briefing + shared shopping list + recipe library
   renderBriefing();
   loadShoppingList();
+  // Load todos from local immediately, then sync from cloud
+  const _localTodos = loadTodosFromLocal();
+  todoItems = _localTodos[typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0] || [];
+  renderBriefing();
   loadTodoItems(typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0).then(() => renderBriefing());
   loadRecipeLibrary();
 
@@ -3530,28 +3534,50 @@ function escTodo(s) {
   return String(s||'').replace(/&/g,a).replace(/</g,l).replace(/>/g,g).replace(/"/g,q);
 }
 
+// todos keyed by week: { 0: [...], 1: [...], ... }
+function loadTodosFromLocal() {
+  try { return JSON.parse(localStorage.getItem('trainingcal-todos') || '{}'); } catch(e) { return {}; }
+}
+function saveTodosToLocal(allTodos) {
+  localStorage.setItem('trainingcal-todos', JSON.stringify(allTodos));
+}
+
 async function loadTodoItems(weekIdx) {
   const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
-  const key = 'todos_w' + wi;
+  // 1. Load from localStorage first (fast, always available)
+  const local = loadTodosFromLocal();
+  todoItems = local[wi] || [];
+  // 2. Try to hydrate from Supabase calendar_state todos field
   try {
-    const res = await fetch(SUPA_BASE + 'week_plan?id=eq.' + encodeURIComponent(key) + '&select=data', { headers: SUPA_HDR });
-    if (!res.ok) throw new Error('load todos ' + res.status);
-    const rows = await res.json();
-    todoItems = (rows.length && rows[0].data) ? rows[0].data : [];
-  } catch(e) { console.warn('Load todos failed:', e); todoItems = []; }
+    const res = await fetch(SUPA_BASE + 'calendar_state?id=eq.1&select=todos', { headers: SUPA_HDR });
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows.length && rows[0].todos) {
+        const cloud = rows[0].todos;
+        // cloud is { weekIdx: [...items] }
+        // Merge: cloud wins for items not in local (cloud is source of truth)
+        const merged = { ...local, ...cloud };
+        saveTodosToLocal(merged);
+        todoItems = merged[wi] || [];
+      }
+    }
+  } catch(e) { /* use local */ }
 }
 
 async function saveTodoItems(weekIdx) {
   const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
-  const key = 'todos_w' + wi;
+  // 1. Save to localStorage immediately
+  const allTodos = loadTodosFromLocal();
+  allTodos[wi] = todoItems;
+  saveTodosToLocal(allTodos);
+  // 2. Sync to Supabase as todos field in calendar_state
   try {
-    const res = await fetch(SUPA_BASE + 'week_plan?on_conflict=id', {
+    await fetch(SUPA_BASE + 'calendar_state?on_conflict=id', {
       method: 'POST',
       headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ id: key, data: todoItems })
+      body: JSON.stringify({ id: 1, todos: allTodos })
     });
-    if (!res.ok) throw new Error('save todos ' + res.status);
-  } catch(e) { console.warn('Save todos failed:', e); }
+  } catch(e) { console.warn('Cloud todo sync failed (local save succeeded):', e); }
 }
 
 async function addTodoItem(text, assignee, day, weekIdx) {
@@ -3675,12 +3701,6 @@ function updateInlineNotifBtn() {
 function renderTodoView(container) {
   const DAYS_OF_WEEK = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   const todayName = new Date().toLocaleDateString('en-GB', {weekday:'long'});
-  // Reload tasks for current week
-  loadTodoItems(mobWeekIndex).then(() => {
-    const listWrap = container.querySelector('#todo-list-wrap');
-    if (listWrap) refreshTodoList(listWrap, todayName, filterDayRef, container);
-  });
-
   const wrap = document.createElement('div');
   wrap.className = 'todo-view';
 
@@ -3700,18 +3720,22 @@ function renderTodoView(container) {
   dayLabel.textContent = 'Filter by day';
   wrap.appendChild(dayLabel);
 
-  let filterDayRef = todayName;
+  // Restore last-selected day or default to today
+  if (!window._todoFilterDay) window._todoFilterDay = todayName;
+  let filterDayRef = window._todoFilterDay;
   const dayRow = document.createElement('div');
   dayRow.className = 'todo-pill-row';
-  // Today replaces the current weekday label; rest in Mon-Sun order
-  const dayOrder = [todayName, ...DAYS_OF_WEEK.filter(d => d !== todayName)];
-  dayOrder.forEach(d => {
+  // Days in natural Mon–Sun order; today gets "Today" label
+  DAYS_OF_WEEK.forEach(d => {
+    const isToday = d === todayName;
     const btn = document.createElement('button');
-    btn.className = 'todo-pill' + (d === todayName ? ' today-pill' : '') + (d === filterDayRef ? ' active' : '');
-    btn.textContent = d === todayName ? 'Today' : d.slice(0,3);
+    btn.className = 'todo-pill' + (isToday ? ' today-pill' : '') + (d === filterDayRef ? ' active' : '');
+    btn.textContent = isToday ? 'Today' : d.slice(0,3);
     btn.title = d;
+    btn.style.cssText = 'flex:1;min-width:0;padding:6px 2px;font-size:11px;';
     btn.addEventListener('click', () => {
       filterDayRef = d;
+      window._todoFilterDay = d;
       dayRow.querySelectorAll('.todo-pill').forEach(b => b.classList.toggle('active', b.title === d));
       refreshTodoList(listWrap, todayName, filterDayRef, wrap);
     });
@@ -8160,7 +8184,18 @@ function renderMobileView() {
   mc.appendChild(modeBar);
 
   if (mobMode === 'race') renderMobileRaceWeek();
-  else if (mobMode === 'todo') { loadTodoItems(mobWeekIndex).then(() => renderTodoView(mc)); return; }
+  else if (mobMode === 'todo') {
+    // Load from local immediately (sync), render, then cloud-sync in background
+    const localAll = loadTodosFromLocal();
+    todoItems = localAll[mobWeekIndex] || [];
+    renderTodoView(mc);
+    // Background cloud sync
+    loadTodoItems(mobWeekIndex).then(() => {
+      const lw = document.getElementById('todo-list-wrap');
+      if (lw) refreshTodoList(lw, new Date().toLocaleDateString('en-GB',{weekday:'long'}), window._todoFilterDay || new Date().toLocaleDateString('en-GB',{weekday:'long'}), lw.parentElement);
+    });
+    return;
+  }
   else if (mobMode === 'shop') renderShopView(mc);
   else renderMobileMonth();
 }
