@@ -1244,7 +1244,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -4106,7 +4106,7 @@ function lastDoneColor(taskId, cat) {
 
 let _cleanSectionOpen = { weekly: true, monthly: false };
 let _cleanTaskOpen = {};
-let _cleanDayPick = {}; // taskId → ISO date
+let _cleanDayPick = {}; // taskId → Set of ISO dates
 let _cleanAssPick = {}; // taskId → assignee
 
 function renderCleanView(container) {
@@ -4198,20 +4198,26 @@ function refreshCleanView() {
       dayLbl.textContent = 'Day';
       detail.appendChild(dayLbl);
 
-      if (!_cleanDayPick[task.id]) _cleanDayPick[task.id] = todayISOStr;
+      // Init with today selected if not yet set
+      if (!_cleanDayPick[task.id]) _cleanDayPick[task.id] = new Set([todayISOStr]);
       const dayRow = document.createElement('div');
       dayRow.className = 'clean-day-row';
       DAYS_OF_WEEK_C.forEach((dName, di) => {
         const iso = getWeekDateISO(wi, di);
         const isToday = iso === todayISOStr;
+        const selected = _cleanDayPick[task.id].has(iso);
         const btn = document.createElement('button');
-        btn.className = 'clean-day-pill' + (isToday ? ' today-pill' : '') + (iso === _cleanDayPick[task.id] ? ' active' : '');
+        btn.className = 'clean-day-pill' + (isToday ? ' today-pill' : '') + (selected ? ' active' : '');
         btn.textContent = isToday ? 'Today' : dName.slice(0,3);
         btn.title = iso;
         btn.addEventListener('click', () => {
-          _cleanDayPick[task.id] = iso;
-          dayRow.querySelectorAll('.clean-day-pill').forEach(b => b.classList.toggle('active', b.title === iso));
-          dayRow.querySelectorAll('.clean-day-pill').forEach(b => b.classList.toggle('today-pill', b.title === todayISOStr));
+          const pick = _cleanDayPick[task.id];
+          if (pick.has(iso)) {
+            pick.delete(iso); // unclick = deselect
+          } else {
+            pick.add(iso);    // click = select (multiple allowed)
+          }
+          btn.classList.toggle('active', pick.has(iso));
         });
         dayRow.appendChild(btn);
       });
@@ -4244,9 +4250,16 @@ function refreshCleanView() {
       doneBtn.className = 'clean-done-btn';
       doneBtn.textContent = '✓ Mark as done';
       doneBtn.addEventListener('click', async () => {
+        const days = [...(_cleanDayPick[task.id] || new Set())];
+        if (!days.length) { alert('Pick at least one day first.'); return; }
         doneBtn.disabled = true;
         doneBtn.textContent = 'Saving…';
-        await logCleaningDone(task.id, _cleanAssPick[task.id], _cleanDayPick[task.id]);
+        // Log one entry per selected day
+        for (const day of days) {
+          await logCleaningDone(task.id, _cleanAssPick[task.id], day);
+        }
+        // Reset to today only after saving
+        _cleanDayPick[task.id] = new Set([todayISOStr]);
         _cleanTaskOpen[task.id] = false;
         refreshCleanView();
       });
@@ -8764,7 +8777,7 @@ function addMobPillHandlers(el, tapFn, wi, row, di) {
 
 function renderMobileRaceWeek() {
   const mc = document.getElementById('mobile-cal');
-  while (mc.children.length > 1) mc.removeChild(mc.lastChild);
+  mc.innerHTML = '';
 
   const wi = mobWeekIndex;
   const w  = WEEKS[wi];
