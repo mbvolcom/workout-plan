@@ -1214,7 +1214,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.6</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3920,11 +3920,19 @@ function renderTodoGroup(label, items) {
 const SUPA_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
 
 function triggerNotifications() {
-  // Fire-and-forget: call the Edge Function to dispatch push notifications
-  fetch(SUPA_FN + 'notify-shopping', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY }
-  }).then(r => r.json()).then(d => console.log('[notify]', d)).catch(e => console.warn('[notify] failed:', e));
+  // Small delay so Supabase has committed the new row before the Edge Function reads it
+  setTimeout(() => {
+    fetch(SUPA_FN + 'notify-shopping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY }
+    })
+    .then(async r => {
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) console.warn('[notify] Edge Function error', r.status, body);
+      else console.log('[notify] dispatched:', body);
+    })
+    .catch(e => console.warn('[notify] fetch failed:', e));
+  }, 1500);
 }
 let stravaActivities = {}; // keyed by YYYY-MM-DD
 
@@ -10004,14 +10012,14 @@ async function enableShoppingNotifications() {
       });
     }
     const subJson = sub.toJSON();
-    const res = await fetch(SUPA_BASE + 'push_subscriptions', {
+    const res = await fetch(SUPA_BASE + 'push_subscriptions?on_conflict=endpoint', {
       method: 'POST',
       headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile || 'marius' })
     });
     if (!res.ok && res.status !== 409) throw new Error('save failed: ' + res.status);
     updatePushButton('on');
-    alert('Notifications enabled \uD83C\uDF89 You\u2019ll get a heads-up when items are added to the list.');
+    alert('Notifications enabled \uD83C\uDF89 You\u2019ll get a ping when tasks or shopping items are added.');
   } catch(e) {
     console.warn('Enable notifications failed:', e);
     alert('Could not enable notifications: ' + (e && e.message ? e.message : e));
@@ -10038,7 +10046,7 @@ async function autoResubscribePush() {
     await fetch(SUPA_BASE + 'push_subscriptions', {
       method: 'POST',
       headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson })
+      body: JSON.stringify({ endpoint: subJson.endpoint, subscription: subJson, user_id: activeProfile || 'marius' })
     });
     console.log('Push subscription auto-restored');
   } catch(e) { console.warn('autoResubscribePush failed:', e); }
