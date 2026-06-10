@@ -1214,7 +1214,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.6</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.7</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3619,6 +3619,8 @@ async function addTodoItem(text, assignee, dayISO, weekIdx) {
     todoItems = todoItems.map(i => i.id === tempItem.id ? realItem : i);
     cacheTodosLocally(wi, todoItems);
     renderBriefing();
+    const lw3 = document.getElementById('todo-list-wrap');
+    if (lw3) refreshTodoList(lw3, todayISO(), window._todoFilterDay || todayISO(), lw3.parentElement);
   } catch(e) {
     console.error('[todo] Network error:', e);
   }
@@ -3635,6 +3637,8 @@ async function toggleTodoItem(id, weekIdx) {
   todoItems = todoItems.map(i => i.id === id ? { ...i, done: newDone } : i);
   cacheTodosLocally(wi, todoItems);
   renderBriefing();
+  const lw2 = document.getElementById('todo-list-wrap');
+  if (lw2) refreshTodoList(lw2, todayISO(), window._todoFilterDay || todayISO(), lw2.parentElement);
   try {
     const res = await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
       method: 'PATCH',
@@ -3650,6 +3654,9 @@ async function deleteTodoItem(id, weekIdx) {
   todoItems = todoItems.filter(i => i.id !== id);
   cacheTodosLocally(wi, todoItems);
   renderBriefing();
+  // Update the visible list immediately
+  const lw = document.getElementById('todo-list-wrap');
+  if (lw) refreshTodoList(lw, todayISO(), window._todoFilterDay || todayISO(), lw.parentElement);
   try {
     const res = await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
       method: 'DELETE', headers: SUPA_HDR
@@ -3703,19 +3710,30 @@ function renderShopView(container) {
   updateInlineNotifBtn();
 }
 
-function addShoppingItemInline() {
+async function addShoppingItemInline() {
   const inp = document.getElementById('inline-shop-input');
   if (!inp || !inp.value.trim()) return;
-  // Reuse the main addShoppingItem logic by temporarily pointing shop-input
-  const mainInp = document.getElementById('shop-input');
-  if (mainInp) { mainInp.value = inp.value; addShoppingItem(); inp.value = ''; }
-  else {
-    // Direct add
-    shoppingItems = [...(shoppingItems||[]), { id: Date.now(), item: inp.value.trim(), done: false }];
-    saveShoppingList();
-    inp.value = '';
+  const text = inp.value.trim();
+  inp.value = '';
+  // Optimistic update
+  const temp = { id: 'tmp_' + Date.now(), item: text, done: false };
+  shoppingItems = [...(shoppingItems||[]), temp];
+  renderInlineShopList();
+  renderBriefing();
+  // Save to Supabase
+  try {
+    const res = await fetch(SUPA_BASE + 'shopping_list', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify({ item: text, done: false })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const saved = (await res.json())[0];
+    const idx = shoppingItems.findIndex(i => i.id === temp.id);
+    if (idx >= 0 && saved) shoppingItems[idx] = saved;
     renderInlineShopList();
-  }
+    triggerNotifications();
+  } catch(e) { console.warn('Add shop item failed:', e); loadShoppingList().then(renderInlineShopList); }
 }
 
 function renderInlineShopList() {
@@ -8251,17 +8269,17 @@ function renderMobileView() {
   const raceBtn = document.createElement('button');
   raceBtn.className = 'mob-mode-btn' + (mobMode==='race'?' active':'');
   raceBtn.textContent = '🏃 Plan';
-  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; renderMobileView(); });
+  raceBtn.addEventListener('click', () => { document.body.classList.remove('shop-mode'); mobMode='race'; setTimeout(renderMobileView, 0); });
   modeBar.appendChild(raceBtn);
   const shopBtn = document.createElement('button');
   shopBtn.className = 'mob-mode-btn' + (mobMode==='shop'?' active':'');
   shopBtn.textContent = '🛒 Shop';
-  shopBtn.addEventListener('click', () => { mobMode='shop'; renderMobileView(); });
+  shopBtn.addEventListener('click', () => { mobMode='shop'; setTimeout(renderMobileView, 0); });
   modeBar.appendChild(shopBtn);
   const todoBtn = document.createElement('button');
-  todoBtn.className = 'mob-mode-btn';
+  todoBtn.className = 'mob-mode-btn' + (mobMode==='todo'?' active':'');
   todoBtn.textContent = '✅ Tasks';
-  todoBtn.addEventListener('click', () => { mobMode='todo'; renderMobileView(); });
+  todoBtn.addEventListener('click', () => { mobMode='todo'; setTimeout(renderMobileView, 0); });
   modeBar.appendChild(todoBtn);
   mc.appendChild(modeBar);
 
@@ -9676,6 +9694,7 @@ function renderShoppingList() {
     pending.map(row).join('') +
     (done.length ? `<div class="shop-count" style="margin:16px 0 7px;">${done.length} bought</div>` + done.map(row).join('') : '');
   if (typeof renderBriefing === 'function') renderBriefing();
+  renderInlineShopList();
 }
 
 async function addShoppingItem() {
