@@ -1214,7 +1214,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3534,73 +3534,128 @@ function escTodo(s) {
   return String(s||'').replace(/&/g,a).replace(/</g,l).replace(/>/g,g).replace(/"/g,q);
 }
 
-// todos keyed by week: { 0: [...], 1: [...], ... }
+// ── TODO PERSISTENCE ──────────────────────────────────────────────────────
+// Primary store: Supabase 'todo_list' table
+// Columns: id (uuid), text, assignee, day (date ISO), done (bool), added_by (text), notified (bool), created_at
+// day is stored as ISO date string e.g. '2026-06-11'
+
+function getWeekDateISO(wi, di) {
+  // di: 0=Mon, 1=Tue, ..., 6=Sun
+  if (!WEEK_MONDAYS[wi]) return null;
+  const [y, m, d] = WEEK_MONDAYS[wi];
+  const date = new Date(y, m - 1, d + di);
+  return date.getFullYear() + '-' +
+    String(date.getMonth() + 1).padStart(2, '0') + '-' +
+    String(date.getDate()).padStart(2, '0');
+}
+
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
 function loadTodosFromLocal() {
   try { return JSON.parse(localStorage.getItem('trainingcal-todos') || '{}'); } catch(e) { return {}; }
 }
 function saveTodosToLocal(allTodos) {
-  localStorage.setItem('trainingcal-todos', JSON.stringify(allTodos));
+  try { localStorage.setItem('trainingcal-todos', JSON.stringify(allTodos)); } catch(e) {}
+}
+function cacheTodosLocally(wi, items) {
+  const all = loadTodosFromLocal();
+  all[wi] = items;
+  saveTodosToLocal(all);
 }
 
 async function loadTodoItems(weekIdx) {
   const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
-  // 1. Load from localStorage first (fast, always available)
+  // 1. Use local cache instantly
   const local = loadTodosFromLocal();
   todoItems = local[wi] || [];
-  // 2. Try to hydrate from Supabase calendar_state todos field
+  // 2. Fetch from Supabase — filter by the 7 dates of this week
+  const monDate = getWeekDateISO(wi, 0);
+  const sunDate = getWeekDateISO(wi, 6);
+  if (!monDate) return;
   try {
-    const res = await fetch(SUPA_BASE + 'calendar_state?id=eq.1&select=todos', { headers: SUPA_HDR });
-    if (res.ok) {
-      const rows = await res.json();
-      if (rows.length && rows[0].todos) {
-        const cloud = rows[0].todos;
-        // cloud is { weekIdx: [...items] }
-        // Merge: cloud wins for items not in local (cloud is source of truth)
-        const merged = { ...local, ...cloud };
-        saveTodosToLocal(merged);
-        todoItems = merged[wi] || [];
-      }
-    }
-  } catch(e) { /* use local */ }
+    const url = SUPA_BASE + 'todo_list?day=gte.' + monDate + '&day=lte.' + sunDate + '&order=created_at';
+    const res = await fetch(url, { headers: SUPA_HDR });
+    if (!res.ok) { console.warn('[todo] Load HTTP', res.status, await res.text()); return; }
+    const rows = await res.json();
+    todoItems = rows;
+    cacheTodosLocally(wi, rows);
+  } catch(e) { console.warn('[todo] Load failed, using local cache:', e); }
 }
 
-async function saveTodoItems(weekIdx) {
-  const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
-  // 1. Save to localStorage immediately
-  const allTodos = loadTodosFromLocal();
-  allTodos[wi] = todoItems;
-  saveTodosToLocal(allTodos);
-  // 2. Sync to Supabase as todos field in calendar_state
-  try {
-    await fetch(SUPA_BASE + 'calendar_state?on_conflict=id', {
-      method: 'POST',
-      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ id: 1, todos: allTodos })
-    });
-  } catch(e) { console.warn('Cloud todo sync failed (local save succeeded):', e); }
-}
-
-async function addTodoItem(text, assignee, day, weekIdx) {
+async function addTodoItem(text, assignee, dayISO, weekIdx) {
   if (!text.trim()) return;
   const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
-  const newItem = { id: Date.now() + '_' + Math.random().toString(36).slice(2,7), text: text.trim(), assignee, day: day || null, done: false, week: wi };
-  todoItems = [...todoItems, newItem];
-  await saveTodoItems(wi);
+  const body = { text: text.trim(), assignee, day: dayISO || null, done: false, added_by: activeProfile || 'marius' };
+  // Optimistic local update
+  const tempItem = { ...body, id: 'temp_' + Date.now() };
+  todoItems = [...todoItems, tempItem];
+  cacheTodosLocally(wi, todoItems);
   renderBriefing();
+  // Save to Supabase
+  try {
+    const res = await fetch(SUPA_BASE + 'todo_list', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('[todo] Save failed:', res.status, errText);
+      alert('Could not save task (' + res.status + '). Check console for details.');
+      // Roll back optimistic update
+      todoItems = todoItems.filter(i => i.id !== tempItem.id);
+      cacheTodosLocally(wi, todoItems);
+      renderBriefing();
+      return;
+    }
+    const saved = await res.json();
+    // Replace temp item with real saved item
+    const realItem = Array.isArray(saved) ? saved[0] : saved;
+    todoItems = todoItems.map(i => i.id === tempItem.id ? realItem : i);
+    cacheTodosLocally(wi, todoItems);
+    renderBriefing();
+  } catch(e) {
+    console.error('[todo] Network error:', e);
+  }
+  // Trigger the Edge Function to send push notifications
+  triggerNotifications();
 }
 
 async function toggleTodoItem(id, weekIdx) {
   const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
-  todoItems = todoItems.map(i => i.id === id ? { ...i, done: !i.done } : i);
-  await saveTodoItems(wi);
+  const item = todoItems.find(i => i.id === id);
+  if (!item) return;
+  const newDone = !item.done;
+  // Optimistic update
+  todoItems = todoItems.map(i => i.id === id ? { ...i, done: newDone } : i);
+  cacheTodosLocally(wi, todoItems);
   renderBriefing();
+  try {
+    const res = await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
+      method: 'PATCH',
+      headers: SUPA_HDR,
+      body: JSON.stringify({ done: newDone })
+    });
+    if (!res.ok) console.warn('[todo] Toggle failed:', res.status);
+  } catch(e) { console.warn('[todo] Toggle network error:', e); }
 }
 
 async function deleteTodoItem(id, weekIdx) {
   const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
   todoItems = todoItems.filter(i => i.id !== id);
-  await saveTodoItems(wi);
+  cacheTodosLocally(wi, todoItems);
   renderBriefing();
+  try {
+    const res = await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
+      method: 'DELETE', headers: SUPA_HDR
+    });
+    if (!res.ok) console.warn('[todo] Delete failed:', res.status);
+  } catch(e) { console.warn('[todo] Delete network error:', e); }
 }
 
 function renderShopView(container) {
@@ -3720,24 +3775,32 @@ function renderTodoView(container) {
   dayLabel.textContent = 'Filter by day';
   wrap.appendChild(dayLabel);
 
-  // Restore last-selected day or default to today
-  if (!window._todoFilterDay) window._todoFilterDay = todayName;
+  // Build ISO date for each day of current week (Mon=0 … Sun=6)
+  const todayISOStr = todayISO();
+  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+  const weekDates = DAYS_OF_WEEK.map((_, di) => getWeekDateISO(wi, di)); // ['2026-06-08',...]
+
+  // Restore last-selected day ISO or default to today
+  if (!window._todoFilterDay || !weekDates.includes(window._todoFilterDay)) {
+    window._todoFilterDay = weekDates.includes(todayISOStr) ? todayISOStr : weekDates[0];
+  }
   let filterDayRef = window._todoFilterDay;
+
   const dayRow = document.createElement('div');
   dayRow.className = 'todo-pill-row';
-  // Days in natural Mon–Sun order; today gets "Today" label
-  DAYS_OF_WEEK.forEach(d => {
-    const isToday = d === todayName;
+  DAYS_OF_WEEK.forEach((dayName_, di) => {
+    const iso = weekDates[di];
+    const isToday = iso === todayISOStr;
     const btn = document.createElement('button');
-    btn.className = 'todo-pill' + (isToday ? ' today-pill' : '') + (d === filterDayRef ? ' active' : '');
-    btn.textContent = isToday ? 'Today' : d.slice(0,3);
-    btn.title = d;
+    btn.className = 'todo-pill' + (isToday ? ' today-pill' : '') + (iso === filterDayRef ? ' active' : '');
+    btn.textContent = isToday ? 'Today' : dayName_.slice(0, 3);
+    btn.title = iso;
     btn.style.cssText = 'flex:1;min-width:0;padding:6px 2px;font-size:11px;';
     btn.addEventListener('click', () => {
-      filterDayRef = d;
-      window._todoFilterDay = d;
-      dayRow.querySelectorAll('.todo-pill').forEach(b => b.classList.toggle('active', b.title === d));
-      refreshTodoList(listWrap, todayName, filterDayRef, wrap);
+      filterDayRef = iso;
+      window._todoFilterDay = iso;
+      dayRow.querySelectorAll('.todo-pill').forEach(b => b.classList.toggle('active', b.title === iso));
+      refreshTodoList(listWrap, todayISOStr, filterDayRef, wrap);
     });
     dayRow.appendChild(btn);
   });
@@ -3796,24 +3859,27 @@ function renderTodoView(container) {
     await addTodoItem(text, assignee, filterDayRef, mobWeekIndex);
     inp.value = '';
     addBtn.disabled = false;
-    refreshTodoList(listWrap, todayName, filterDayRef, wrap);
+    refreshTodoList(listWrap, todayISOStr, filterDayRef, wrap);
   }
 
   addBtn.addEventListener('click', doAdd);
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
 
   container.appendChild(wrap);
-  refreshTodoList(listWrap, todayName, filterDayRef, wrap);
+  refreshTodoList(listWrap, todayISOStr, filterDayRef, wrap);
 }
 
-function refreshTodoList(listWrap, todayName, filterDay, wrap) {
+function refreshTodoList(listWrap, todayISOArg, filterDay, wrap) {
   if (!listWrap) return;
   const filtered = todoItems.filter(i => i.day === filterDay);
   const active = filtered.filter(i => !i.done);
   const done   = filtered.filter(i =>  i.done);
   listWrap.innerHTML = '';
   if (!active.length && !done.length) {
-    listWrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center;">No tasks for ' + (filterDay === todayName ? 'today' : filterDay) + '</div>';
+    const isToday = filterDay === (todayISOArg || todayISO());
+    const d = new Date(filterDay + 'T12:00:00');
+    const label = isToday ? 'today' : d.toLocaleDateString('en-GB', {weekday:'long'});
+    listWrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center;">No tasks for ' + label + '</div>';
     return;
   }
   if (active.length) listWrap.innerHTML += renderTodoGroup('To do', active);
@@ -3842,7 +3908,7 @@ function renderTodoGroup(label, items) {
     const assLabel = i.assignee === 'marius' ? 'Marius' : i.assignee === 'vilde' ? 'Vilde' : 'Both';
     return '<div class="todo-item' + (i.done?' done':'') + '" data-id="' + i.id + '">' +
       '<div class="tck">' + (i.done?'✓':'') + '</div>' +
-      '<div class="ttx">' + escTodo(i.text) + (i.day ? '<br><span style="font-size:10px;color:var(--muted);">' + i.day + '</span>' : '') + '</div>' +
+      '<div class="ttx">' + escTodo(i.text) + (i.day ? '<br><span style="font-size:10px;color:var(--muted);">' + new Date(i.day + 'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) + '</span>' : '') + '</div>' +
       '<span class="tass ' + assCls + '">' + assLabel + '</span>' +
       '<button class="trm" data-id="' + i.id + '">×</button>' +
     '</div>';
@@ -3852,6 +3918,14 @@ function renderTodoGroup(label, items) {
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
 const SUPA_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/';
+
+function triggerNotifications() {
+  // Fire-and-forget: call the Edge Function to dispatch push notifications
+  fetch(SUPA_FN + 'notify-shopping', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY }
+  }).then(r => r.json()).then(d => console.log('[notify]', d)).catch(e => console.warn('[notify] failed:', e));
+}
 let stravaActivities = {}; // keyed by YYYY-MM-DD
 
 async function connectStrava() {
@@ -8192,7 +8266,7 @@ function renderMobileView() {
     // Background cloud sync
     loadTodoItems(mobWeekIndex).then(() => {
       const lw = document.getElementById('todo-list-wrap');
-      if (lw) refreshTodoList(lw, new Date().toLocaleDateString('en-GB',{weekday:'long'}), window._todoFilterDay || new Date().toLocaleDateString('en-GB',{weekday:'long'}), lw.parentElement);
+      if (lw) refreshTodoList(lw, todayISO(), window._todoFilterDay || todayISO(), lw.parentElement);
     });
     return;
   }
@@ -9439,6 +9513,16 @@ function renderBriefing() {
 
   let rows = '';
 
+  // Load todos for the briefing week from local cache if needed
+  if (wi >= 0) {
+    const monDate = getWeekDateISO(wi, 0);
+    const sunDate = getWeekDateISO(wi, 6);
+    if (monDate && (!todoItems.length || !todoItems.some(i => i.day >= monDate && i.day <= sunDate))) {
+      const localAll = loadTodosFromLocal();
+      todoItems = localAll[wi] || [];
+    }
+  }
+
   // Weather (midday window)
   const dw = weatherData[dateStr];
   if (dw && dw.length) {
@@ -9483,17 +9567,16 @@ function renderBriefing() {
     rows += briefRow('📅', 'Calendar', ev);
   }
 
-  // Todo tasks — show own + both, filtered to current briefing day
+  // Todo tasks — show tasks for current profile (own + both) matching briefing day
   if (todoItems && todoItems.length) {
-    const briefDayName = new Date(di === 0
-      ? Date.now()
-      : Date.now() + 86400000
-    ).toLocaleDateString('en-GB', {weekday:'long'});
-    const myTasks = todoItems.filter(i => !i.done && i.day === briefDayName &&
-      (i.assignee === activeProfile || i.assignee === 'both'));
+    const myTasks = todoItems.filter(i =>
+      !i.done &&
+      i.day === dateStr &&
+      (i.assignee === activeProfile || i.assignee === 'both')
+    );
     if (myTasks.length) {
       const taskList = myTasks.map(t => escTodo(t.text)).join(', ');
-      const taskLabel = (briefingDay === 'today' ? 'Tasks today' : 'Tasks tomorrow');
+      const taskLabel = briefingDay === 'today' ? 'Tasks today' : 'Tasks tomorrow';
       rows += '<div class="brief-row brief-row-tap" onclick="goToTasks()"><div class="ic">✅</div><div class="bd"><div class="bl">' + taskLabel + '</div><div class="bv">' + taskList + '</div></div></div>';
     }
   }
@@ -9604,6 +9687,7 @@ async function addShoppingItem() {
     const idx = shoppingItems.findIndex(i => i.id === temp.id);
     if (idx>=0 && saved) shoppingItems[idx] = saved;
     renderShoppingList();
+    triggerNotifications();
   } catch(e) { console.warn('Add item failed:', e); loadShoppingList(); }
 }
 
