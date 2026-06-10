@@ -1244,7 +1244,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3541,20 +3541,30 @@ if (_local) applyState(JSON.parse(_local));
   loadRecipeLibrary();
 
   // Auto-refresh recipes when switching back to the app (e.g. added on another device)
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      loadRecipeLibrary().then(() => { renderRecipeLibEntries(); renderMealRecipeList(); });
-      fetchGCal().then(() => { if (isMobilePortrait()) renderMobileRaceWeek(); });
-    }
-  });
-  // Also poll every 60 seconds while the app is open
-  setInterval(() => {
+  // Reload all live data and refresh the briefing card
+  function refreshAllData() {
+    const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+    Promise.all([
+      loadShoppingList(),
+      loadTodoItems(wi),
+      loadCleaningLog(),
+    ]).then(() => {
+      renderBriefing();
+      renderInlineShopList();
+      // Refresh visible tab list if open
+      const lw = document.getElementById('todo-list-wrap');
+      if (lw) refreshTodoList(lw, todayISO(), window._todoFilterDay || todayISO(), lw.parentElement);
+      refreshCleanView();
+    });
     loadRecipeLibrary().then(() => { renderRecipeLibEntries(); renderMealRecipeList(); });
-  }, 60000);
-  // Poll GCal every 5 minutes
-  setInterval(() => {
-    fetchGCal().then(() => { if (isMobilePortrait()) renderMobileRaceWeek(); });
-  }, 5 * 60 * 1000);
+    fetchGCal().then(() => { if (isMobilePortrait() && mobMode === 'race') renderMobileRaceWeek(); });
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshAllData();
+  });
+  // Poll every 60 seconds while the app is open
+  setInterval(refreshAllData, 60000);
 })();
 
 // ── TODO LIST ──────────────────────────────────────────────────────────────
@@ -4061,9 +4071,9 @@ async function logCleaningDone(taskId, assignedTo, day) {
     if (!res.ok) { console.warn('[clean] save failed:', res.status, await res.text()); return; }
     const saved = await res.json();
     const real = Array.isArray(saved) ? saved[0] : saved;
-    cleaningLog = cleaningLog.map(e => e.id === 'tmp_' + Date.now() ? real : e);
-    // Reload to be sure
-    loadCleaningLog().then(refreshCleanView);
+    cleaningLog = cleaningLog.map(e => (e.id + '').startsWith('tmp_') ? real : e);
+    renderBriefing();
+    loadCleaningLog().then(() => { refreshCleanView(); renderBriefing(); });
   } catch(e) { console.warn('[clean] save error:', e); }
 }
 
@@ -8662,6 +8672,8 @@ function initMobileView() {
     mc.addEventListener('touchend', e => {
       if (!_swiping) return;
       _swiping = false;
+      // Only handle swipe navigation in race/month modes — not in shop/todo/clean
+      if (mobMode !== 'race' && mobMode !== 'month') return;
       const dx = e.changedTouches[0].clientX - _sx;
       const dy = e.changedTouches[0].clientY - _sy;
       if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 60) {
@@ -8682,10 +8694,11 @@ function initMobileView() {
 
 function renderMobileView() {
   const mc = document.getElementById('mobile-cal');
+  const _savedScroll = window.scrollY;
   mc.innerHTML = '';
   updateMobTabBar();
 
-  if (mobMode === 'race') renderMobileRaceWeek();
+  if (mobMode === 'race') { renderMobileRaceWeek(); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
   else if (mobMode === 'todo') {
     // Load from local immediately (sync), render, then cloud-sync in background
     const localAll = loadTodosFromLocal();
@@ -8696,11 +8709,18 @@ function renderMobileView() {
       const lw = document.getElementById('todo-list-wrap');
       if (lw) refreshTodoList(lw, todayISO(), window._todoFilterDay || todayISO(), lw.parentElement);
     });
+    requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
     return;
   }
-  else if (mobMode === 'shop') renderShopView(mc);
-  else if (mobMode === 'clean') { loadCleaningLog().then(() => renderCleanView(mc)); return; }
-  else renderMobileMonth();
+  else if (mobMode === 'shop') { renderShopView(mc); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
+  else if (mobMode === 'clean') {
+    loadCleaningLog().then(() => {
+      renderCleanView(mc);
+      requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
+    });
+    return;
+  }
+  else { renderMobileMonth(); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
 }
 
 function openMobFlagMenu(dateStr) {
@@ -8777,6 +8797,7 @@ function addMobPillHandlers(el, tapFn, wi, row, di) {
 
 function renderMobileRaceWeek() {
   const mc = document.getElementById('mobile-cal');
+  const _savedScrollR = window.scrollY;
   mc.innerHTML = '';
 
   const wi = mobWeekIndex;
@@ -9057,6 +9078,7 @@ function renderMobileRaceWeek() {
   mc.appendChild(daysEl);
   const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe to navigate weeks →';
   mc.appendChild(hint);
+  requestAnimationFrame(() => window.scrollTo({top:_savedScrollR,behavior:'instant'}));
 }
 
 function renderMobileMonth() {
