@@ -1214,7 +1214,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.5.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.6.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3502,7 +3502,7 @@ if (_local) applyState(JSON.parse(_local));
   // 9. Family briefing + shared shopping list + recipe library
   renderBriefing();
   loadShoppingList();
-  loadTodoItems().then(() => renderBriefing());
+  loadTodoItems(typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0).then(() => renderBriefing());
   loadRecipeLibrary();
 
   // Auto-refresh recipes when switching back to the app (e.g. added on another device)
@@ -3530,127 +3530,208 @@ function escTodo(s) {
   return String(s||'').replace(/&/g,a).replace(/</g,l).replace(/>/g,g).replace(/"/g,q);
 }
 
-async function loadTodoItems() {
+async function loadTodoItems(weekIdx) {
+  const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
+  const key = 'todos_w' + wi;
   try {
-    const res = await fetch(SUPA_BASE + 'todos?select=*&order=created_at', { headers: SUPA_HDR });
-    if (!res.ok) throw new Error('todos ' + res.status);
-    todoItems = await res.json();
+    const res = await fetch(SUPA_BASE + 'week_plan?id=eq.' + encodeURIComponent(key) + '&select=data', { headers: SUPA_HDR });
+    if (!res.ok) throw new Error('load todos ' + res.status);
+    const rows = await res.json();
+    todoItems = (rows.length && rows[0].data) ? rows[0].data : [];
   } catch(e) { console.warn('Load todos failed:', e); todoItems = []; }
 }
 
-async function addTodoItem(text, assignee, day) {
-  if (!text.trim()) return;
+async function saveTodoItems(weekIdx) {
+  const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
+  const key = 'todos_w' + wi;
   try {
-    const body = { text: text.trim(), assignee, day: day || null, done: false };
-    console.log('[todo] Adding:', body);
-    const res = await fetch(SUPA_BASE + 'todos', {
+    const res = await fetch(SUPA_BASE + 'week_plan?on_conflict=id', {
       method: 'POST',
-      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
-      body: JSON.stringify(body)
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ id: key, data: todoItems })
     });
-    const resText = await res.text();
-    if (!res.ok) {
-      console.error('[todo] Save failed:', res.status, resText);
-      alert('Could not save task: ' + res.status + '. Check the todos table exists in Supabase. See console for details.');
-      return;
-    }
-    console.log('[todo] Saved:', resText);
-    await loadTodoItems();
-    renderBriefing();
-  } catch(e) {
-    console.error('[todo] Add failed:', e);
-    alert('Network error saving task: ' + e.message);
-  }
+    if (!res.ok) throw new Error('save todos ' + res.status);
+  } catch(e) { console.warn('Save todos failed:', e); }
 }
 
-async function toggleTodoItem(id) {
-  const item = todoItems.find(i => i.id === id);
-  if (!item) return;
-  try {
-    await fetch(SUPA_BASE + 'todos?id=eq.' + id, {
-      method: 'PATCH',
-      headers: { ...SUPA_HDR },
-      body: JSON.stringify({ done: !item.done })
-    });
-    await loadTodoItems();
-    renderBriefing();
-  } catch(e) { console.warn('Toggle todo failed:', e); }
+async function addTodoItem(text, assignee, day, weekIdx) {
+  if (!text.trim()) return;
+  const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
+  const newItem = { id: Date.now() + '_' + Math.random().toString(36).slice(2,7), text: text.trim(), assignee, day: day || null, done: false, week: wi };
+  todoItems = [...todoItems, newItem];
+  await saveTodoItems(wi);
+  renderBriefing();
 }
 
-async function deleteTodoItem(id) {
-  try {
-    await fetch(SUPA_BASE + 'todos?id=eq.' + id, { method: 'DELETE', headers: SUPA_HDR });
-    await loadTodoItems();
-    renderBriefing();
-  } catch(e) { console.warn('Delete todo failed:', e); }
+async function toggleTodoItem(id, weekIdx) {
+  const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
+  todoItems = todoItems.map(i => i.id === id ? { ...i, done: !i.done } : i);
+  await saveTodoItems(wi);
+  renderBriefing();
+}
+
+async function deleteTodoItem(id, weekIdx) {
+  const wi = (weekIdx !== undefined) ? weekIdx : (typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
+  todoItems = todoItems.filter(i => i.id !== id);
+  await saveTodoItems(wi);
+  renderBriefing();
 }
 
 function renderShopView(container) {
-  const shopView = document.getElementById('shop-view');
-  if (shopView) {
-    shopView.style.display = 'block';
-    container.appendChild(shopView);
+  // Build a self-contained shop panel (don't move #shop-view out of its anchor)
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding-bottom:40px;';
+
+  // Header row
+  const hdr = document.createElement('div');
+  hdr.className = 'shop-head';
+  hdr.innerHTML =
+    '<h2>🛒 Shopping</h2>' +
+    '<div style="display:flex;gap:6px;">' +
+      '<button class="shop-clear" id="inline-shop-notif-btn" onclick="enableShoppingNotifications()">🔔 Notify</button>' +
+      '<button class="shop-clear" onclick="clearBoughtItems()">Clear bought</button>' +
+    '</div>';
+  wrap.appendChild(hdr);
+
+  // Add item row
+  const addRow = document.createElement('div');
+  addRow.className = 'shop-add';
+  const shopInp = document.createElement('input');
+  shopInp.id = 'inline-shop-input';
+  shopInp.type = 'text';
+  shopInp.placeholder = 'Add item…';
+  shopInp.autocomplete = 'off';
+  shopInp.setAttribute('enterkeyhint','done');
+  shopInp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();addShoppingItemInline();} });
+  const shopAddBtn = document.createElement('button');
+  shopAddBtn.textContent = 'Add';
+  shopAddBtn.addEventListener('click', addShoppingItemInline);
+  addRow.appendChild(shopInp);
+  addRow.appendChild(shopAddBtn);
+  wrap.appendChild(addRow);
+
+  // List container
+  const listDiv = document.createElement('div');
+  listDiv.id = 'inline-shop-list';
+  wrap.appendChild(listDiv);
+
+  container.appendChild(wrap);
+
+  // Populate
+  renderInlineShopList();
+  updateInlineNotifBtn();
+}
+
+function addShoppingItemInline() {
+  const inp = document.getElementById('inline-shop-input');
+  if (!inp || !inp.value.trim()) return;
+  // Reuse the main addShoppingItem logic by temporarily pointing shop-input
+  const mainInp = document.getElementById('shop-input');
+  if (mainInp) { mainInp.value = inp.value; addShoppingItem(); inp.value = ''; }
+  else {
+    // Direct add
+    shoppingItems = [...(shoppingItems||[]), { id: Date.now(), item: inp.value.trim(), done: false }];
+    saveShoppingList();
+    inp.value = '';
+    renderInlineShopList();
   }
-  loadShoppingList();
-  updatePushButton();
+}
+
+function renderInlineShopList() {
+  const listDiv = document.getElementById('inline-shop-list');
+  if (!listDiv) return;
+  // Re-render by copying from the real shop-list or rebuilding
+  const realList = document.getElementById('shop-list');
+  if (realList) {
+    listDiv.innerHTML = realList.innerHTML;
+    // Re-attach click handlers
+    listDiv.querySelectorAll('.shop-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = +el.dataset.id;
+        const item = shoppingItems.find(i => i.id === id);
+        if (item) { item.done = !item.done; saveShoppingList(); renderInlineShopList(); }
+      });
+    });
+    listDiv.querySelectorAll('.shop-del').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const id = +btn.dataset.id;
+        shoppingItems = shoppingItems.filter(i => i.id !== id);
+        saveShoppingList(); renderInlineShopList();
+      });
+    });
+  }
+}
+
+function updateInlineNotifBtn() {
+  pushStatus().then(s => {
+    const btn = document.getElementById('inline-shop-notif-btn');
+    if (!btn) return;
+    if (s === 'unsupported') { btn.style.display='none'; return; }
+    btn.textContent = s === 'on' ? '🔔 On' : '🔔 Notify';
+  }).catch(()=>{});
 }
 
 function renderTodoView(container) {
   const DAYS_OF_WEEK = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   const todayName = new Date().toLocaleDateString('en-GB', {weekday:'long'});
+  // Reload tasks for current week
+  loadTodoItems(mobWeekIndex).then(() => {
+    const listWrap = container.querySelector('#todo-list-wrap');
+    if (listWrap) refreshTodoList(listWrap, todayName, filterDayRef, container);
+  });
 
   const wrap = document.createElement('div');
   wrap.className = 'todo-view';
 
-  // ── Section label ─────────────────────────────────────────────────────────
-  const secLabel = document.createElement('div');
-  secLabel.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;';
-  secLabel.textContent = 'Filter by day';
-  wrap.appendChild(secLabel);
+  // ── 1. Notification button (top, shop-style) ──────────────────────────────
+  const notifBtn = document.createElement('button');
+  notifBtn.id = 'todo-notif-btn';
+  notifBtn.className = 'shop-clear';
+  notifBtn.style.cssText = 'width:100%;margin-bottom:14px;display:block;';
+  notifBtn.textContent = '🔔 Notify';
+  notifBtn.addEventListener('click', enableShoppingNotifications);
+  wrap.appendChild(notifBtn);
+  updatePushButton().catch(() => {});
 
-  // ── Day filter — pill buttons ─────────────────────────────────────────────
-  let filterDay = todayName; // default to today
+  // ── 2. Filter by day ──────────────────────────────────────────────────────
+  const dayLabel = document.createElement('div');
+  dayLabel.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;';
+  dayLabel.textContent = 'Filter by day';
+  wrap.appendChild(dayLabel);
+
+  let filterDayRef = todayName;
   const dayRow = document.createElement('div');
   dayRow.className = 'todo-pill-row';
-  // Today first, then remaining days
+  // Today replaces the current weekday label; rest in Mon-Sun order
   const dayOrder = [todayName, ...DAYS_OF_WEEK.filter(d => d !== todayName)];
   dayOrder.forEach(d => {
     const btn = document.createElement('button');
-    btn.className = 'todo-pill' + (d === todayName ? ' today-pill' : '') + (d === filterDay ? ' active' : '');
+    btn.className = 'todo-pill' + (d === todayName ? ' today-pill' : '') + (d === filterDayRef ? ' active' : '');
     btn.textContent = d === todayName ? 'Today' : d.slice(0,3);
     btn.title = d;
     btn.addEventListener('click', () => {
-      filterDay = d;
+      filterDayRef = d;
       dayRow.querySelectorAll('.todo-pill').forEach(b => b.classList.toggle('active', b.title === d));
-      refresh();
+      refreshTodoList(listWrap, todayName, filterDayRef, wrap);
     });
     dayRow.appendChild(btn);
   });
   wrap.appendChild(dayRow);
 
-  // ── Add task input ────────────────────────────────────────────────────────
-  const addLabel = document.createElement('div');
-  addLabel.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px;';
-  addLabel.textContent = 'New task';
-  wrap.appendChild(addLabel);
+  // ── 3. Assignee pills ─────────────────────────────────────────────────────
+  const assLabel = document.createElement('div');
+  assLabel.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px;';
+  assLabel.textContent = 'For';
+  wrap.appendChild(assLabel);
 
-  const inp = document.createElement('input');
-  inp.className = 'todo-add-input';
-  inp.placeholder = 'Task description…';
-  inp.style.marginBottom = '8px';
-  inp.style.display = 'block';
-  inp.style.width = '100%';
-  inp.style.boxSizing = 'border-box';
-  wrap.appendChild(inp);
-
-  // ── Assignee pills ────────────────────────────────────────────────────────
-  let assignee = 'marius'; // default
+  let assignee = activeProfile || 'marius';
   const assRow = document.createElement('div');
   assRow.className = 'todo-pill-row';
-  ['marius','vilde'].forEach(who => {
+  [['marius','Marius'],['vilde','Vilde'],['both','Both']].forEach(([who, label]) => {
     const btn = document.createElement('button');
     btn.className = 'todo-pill' + (who === assignee ? ' active' : '');
-    btn.textContent = who === 'marius' ? 'Marius' : 'Vilde';
+    btn.textContent = label;
     btn.dataset.who = who;
     btn.addEventListener('click', () => {
       assignee = who;
@@ -3660,25 +3741,25 @@ function renderTodoView(container) {
   });
   wrap.appendChild(assRow);
 
-  // ── Add button ────────────────────────────────────────────────────────────
+  // ── 4. New task input ─────────────────────────────────────────────────────
+  const newLabel = document.createElement('div');
+  newLabel.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px;';
+  newLabel.textContent = 'New task';
+  wrap.appendChild(newLabel);
+
+  const inp = document.createElement('input');
+  inp.className = 'todo-add-input';
+  inp.placeholder = 'Task description…';
+  inp.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin-bottom:8px;';
+  wrap.appendChild(inp);
+
   const addBtn = document.createElement('button');
   addBtn.className = 'todo-add-btn';
   addBtn.textContent = 'Add task';
-  addBtn.style.marginTop = '10px';
   addBtn.style.width = '100%';
   wrap.appendChild(addBtn);
 
-  // ── Notification button ───────────────────────────────────────────────────
-  const notifBtn = document.createElement('button');
-  notifBtn.id = 'todo-notif-btn';
-  notifBtn.className = 'todo-add-btn';
-  notifBtn.style.cssText = 'margin-top:8px;width:100%;background:rgba(0,0,0,0.06);color:var(--text);font-size:12px;';
-  notifBtn.textContent = '🔔 Enable task notifications';
-  notifBtn.addEventListener('click', enableShoppingNotifications);
-  wrap.appendChild(notifBtn);
-  updatePushButton().catch(() => {});
-
-  // ── Task list ─────────────────────────────────────────────────────────────
+  // ── 5. Task list ──────────────────────────────────────────────────────────
   const listWrap = document.createElement('div');
   listWrap.id = 'todo-list-wrap';
   listWrap.style.marginTop = '18px';
@@ -3687,36 +3768,49 @@ function renderTodoView(container) {
   async function doAdd() {
     const text = inp.value.trim();
     if (!text) return;
-    await addTodoItem(text, assignee, filterDay);
+    addBtn.disabled = true;
+    await addTodoItem(text, assignee, filterDayRef, mobWeekIndex);
     inp.value = '';
-    refresh();
+    addBtn.disabled = false;
+    refreshTodoList(listWrap, todayName, filterDayRef, wrap);
   }
 
   addBtn.addEventListener('click', doAdd);
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
 
-  function refresh() {
-    const filtered = todoItems.filter(i => i.day === filterDay);
-    const active = filtered.filter(i => !i.done);
-    const done   = filtered.filter(i =>  i.done);
-    listWrap.innerHTML = '';
-    if (!active.length && !done.length) {
-      listWrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center;">No tasks for ' + (filterDay === todayName ? 'today' : filterDay) + '</div>';
-      return;
-    }
-    if (active.length) listWrap.innerHTML += renderTodoGroup('To do', active);
-    if (done.length)   listWrap.innerHTML += renderTodoGroup('Done', done);
-    listWrap.querySelectorAll('.todo-item').forEach(el => {
-      el.addEventListener('click', async () => { await toggleTodoItem(el.dataset.id); refresh(); });
-    });
-    listWrap.querySelectorAll('.trm').forEach(btn => {
-      btn.addEventListener('click', async e => { e.stopPropagation(); await deleteTodoItem(btn.dataset.id); refresh(); });
-    });
-  }
-
   container.appendChild(wrap);
-  refresh();
+  refreshTodoList(listWrap, todayName, filterDayRef, wrap);
 }
+
+function refreshTodoList(listWrap, todayName, filterDay, wrap) {
+  if (!listWrap) return;
+  const filtered = todoItems.filter(i => i.day === filterDay);
+  const active = filtered.filter(i => !i.done);
+  const done   = filtered.filter(i =>  i.done);
+  listWrap.innerHTML = '';
+  if (!active.length && !done.length) {
+    listWrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center;">No tasks for ' + (filterDay === todayName ? 'today' : filterDay) + '</div>';
+    return;
+  }
+  if (active.length) listWrap.innerHTML += renderTodoGroup('To do', active);
+  if (done.length)   listWrap.innerHTML += renderTodoGroup('Done', done);
+  listWrap.querySelectorAll('.todo-item').forEach(el => {
+    el.addEventListener('click', async () => {
+      await toggleTodoItem(el.dataset.id, mobWeekIndex);
+      refreshTodoList(listWrap, todayName, filterDay, wrap);
+    });
+  });
+  listWrap.querySelectorAll('.trm').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      await deleteTodoItem(btn.dataset.id, mobWeekIndex);
+      refreshTodoList(listWrap, todayName, filterDay, wrap);
+    });
+  });
+}
+
+  const wrap = document.createElement('div');
+  wrap.className = 'todo-view';
 
 function renderTodoGroup(label, items) {
   const rows = items.map(i => {
@@ -8066,7 +8160,7 @@ function renderMobileView() {
   mc.appendChild(modeBar);
 
   if (mobMode === 'race') renderMobileRaceWeek();
-  else if (mobMode === 'todo') renderTodoView(mc);
+  else if (mobMode === 'todo') { loadTodoItems(mobWeekIndex).then(() => renderTodoView(mc)); return; }
   else if (mobMode === 'shop') renderShopView(mc);
   else renderMobileMonth();
 }
@@ -9354,17 +9448,18 @@ function renderBriefing() {
     rows += briefRow('📅', 'Calendar', ev);
   }
 
-  // Todo tasks for today
+  // Todo tasks — show own + both, filtered to current briefing day
   if (todoItems && todoItems.length) {
-    const todayTasks = todoItems.filter(i => !i.done && i.day === new Date().toLocaleDateString('en-GB',{weekday:'long'}));
-    if (todayTasks.length) {
-      const byPerson = {};
-      todayTasks.forEach(t => { (byPerson[t.assignee] = byPerson[t.assignee]||[]).push(t); });
-      const taskHtml = Object.entries(byPerson).map(([who, ts]) => {
-        const name = who === 'marius' ? 'Marius' : who === 'vilde' ? 'Vilde' : 'Both';
-        return '<b>' + name + ':</b> ' + ts.map(t => escTodo(t.text)).join(', ');
-      }).join('<br>');
-      rows += '<div class="brief-row brief-row-tap" onclick="goToTasks()"><div class="ic">✅</div><div class="bd"><div class="bl">Tasks today</div><div class="bv">' + taskHtml + '</div></div></div>';
+    const briefDayName = new Date(di === 0
+      ? Date.now()
+      : Date.now() + 86400000
+    ).toLocaleDateString('en-GB', {weekday:'long'});
+    const myTasks = todoItems.filter(i => !i.done && i.day === briefDayName &&
+      (i.assignee === activeProfile || i.assignee === 'both'));
+    if (myTasks.length) {
+      const taskList = myTasks.map(t => escTodo(t.text)).join(', ');
+      const taskLabel = (briefingDay === 'today' ? 'Tasks today' : 'Tasks tomorrow');
+      rows += '<div class="brief-row brief-row-tap" onclick="goToTasks()"><div class="ic">✅</div><div class="bd"><div class="bl">' + taskLabel + '</div><div class="bv">' + taskList + '</div></div></div>';
     }
   }
 
@@ -9420,12 +9515,18 @@ function openShopOverlay() { mobMode='shop'; renderMobileView(); }
 function goToTasks() { mobMode='todo'; renderMobileView(); }
 function closeShopOverlay() { mobMode='race'; renderMobileView(); }
 
+function refreshShopViews() {
+  renderInlineShopList();
+  // Also refresh the original shop-list for desktop
+}
+
 async function loadShoppingList() {
   try {
     const res = await fetch(SUPA_BASE + 'shopping_list?select=*&order=created_at', { headers: SUPA_HDR });
     if (!res.ok) throw new Error('shopping_list ' + res.status);
     shoppingItems = await res.json();
     renderShoppingList();
+    renderInlineShopList();
   } catch(e) { console.warn('Failed to load shopping list:', e); }
 }
 
