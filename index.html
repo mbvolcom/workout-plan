@@ -1091,6 +1091,34 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 @media (max-width:600px) and (orientation:portrait) { #mob-tab-bar { display:block; } }
 .mob-mode-bar { display:flex; background:var(--bg); border:1px solid var(--border-mid); border-radius:10px; padding:3px; margin-bottom:14px; gap:3px; }
 .todo-view { padding:0 0 40px; }
+.clean-view { padding:0 0 60px; }
+.clean-section { margin-bottom:18px; }
+.clean-section-hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 0 8px; border-bottom:1.5px solid var(--border-mid); margin-bottom:8px; cursor:pointer; user-select:none; }
+.clean-section-title { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+.clean-section-chevron { font-size:12px; color:var(--muted); transition:transform 0.2s; }
+.clean-section-chevron.open { transform:rotate(90deg); }
+.clean-section-body { overflow:hidden; transition:max-height 0.25s ease; }
+.clean-task { background:var(--glass); border:0.5px solid var(--border-mid); border-radius:12px; margin-bottom:8px; overflow:hidden; }
+.clean-task-row { display:flex; align-items:center; gap:10px; padding:11px 12px; }
+.clean-task-icon { font-size:18px; flex-shrink:0; }
+.clean-task-info { flex:1; min-width:0; }
+.clean-task-name { font-size:13px; font-weight:600; color:var(--text); }
+.clean-task-last { font-size:11px; color:var(--muted); margin-top:2px; }
+.clean-task-expand { font-size:11px; color:var(--muted); padding:4px 6px; background:none; border:none; cursor:pointer; }
+.clean-task-detail { padding:0 12px 12px; border-top:0.5px solid var(--border-mid); display:none; }
+.clean-task-detail.open { display:block; }
+.clean-day-row { display:flex; gap:4px; flex-wrap:nowrap; margin:10px 0 8px; }
+.clean-day-pill { flex:1; min-width:0; padding:5px 2px; border-radius:20px; border:1px solid var(--border-mid); font-size:11px; font-weight:600; background:none; color:var(--muted); cursor:pointer; font-family:inherit; text-align:center; }
+.clean-day-pill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
+.clean-day-pill.today-pill.active { background:#26A69A; border-color:#26A69A; color:#fff; }
+.clean-ass-row { display:flex; gap:6px; margin-bottom:10px; }
+.clean-ass-pill { padding:6px 14px; border-radius:20px; border:1px solid var(--border-mid); font-size:12px; font-weight:600; background:none; color:var(--muted); cursor:pointer; font-family:inherit; }
+.clean-ass-pill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
+.clean-done-btn { width:100%; padding:10px; background:#26A69A; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+.clean-done-btn:active { opacity:0.8; }
+.clean-history { margin-top:10px; }
+.clean-hist-row { display:flex; justify-content:space-between; align-items:center; font-size:11px; padding:4px 0; border-bottom:0.5px solid var(--border-mid); color:var(--muted); }
+.clean-hist-row:last-child { border-bottom:none; }
 .todo-group { margin-bottom:18px; }
 .todo-group-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; padding:0 2px; }
 .todo-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--glass); border:0.5px solid var(--border-mid); border-radius:10px; margin-bottom:6px; cursor:pointer; }
@@ -1216,7 +1244,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.7.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3982,6 +4010,285 @@ function renderTodoGroup(label, items) {
     '</div>';
   }).join('');
   return '<div class="todo-group"><div class="todo-group-label">' + label + '</div>' + rows + '</div>';
+}
+
+// ── CLEANING ───────────────────────────────────────────────────────────────
+// To add more tasks: edit CLEAN_TASKS below. Each entry needs id, label, icon.
+// Category 'weekly' = shown expanded by default. 'monthly' = collapsed section.
+// The 'id' is used as the key in Supabase — keep it stable once created.
+
+const CLEAN_TASKS = [
+  // ── Weekly ──────────────────────────────────────────────────────────────
+  { id:'toilet_1f',   cat:'weekly', icon:'🚽', label:'First-floor toilet' },
+  { id:'bathroom_2f', cat:'weekly', icon:'🚿', label:'Second-floor bathroom' },
+  { id:'bathroom_3f', cat:'weekly', icon:'🛁', label:'Third-floor bathroom' },
+  { id:'robot_1f',    cat:'weekly', icon:'🤖', label:'Robot vacuum first-floor' },
+  { id:'robot_2f',    cat:'weekly', icon:'🤖', label:'Robot vacuum second-floor' },
+  { id:'robot_3f',    cat:'weekly', icon:'🤖', label:'Robot vacuum third-floor' },
+  { id:'stairs',      cat:'weekly', icon:'🪜', label:'Stairs' },
+  { id:'entryway',    cat:'weekly', icon:'🚪', label:'Entryway' },
+  { id:'kitchen_deep',cat:'weekly', icon:'🍳', label:'Deep clean the kitchen' },
+  { id:'dusting',     cat:'weekly', icon:'🧹', label:'Dusting and tidying up' },
+  // ── Monthly ─────────────────────────────────────────────────────────────
+  { id:'bathroom_walls', cat:'monthly', icon:'🪣', label:'Bathroom walls' },
+  { id:'shower_tub',     cat:'monthly', icon:'🛁', label:'Shower/bath tub' },
+  { id:'kitchen_cab',    cat:'monthly', icon:'🗄️',  label:'Kitchen cabinets' },
+  { id:'birk',           cat:'monthly', icon:'🐶', label:'Wash Birk' },
+];
+
+let cleaningLog = []; // array of { id (uuid), task_id, completed_at, assigned_to, day }
+
+async function loadCleaningLog() {
+  try {
+    const res = await fetch(SUPA_BASE + 'cleaning_log?order=completed_at.desc&limit=200', { headers: SUPA_HDR });
+    if (!res.ok) { console.warn('[clean] load failed:', res.status); return; }
+    cleaningLog = await res.json();
+  } catch(e) { console.warn('[clean] load error:', e); }
+}
+
+async function logCleaningDone(taskId, assignedTo, day) {
+  const entry = { task_id: taskId, assigned_to: assignedTo, day: day || null,
+    completed_at: new Date().toISOString() };
+  // Optimistic
+  cleaningLog = [{ ...entry, id: 'tmp_' + Date.now() }, ...cleaningLog];
+  refreshCleanView();
+  try {
+    const res = await fetch(SUPA_BASE + 'cleaning_log', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify(entry)
+    });
+    if (!res.ok) { console.warn('[clean] save failed:', res.status, await res.text()); return; }
+    const saved = await res.json();
+    const real = Array.isArray(saved) ? saved[0] : saved;
+    cleaningLog = cleaningLog.map(e => e.id === 'tmp_' + Date.now() ? real : e);
+    // Reload to be sure
+    loadCleaningLog().then(refreshCleanView);
+  } catch(e) { console.warn('[clean] save error:', e); }
+}
+
+function lastDoneText(taskId) {
+  const entries = cleaningLog.filter(e => e.task_id === taskId);
+  if (!entries.length) return 'Never done';
+  // Sort desc
+  entries.sort((a,b) => new Date(b.completed_at) - new Date(a.completed_at));
+  const last = new Date(entries[0].completed_at);
+  const now = new Date();
+  const diffMs = now - last;
+  const diffDays = Math.floor(diffMs / 86400000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) return diffMins <= 1 ? 'Just now' : diffMins + ' min ago';
+  if (diffHours < 24) return diffHours + 'h ago';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return diffDays + ' days ago';
+  if (diffDays < 14) return '1 week ago';
+  if (diffDays < 30) return Math.floor(diffDays/7) + ' weeks ago';
+  if (diffDays < 60) return '1 month ago';
+  return Math.floor(diffDays/30) + ' months ago';
+}
+
+function lastDoneColor(taskId, cat) {
+  const entries = cleaningLog.filter(e => e.task_id === taskId);
+  if (!entries.length) return '#ff6b6b';
+  entries.sort((a,b) => new Date(b.completed_at) - new Date(a.completed_at));
+  const diffDays = (new Date() - new Date(entries[0].completed_at)) / 86400000;
+  if (cat === 'weekly') {
+    if (diffDays < 5) return '#26A69A';
+    if (diffDays < 9) return '#FFA726';
+    return '#ff6b6b';
+  } else { // monthly
+    if (diffDays < 25) return '#26A69A';
+    if (diffDays < 35) return '#FFA726';
+    return '#ff6b6b';
+  }
+}
+
+let _cleanSectionOpen = { weekly: true, monthly: false };
+let _cleanTaskOpen = {};
+let _cleanDayPick = {}; // taskId → ISO date
+let _cleanAssPick = {}; // taskId → assignee
+
+function renderCleanView(container) {
+  const todayISOStr = todayISO();
+  const DAYS_OF_WEEK_C = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'clean-view';
+  wrap.id = 'clean-view-wrap';
+  container.appendChild(wrap);
+  refreshCleanView();
+}
+
+function refreshCleanView() {
+  const wrap = document.getElementById('clean-view-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const todayISOStr = todayISO();
+  const DAYS_OF_WEEK_C = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+
+  ['weekly','monthly'].forEach(cat => {
+    const tasks = CLEAN_TASKS.filter(t => t.cat === cat);
+    const section = document.createElement('div');
+    section.className = 'clean-section';
+
+    // Section header
+    const hdr = document.createElement('div');
+    hdr.className = 'clean-section-hdr';
+    const title = document.createElement('span');
+    title.className = 'clean-section-title';
+    title.textContent = cat === 'weekly' ? '📅 Weekly cleaning' : '🗓 Monthly cleaning';
+    const chev = document.createElement('span');
+    chev.className = 'clean-section-chevron' + (_cleanSectionOpen[cat] ? ' open' : '');
+    chev.textContent = '›';
+    hdr.appendChild(title);
+    hdr.appendChild(chev);
+
+    const body = document.createElement('div');
+    body.className = 'clean-section-body';
+    body.style.maxHeight = _cleanSectionOpen[cat] ? '9999px' : '0';
+
+    hdr.addEventListener('click', () => {
+      _cleanSectionOpen[cat] = !_cleanSectionOpen[cat];
+      body.style.maxHeight = _cleanSectionOpen[cat] ? '9999px' : '0';
+      chev.classList.toggle('open', _cleanSectionOpen[cat]);
+    });
+
+    section.appendChild(hdr);
+
+    // Tasks
+    tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'clean-task';
+
+      // Main row
+      const row = document.createElement('div');
+      row.className = 'clean-task-row';
+      const iconEl = document.createElement('span');
+      iconEl.className = 'clean-task-icon';
+      iconEl.textContent = task.icon;
+      const info = document.createElement('div');
+      info.className = 'clean-task-info';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'clean-task-name';
+      nameEl.textContent = task.label;
+      const lastEl = document.createElement('div');
+      lastEl.className = 'clean-task-last';
+      lastEl.style.color = lastDoneColor(task.id, task.cat);
+      lastEl.textContent = lastDoneText(task.id);
+      info.appendChild(nameEl);
+      info.appendChild(lastEl);
+      const expandBtn = document.createElement('button');
+      expandBtn.className = 'clean-task-expand';
+      expandBtn.textContent = _cleanTaskOpen[task.id] ? '▴' : '▾';
+      row.appendChild(iconEl);
+      row.appendChild(info);
+      row.appendChild(expandBtn);
+      card.appendChild(row);
+
+      // Detail panel
+      const detail = document.createElement('div');
+      detail.className = 'clean-task-detail' + (_cleanTaskOpen[task.id] ? ' open' : '');
+
+      // Day picker
+      const dayLbl = document.createElement('div');
+      dayLbl.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;';
+      dayLbl.textContent = 'Day';
+      detail.appendChild(dayLbl);
+
+      if (!_cleanDayPick[task.id]) _cleanDayPick[task.id] = todayISOStr;
+      const dayRow = document.createElement('div');
+      dayRow.className = 'clean-day-row';
+      DAYS_OF_WEEK_C.forEach((dName, di) => {
+        const iso = getWeekDateISO(wi, di);
+        const isToday = iso === todayISOStr;
+        const btn = document.createElement('button');
+        btn.className = 'clean-day-pill' + (isToday ? ' today-pill' : '') + (iso === _cleanDayPick[task.id] ? ' active' : '');
+        btn.textContent = isToday ? 'Today' : dName.slice(0,3);
+        btn.title = iso;
+        btn.addEventListener('click', () => {
+          _cleanDayPick[task.id] = iso;
+          dayRow.querySelectorAll('.clean-day-pill').forEach(b => b.classList.toggle('active', b.title === iso));
+          dayRow.querySelectorAll('.clean-day-pill').forEach(b => b.classList.toggle('today-pill', b.title === todayISOStr));
+        });
+        dayRow.appendChild(btn);
+      });
+      detail.appendChild(dayRow);
+
+      // Assignee picker
+      const assLbl = document.createElement('div');
+      assLbl.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;';
+      assLbl.textContent = 'For';
+      detail.appendChild(assLbl);
+
+      if (!_cleanAssPick[task.id]) _cleanAssPick[task.id] = activeProfile || 'marius';
+      const assRow = document.createElement('div');
+      assRow.className = 'clean-ass-row';
+      [['marius','Marius'],['vilde','Vilde'],['both','Both']].forEach(([who, lbl]) => {
+        const btn = document.createElement('button');
+        btn.className = 'clean-ass-pill' + (who === _cleanAssPick[task.id] ? ' active' : '');
+        btn.textContent = lbl;
+        btn.dataset.who = who;
+        btn.addEventListener('click', () => {
+          _cleanAssPick[task.id] = who;
+          assRow.querySelectorAll('.clean-ass-pill').forEach(b => b.classList.toggle('active', b.dataset.who === who));
+        });
+        assRow.appendChild(btn);
+      });
+      detail.appendChild(assRow);
+
+      // Done button
+      const doneBtn = document.createElement('button');
+      doneBtn.className = 'clean-done-btn';
+      doneBtn.textContent = '✓ Mark as done';
+      doneBtn.addEventListener('click', async () => {
+        doneBtn.disabled = true;
+        doneBtn.textContent = 'Saving…';
+        await logCleaningDone(task.id, _cleanAssPick[task.id], _cleanDayPick[task.id]);
+        _cleanTaskOpen[task.id] = false;
+        refreshCleanView();
+      });
+      detail.appendChild(doneBtn);
+
+      // History (last 3)
+      const hist = cleaningLog.filter(e => e.task_id === task.id).slice(0, 3);
+      if (hist.length) {
+        const histDiv = document.createElement('div');
+        histDiv.className = 'clean-history';
+        const histLbl = document.createElement('div');
+        histLbl.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;';
+        histLbl.textContent = 'Recent';
+        histDiv.appendChild(histLbl);
+        hist.forEach(e => {
+          const r = document.createElement('div');
+          r.className = 'clean-hist-row';
+          const dt = new Date(e.completed_at);
+          const who = e.assigned_to === 'marius' ? 'Marius' : e.assigned_to === 'vilde' ? 'Vilde' : 'Both';
+          r.innerHTML = '<span>' + who + '</span><span>' + dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + '</span>';
+          histDiv.appendChild(r);
+        });
+        detail.appendChild(histDiv);
+      }
+
+      card.appendChild(detail);
+
+      // Toggle expand
+      const toggleDetail = () => {
+        _cleanTaskOpen[task.id] = !_cleanTaskOpen[task.id];
+        detail.classList.toggle('open', _cleanTaskOpen[task.id]);
+        expandBtn.textContent = _cleanTaskOpen[task.id] ? '▴' : '▾';
+      };
+      expandBtn.addEventListener('click', e => { e.stopPropagation(); toggleDetail(); });
+      row.addEventListener('click', toggleDetail);
+
+      body.appendChild(card);
+    });
+
+    section.appendChild(body);
+    wrap.appendChild(section);
+  });
 }
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -8291,7 +8598,7 @@ function initMobTabBar() {
   bar.dataset.init = '1';
   const modeBar = document.createElement('div');
   modeBar.className = 'mob-mode-bar';
-  [['race','🏃 Plan'],['shop','🛒 Shop'],['todo','✅ Tasks']].forEach(([mode, label]) => {
+  [['race','🏃 Plan'],['shop','🛒 Shop'],['todo','✅ Tasks'],['clean','🧹 Clean']].forEach(([mode, label]) => {
     const btn = document.createElement('button');
     btn.className = 'mob-mode-btn' + (mobMode === mode ? ' active' : '');
     btn.textContent = label;
@@ -8379,6 +8686,7 @@ function renderMobileView() {
     return;
   }
   else if (mobMode === 'shop') renderShopView(mc);
+  else if (mobMode === 'clean') { loadCleaningLog().then(() => renderCleanView(mc)); return; }
   else renderMobileMonth();
 }
 
