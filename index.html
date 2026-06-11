@@ -1284,7 +1284,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -7580,21 +7580,29 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
   const racePaceSecs = ltPaceSecs * coeff;
   const finishSecs   = racePaceSecs * raceKm;
 
-  // Cross-check with best interval pace if available
-  const allIntervalPaces = weeks.flatMap(wk => wk.paceRuns || []).filter(Boolean);
+  // Cross-check with easy run pace data (paceRuns stores min/km, convert to sec/km)
+  const allEasyPaces = weeks.flatMap(wk => wk.paceRuns || []).filter(Boolean);
   let intervalCheck = null;
-  if (allIntervalPaces.length) {
-    // Best easy pace from paceRuns array
-    const bestEasyPace = Math.min(...allIntervalPaces); // sec/km
-    // VDOT cross-check: marathon pace ≈ easy pace * 1.15
-    const vdotMarathonPace = bestEasyPace * (raceKm >= 42 ? 1.12 : raceKm >= 21 ? 1.06 : 1.02);
-    intervalCheck = vdotMarathonPace * raceKm;
+  if (allEasyPaces.length >= 3) {
+    // paceRuns values are in min/km — convert to sec/km
+    const paces = allEasyPaces.map(p => p * 60).sort((a,b)=>a-b);
+    // Use median of best 30% of easy paces as fitness indicator
+    const topN = Math.max(1, Math.floor(paces.length * 0.3));
+    const bestEasySecs = paces.slice(0, topN).reduce((a,b)=>a+b,0) / topN;
+    // Marathon pace ≈ easy pace * 1.12 (easy runs are ~88% of marathon effort)
+    const derivedMarathonPace = bestEasySecs * (raceKm >= 42 ? 1.12 : raceKm >= 21 ? 1.07 : 1.02);
+    intervalCheck = derivedMarathonPace * raceKm;
   }
 
-  // Blend: 80% LT-based, 20% interval-based if available
+  // Blend: LT-based is primary. Add easy run cross-check if enough data.
+  // If cross-check is within 10% of LT estimate, blend 85/15; otherwise trust LT.
   let blendedSecs = finishSecs;
   if (intervalCheck) {
-    blendedSecs = finishSecs * 0.8 + intervalCheck * 0.2;
+    const diff = Math.abs(intervalCheck - finishSecs) / finishSecs;
+    if (diff < 0.10) {
+      blendedSecs = finishSecs * 0.85 + intervalCheck * 0.15;
+    }
+    // If very different, trust LT (100%) — data quality issue
   }
 
   // Confidence factors
