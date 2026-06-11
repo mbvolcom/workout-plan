@@ -962,6 +962,21 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .stats-tab-btn.active { background:#f0ede8; color:#0e0f11; }
 #stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; margin-bottom:4px; display:inline-flex; }
 #lt-pace-input:focus { border-color:rgba(252,76,2,0.6); box-shadow:0 0 0 3px rgba(252,76,2,0.12); }
+.race-est-card { background:linear-gradient(135deg,#1a1d22 0%,#16181c 100%); border:1px solid rgba(252,76,2,0.25); border-radius:16px; padding:20px; margin:0 0 0; }
+.race-est-headline { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#FC4C02; margin-bottom:12px; }
+.race-est-time { font-size:48px; font-weight:900; color:#f0ede8; letter-spacing:-0.03em; line-height:1; }
+.race-est-range { font-size:13px; color:#6b7280; margin-top:4px; }
+.race-est-divider { height:1px; background:rgba(255,255,255,0.06); margin:14px 0; }
+.race-est-row { display:flex; justify-content:space-between; align-items:baseline; padding:3px 0; }
+.race-est-label { font-size:11px; color:#6b7280; }
+.race-est-val { font-size:12px; font-weight:600; color:#d1d5db; }
+.race-est-goal-good { color:#c8f06e; }
+.race-est-goal-warn { color:#f0c060; }
+.race-est-goal-over { color:#f06e6e; }
+.race-est-confidence { display:flex; align-items:center; gap:8px; margin-top:10px; }
+.race-est-conf-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.race-est-conf-fill { height:100%; border-radius:2px; background:#FC4C02; transition:width 0.4s; }
+.race-est-conf-label { font-size:10px; color:#6b7280; white-space:nowrap; }
 .stats-scope-btn {
   background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500;
   color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s;
@@ -1269,7 +1284,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.10.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -7210,7 +7225,18 @@ let statsWeekIdx = -1; // -1 = use current week
 function openStatsPage() {
   document.getElementById('stats-overlay').classList.add('open');
   sgSessions = null;
-  loadLTHistory().then(renderStats);
+
+  // Show a brief loading state while data fetches
+  const content = document.getElementById('stats-content');
+  if (content) {
+    content.innerHTML = '<div style="padding:40px;text-align:center;color:#4b5563;font-size:13px;">Loading stats…</div>';
+  }
+
+  // Ensure Strava activities are loaded; if already populated skip the fetch
+  const needsStrava = Object.keys(stravaActivities).length === 0;
+  const stravaPromise = needsStrava ? fetchStravaActivities() : Promise.resolve();
+
+  Promise.all([loadLTHistory(), stravaPromise]).then(() => renderStats());
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
@@ -7502,6 +7528,143 @@ async function renderIntervalStats() {
   }
 }
 
+// ── RACE TIME ESTIMATE ─────────────────────────────────────────────────────
+function detectRaceDistance(planName) {
+  if (!planName) return null;
+  const n = planName.toLowerCase();
+  if (n.includes('half marathon') || n.includes('half-marathon') || n.includes('halfmarathon')) return { km: 21.0975, label: 'Half Marathon' };
+  if (n.includes('marathon')) return { km: 42.195, label: 'Marathon' };
+  if (n.includes('10k') || n.includes('10 km')) return { km: 10, label: '10K' };
+  if (n.includes('5k') || n.includes('5 km'))  return { km: 5,  label: '5K' };
+  return null;
+}
+
+function secsToHMS(totalSecs) {
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = Math.round(totalSecs % 60);
+  return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function secsToHM(totalSecs) {
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.round((totalSecs % 3600) / 60);
+  return h + ':' + String(m).padStart(2,'0');
+}
+
+function goalTimeToSecs(goalStr) {
+  if (!goalStr) return null;
+  // Accepts h:mm or h:mm:ss
+  const parts = goalStr.trim().split(':').map(Number);
+  if (parts.length === 2) return parts[0]*3600 + parts[1]*60;
+  if (parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
+  return null;
+}
+
+// Jack Daniels velocity ratios relative to marathon pace
+// Marathon pace = LT pace * 1.07 (LT is ~93% of marathon effort)
+// Half pace     = LT pace * 1.035
+// 10K pace      = LT pace * 0.985
+// 5K pace       = LT pace * 0.96
+const LT_TO_RACE_PACE = {
+  42.195:   { coeff: 1.07,  label: 'Marathon' },
+  21.0975:  { coeff: 1.035, label: 'Half Marathon' },
+  10:       { coeff: 0.985, label: '10K' },
+  5:        { coeff: 0.96,  label: '5K' },
+};
+
+function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
+  const coeff = LT_TO_RACE_PACE[raceKm]?.coeff || 1.07;
+
+  // Central estimate from LT pace
+  const racePaceSecs = ltPaceSecs * coeff;
+  const finishSecs   = racePaceSecs * raceKm;
+
+  // Cross-check with best interval pace if available
+  const allIntervalPaces = weeks.flatMap(wk => wk.paceRuns || []).filter(Boolean);
+  let intervalCheck = null;
+  if (allIntervalPaces.length) {
+    // Best easy pace from paceRuns array
+    const bestEasyPace = Math.min(...allIntervalPaces); // sec/km
+    // VDOT cross-check: marathon pace ≈ easy pace * 1.15
+    const vdotMarathonPace = bestEasyPace * (raceKm >= 42 ? 1.12 : raceKm >= 21 ? 1.06 : 1.02);
+    intervalCheck = vdotMarathonPace * raceKm;
+  }
+
+  // Blend: 80% LT-based, 20% interval-based if available
+  let blendedSecs = finishSecs;
+  if (intervalCheck) {
+    blendedSecs = finishSecs * 0.8 + intervalCheck * 0.2;
+  }
+
+  // Confidence factors
+  let confidence = 60; // base confidence with LT pace only
+  const longestKm = longestRunM / 1000;
+  if (longestKm >= raceKm * 0.75) confidence += 20; // long run coverage
+  else if (longestKm >= raceKm * 0.5) confidence += 10;
+  if (intervalCheck) confidence += 10; // interval data adds confidence
+  if (weeks.filter(wk => wk.doneSessions > 0).length >= 4) confidence += 10; // training consistency
+  confidence = Math.min(confidence, 92);
+
+  // Range: ±2% for marathon, ±1.5% for shorter
+  const rangePct = raceKm >= 42 ? 0.025 : 0.018;
+  return {
+    central: Math.round(blendedSecs),
+    low:     Math.round(blendedSecs * (1 - rangePct)),
+    high:    Math.round(blendedSecs * (1 + rangePct)),
+    racePaceStr: secsToMinSec(Math.round(racePaceSecs)),
+    confidence,
+    ltBased: Math.round(finishSecs),
+    intervalBased: intervalCheck ? Math.round(intervalCheck) : null,
+  };
+}
+
+function renderRaceEstimate(container, weeks) {
+  const plan = getActivePlan();
+  if (!plan) return;
+
+  const ltSecs = latestLTPaceSecs();
+  if (!ltSecs) return; // no LT data — silently skip
+
+  const raceDist = detectRaceDistance(plan.race_name || plan.name);
+  if (!raceDist) return; // unknown race type
+
+  const longestRun = Math.max(...weeks.map(wk => wk.longestRun), 0);
+  const est = computeRaceEstimate(ltSecs, raceDist.km, longestRun, weeks);
+
+  const goalSecs = goalTimeToSecs(plan.goal);
+  const goalDiff = goalSecs ? est.central - goalSecs : null; // positive = slower than goal
+  let goalCls = 'race-est-goal-good', goalTxt = '';
+  if (goalDiff !== null) {
+    const mins = Math.abs(Math.round(goalDiff / 60));
+    if (goalDiff < -120)       { goalCls='race-est-goal-good'; goalTxt = mins + ' min ahead of goal'; }
+    else if (goalDiff < 0)     { goalCls='race-est-goal-good'; goalTxt = mins + ' min ahead of goal'; }
+    else if (goalDiff < 300)   { goalCls='race-est-goal-warn'; goalTxt = mins + ' min behind goal'; }
+    else                       { goalCls='race-est-goal-over'; goalTxt = mins + ' min behind goal'; }
+    if (Math.abs(goalDiff) < 60) { goalCls='race-est-goal-good'; goalTxt = 'On goal pace'; }
+  }
+
+  const card = document.createElement('div');
+  card.className = 'race-est-card';
+  card.style.margin = '0 0 0';
+
+  card.innerHTML =
+    '<div class="race-est-headline">🏁 ' + raceDist.label + ' Finish Estimate</div>' +
+    '<div class="race-est-time">' + secsToHMS(est.central) + '</div>' +
+    '<div class="race-est-range">' + secsToHMS(est.low) + ' – ' + secsToHMS(est.high) + ' range</div>' +
+    '<div class="race-est-divider"></div>' +
+    '<div class="race-est-row"><span class="race-est-label">Race pace</span><span class="race-est-val">' + est.racePaceStr + '/km</span></div>' +
+    '<div class="race-est-row"><span class="race-est-label">Based on LT pace</span><span class="race-est-val">' + ltHistory[0].pace + '/km</span></div>' +
+    (goalSecs ? '<div class="race-est-row"><span class="race-est-label">Goal (' + plan.goal + ')</span><span class="race-est-val ' + goalCls + '">' + goalTxt + '</span></div>' : '') +
+    '<div class="race-est-confidence">' +
+      '<span class="race-est-label">Confidence</span>' +
+      '<div class="race-est-conf-bar"><div class="race-est-conf-fill" style="width:' + est.confidence + '%"></div></div>' +
+      '<span class="race-est-conf-label">' + est.confidence + '%</span>' +
+    '</div>';
+
+  container.appendChild(card);
+}
+
 // ── Helpers for pace string conversion ─────────────────────────────────────
 function paceStrToSecs(paceStr) {
   if (!paceStr) return null;
@@ -7708,6 +7871,11 @@ function renderRunningStats() {
     );
   }
   container.appendChild(kpiGrid);
+
+  // ── RACE TIME ESTIMATE ────────────────────────────────────────────────────
+  const estSection = document.createElement('div'); estSection.className = 'stats-section';
+  container.appendChild(estSection);
+  renderRaceEstimate(estSection, weeks);
 
   // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
   const barSection=document.createElement('div'); barSection.className='stats-section';
@@ -8640,6 +8808,11 @@ function renderWeekStats() {
   buildStatsKpiCard(kpiGrid, (weekSick+weekInj)||'—', 'health', 'Days impacted',
     [{label:'Sick', val:weekSick},{label:'Injured', val:weekInj}]);
   container.appendChild(kpiGrid);
+
+  // ── Race estimate (same model, context from full plan) ──────────────────
+  const weekEstSection = document.createElement('div'); weekEstSection.className = 'stats-section';
+  container.appendChild(weekEstSection);
+  try { renderRaceEstimate(weekEstSection, allWeeks); } catch(e) {}
 
   // ── Weekly KM bar (just this week's days) ───────────────────────────────
   const barSection = document.createElement('div'); barSection.className = 'stats-section';
