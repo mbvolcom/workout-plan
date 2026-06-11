@@ -1092,33 +1092,37 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-mode-bar { display:flex; background:var(--bg); border:1px solid var(--border-mid); border-radius:10px; padding:3px; margin-bottom:14px; gap:3px; }
 .todo-view { padding:0 0 40px; }
 .clean-view { padding:0 0 60px; }
-.clean-section { margin-bottom:18px; }
-.clean-section-hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 0 8px; border-bottom:1.5px solid var(--border-mid); margin-bottom:8px; cursor:pointer; user-select:none; }
-.clean-section-title { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
-.clean-section-chevron { font-size:12px; color:var(--muted); transition:transform 0.2s; }
-.clean-section-chevron.open { transform:rotate(90deg); }
-.clean-section-body { overflow:hidden; transition:max-height 0.25s ease; }
-.clean-task { background:var(--glass); border:0.5px solid var(--border-mid); border-radius:12px; margin-bottom:8px; overflow:hidden; }
-.clean-task-row { display:flex; align-items:center; gap:10px; padding:11px 12px; }
-.clean-task-icon { font-size:18px; flex-shrink:0; }
-.clean-task-info { flex:1; min-width:0; }
-.clean-task-name { font-size:13px; font-weight:600; color:var(--text); }
-.clean-task-last { font-size:11px; color:var(--muted); margin-top:2px; }
-.clean-task-expand { font-size:11px; color:var(--muted); padding:4px 6px; background:none; border:none; cursor:pointer; }
-.clean-task-detail { padding:0 12px 12px; border-top:0.5px solid var(--border-mid); display:none; }
-.clean-task-detail.open { display:block; }
-.clean-day-row { display:flex; gap:4px; flex-wrap:nowrap; margin:10px 0 8px; }
-.clean-day-pill { flex:1; min-width:0; padding:5px 2px; border-radius:20px; border:1px solid var(--border-mid); font-size:11px; font-weight:600; background:none; color:var(--muted); cursor:pointer; font-family:inherit; text-align:center; }
-.clean-day-pill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
-.clean-day-pill.today-pill.active { background:#26A69A; border-color:#26A69A; color:#fff; }
-.clean-ass-row { display:flex; gap:6px; margin-bottom:10px; }
-.clean-ass-pill { padding:6px 14px; border-radius:20px; border:1px solid var(--border-mid); font-size:12px; font-weight:600; background:none; color:var(--muted); cursor:pointer; font-family:inherit; }
-.clean-ass-pill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
-.clean-done-btn { width:100%; padding:10px; background:#26A69A; color:#fff; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
-.clean-done-btn:active { opacity:0.8; }
-.clean-history { margin-top:10px; }
-.clean-hist-row { display:flex; justify-content:space-between; align-items:center; font-size:11px; padding:4px 0; border-bottom:0.5px solid var(--border-mid); color:var(--muted); }
-.clean-hist-row:last-child { border-bottom:none; }
+/* Section headers */
+.clean-section { margin-bottom:10px; }
+.clean-sec-hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 2px 8px; cursor:pointer; user-select:none; }
+.clean-sec-title { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+.clean-sec-chev { font-size:13px; color:var(--muted); transition:transform 0.2s; display:inline-block; }
+.clean-sec-chev.open { transform:rotate(90deg); }
+.clean-sec-body { overflow:hidden; }
+/* Task cards */
+.clean-card { background:var(--glass); border:0.5px solid var(--border-mid); border-radius:14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; padding:13px 14px; cursor:pointer; active:opacity:0.85; transition:opacity 0.1s; }
+.clean-card:active { opacity:0.75; }
+.clean-card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.clean-card-icon { font-size:20px; flex-shrink:0; }
+.clean-card-info { flex:1; min-width:0; }
+.clean-card-name { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.clean-card-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.clean-card-log { flex-shrink:0; font-size:20px; color:var(--muted); padding:0 2px; }
+/* Bottom sheet */
+.clean-sheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; opacity:0; transition:opacity 0.2s; pointer-events:none; }
+.clean-sheet-backdrop.open { opacity:1; pointer-events:all; }
+.clean-sheet { position:fixed; bottom:0; left:0; right:0; background:var(--bg); border-radius:20px 20px 0 0; z-index:1001; padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 20px); transform:translateY(100%); transition:transform 0.28s cubic-bezier(0.32,0.72,0,1); }
+.clean-sheet.open { transform:translateY(0); }
+.clean-sheet-drag { width:36px; height:4px; background:var(--border-mid); border-radius:2px; margin:0 auto 18px; }
+.clean-sheet-title { font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.clean-sheet-icon { font-size:28px; margin-bottom:12px; display:block; }
+.clean-sheet-label { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin:14px 0 8px; }
+.clean-sheet-pills { display:flex; gap:8px; flex-wrap:wrap; }
+.clean-sheet-pill { padding:8px 16px; border-radius:20px; border:1px solid var(--border-mid); font-size:13px; font-weight:600; background:none; color:var(--muted); cursor:pointer; font-family:inherit; transition:all 0.15s; }
+.clean-sheet-pill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
+.clean-sheet-confirm { width:100%; margin-top:18px; padding:14px; background:#26A69A; color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+.clean-sheet-confirm:active { opacity:0.85; }
+.clean-sheet-cancel { width:100%; margin-top:8px; padding:10px; background:none; color:var(--muted); border:none; font-size:13px; cursor:pointer; font-family:inherit; }
 .todo-group { margin-bottom:18px; }
 .todo-group-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; padding:0 2px; }
 .todo-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--glass); border:0.5px solid var(--border-mid); border-radius:10px; margin-bottom:6px; cursor:pointer; }
@@ -1244,7 +1248,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.9.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -4054,44 +4058,48 @@ function renderTodoGroup(label, items) {
 }
 
 // ── CLEANING ───────────────────────────────────────────────────────────────
-// To add more tasks: edit CLEAN_TASKS below. Each entry needs id, label, icon.
-// Category 'weekly' = shown expanded by default. 'monthly' = collapsed section.
-// The 'id' is used as the key in Supabase — keep it stable once created.
+// To add more tasks: edit CLEAN_TASKS below.
+// id must be stable (used as Supabase key). cat: 'weekly' | 'monthly'.
 
 const CLEAN_TASKS = [
-  // ── Weekly ──────────────────────────────────────────────────────────────
-  { id:'toilet_1f',   cat:'weekly', icon:'🚽', label:'First-floor toilet' },
-  { id:'bathroom_2f', cat:'weekly', icon:'🚿', label:'Second-floor bathroom' },
-  { id:'bathroom_3f', cat:'weekly', icon:'🛁', label:'Third-floor bathroom' },
-  { id:'robot_1f',    cat:'weekly', icon:'🤖', label:'Robot vacuum first-floor' },
-  { id:'robot_2f',    cat:'weekly', icon:'🤖', label:'Robot vacuum second-floor' },
-  { id:'robot_3f',    cat:'weekly', icon:'🤖', label:'Robot vacuum third-floor' },
-  { id:'stairs',      cat:'weekly', icon:'🪜', label:'Stairs' },
-  { id:'entryway',    cat:'weekly', icon:'🚪', label:'Entryway' },
-  { id:'kitchen_deep',cat:'weekly', icon:'🍳', label:'Deep clean the kitchen' },
-  { id:'dusting',     cat:'weekly', icon:'🧹', label:'Dusting and tidying up' },
-  // ── Monthly ─────────────────────────────────────────────────────────────
+  { id:'toilet_1f',      cat:'weekly',  icon:'🚽', label:'First-floor toilet' },
+  { id:'bathroom_2f',    cat:'weekly',  icon:'🚿', label:'Second-floor bathroom' },
+  { id:'bathroom_3f',    cat:'weekly',  icon:'🛁', label:'Third-floor bathroom' },
+  { id:'robot_1f',       cat:'weekly',  icon:'🤖', label:'Robot vacuum first-floor' },
+  { id:'robot_2f',       cat:'weekly',  icon:'🤖', label:'Robot vacuum second-floor' },
+  { id:'robot_3f',       cat:'weekly',  icon:'🤖', label:'Robot vacuum third-floor' },
+  { id:'stairs',         cat:'weekly',  icon:'🪜', label:'Stairs' },
+  { id:'entryway',       cat:'weekly',  icon:'🚪', label:'Entryway' },
+  { id:'kitchen_deep',   cat:'weekly',  icon:'🍳', label:'Deep clean the kitchen' },
+  { id:'dusting',        cat:'weekly',  icon:'🧹', label:'Dusting and tidying up' },
   { id:'bathroom_walls', cat:'monthly', icon:'🪣', label:'Bathroom walls' },
   { id:'shower_tub',     cat:'monthly', icon:'🛁', label:'Shower/bath tub' },
   { id:'kitchen_cab',    cat:'monthly', icon:'🗄️',  label:'Kitchen cabinets' },
   { id:'birk',           cat:'monthly', icon:'🐶', label:'Wash Birk' },
 ];
 
-let cleaningLog = []; // array of { id (uuid), task_id, completed_at, assigned_to, day }
+// Colour thresholds (days since last completion)
+const CLEAN_THRESHOLDS = {
+  weekly:  { green: 7,  amber: 14  },  // green 0-7, amber 8-13, red 14+
+  monthly: { green: 30, amber: 46  },  // green 0-30, amber 31-45, red 46+
+};
+
+let cleaningLog = [];
+let _cleanSecOpen = { weekly: true, monthly: false };
 
 async function loadCleaningLog() {
   try {
-    const res = await fetch(SUPA_BASE + 'cleaning_log?order=completed_at.desc&limit=200', { headers: SUPA_HDR });
+    const res = await fetch(SUPA_BASE + 'cleaning_log?order=completed_at.desc&limit=500', { headers: SUPA_HDR });
     if (!res.ok) { console.warn('[clean] load failed:', res.status); return; }
     cleaningLog = await res.json();
   } catch(e) { console.warn('[clean] load error:', e); }
 }
 
-async function logCleaningDone(taskId, assignedTo, day) {
-  const entry = { task_id: taskId, assigned_to: assignedTo, day: day || null,
-    completed_at: new Date().toISOString() };
-  // Optimistic
-  cleaningLog = [{ ...entry, id: 'tmp_' + Date.now() }, ...cleaningLog];
+async function logCleaningDone(taskId, assignedTo) {
+  const entry = { task_id: taskId, assigned_to: assignedTo,
+    day: todayISO(), completed_at: new Date().toISOString() };
+  const tmpId = 'tmp_' + Date.now();
+  cleaningLog = [{ ...entry, id: tmpId }, ...cleaningLog];
   refreshCleanView();
   try {
     const res = await fetch(SUPA_BASE + 'cleaning_log', {
@@ -4102,59 +4110,114 @@ async function logCleaningDone(taskId, assignedTo, day) {
     if (!res.ok) { console.warn('[clean] save failed:', res.status, await res.text()); return; }
     const saved = await res.json();
     const real = Array.isArray(saved) ? saved[0] : saved;
-    cleaningLog = cleaningLog.map(e => (e.id + '').startsWith('tmp_') ? real : e);
+    cleaningLog = cleaningLog.map(e => e.id === tmpId ? real : e);
     renderBriefing();
-    loadCleaningLog().then(() => { refreshCleanView(); renderBriefing(); });
   } catch(e) { console.warn('[clean] save error:', e); }
 }
 
-function lastDoneText(taskId) {
+function cleanTaskStatus(taskId, cat) {
   const entries = cleaningLog.filter(e => e.task_id === taskId);
-  if (!entries.length) return 'Never done';
-  // Sort desc
+  if (!entries.length) return { color:'#ef4444', diffDays: Infinity, count:0, weekCount:0 };
   entries.sort((a,b) => new Date(b.completed_at) - new Date(a.completed_at));
-  const last = new Date(entries[0].completed_at);
-  const now = new Date();
-  const diffMs = now - last;
-  const diffDays = Math.floor(diffMs / 86400000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 60) return diffMins <= 1 ? 'Just now' : diffMins + ' min ago';
-  if (diffHours < 24) return diffHours + 'h ago';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return diffDays + ' days ago';
-  if (diffDays < 14) return '1 week ago';
-  if (diffDays < 30) return Math.floor(diffDays/7) + ' weeks ago';
-  if (diffDays < 60) return '1 month ago';
-  return Math.floor(diffDays/30) + ' months ago';
+  const diffDays = (Date.now() - new Date(entries[0].completed_at)) / 86400000;
+  const { green, amber } = CLEAN_THRESHOLDS[cat];
+  const color = diffDays <= green ? '#26A69A' : diffDays < amber ? '#FFA726' : '#ef4444';
+  // Count completions this week (Mon–Sun)
+  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+  const monISO = getWeekDateISO(wi, 0);
+  const sunISO = getWeekDateISO(wi, 6);
+  const weekCount = entries.filter(e => e.day >= monISO && e.day <= sunISO).length;
+  return { color, diffDays, count: entries.length, weekCount };
 }
 
-function lastDoneColor(taskId, cat) {
-  const entries = cleaningLog.filter(e => e.task_id === taskId);
-  if (!entries.length) return '#ff6b6b';
-  entries.sort((a,b) => new Date(b.completed_at) - new Date(a.completed_at));
-  const diffDays = (new Date() - new Date(entries[0].completed_at)) / 86400000;
-  if (cat === 'weekly') {
-    if (diffDays < 5) return '#26A69A';
-    if (diffDays < 9) return '#FFA726';
-    return '#ff6b6b';
-  } else { // monthly
-    if (diffDays < 25) return '#26A69A';
-    if (diffDays < 35) return '#FFA726';
-    return '#ff6b6b';
-  }
+function cleanLastDoneText(diffDays) {
+  if (!isFinite(diffDays)) return 'Never done';
+  const d = Math.floor(diffDays);
+  const h = Math.floor(diffDays * 24) % 24;
+  if (d === 0 && h < 1) return 'Just now';
+  if (d === 0) return h + 'h ago';
+  if (d === 1) return 'Yesterday';
+  if (d < 7)  return d + ' days ago';
+  if (d < 14) return '1 week ago';
+  if (d < 30) return Math.floor(d/7) + ' weeks ago';
+  if (d < 60) return '1 month ago';
+  return Math.floor(d/30) + ' months ago';
 }
 
-let _cleanSectionOpen = { weekly: true, monthly: false };
-let _cleanTaskOpen = {};
-let _cleanDayPick = {}; // taskId → Set of ISO dates
-let _cleanAssPick = {}; // taskId → assignee
+function openCleanSheet(task) {
+  // Remove any existing sheet
+  document.getElementById('clean-sheet-backdrop')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'clean-sheet-backdrop';
+  backdrop.className = 'clean-sheet-backdrop';
+
+  const sheet = document.createElement('div');
+  sheet.className = 'clean-sheet';
+  sheet.innerHTML =
+    '<div class="clean-sheet-drag"></div>' +
+    '<span class="clean-sheet-icon">' + task.icon + '</span>' +
+    '<div class="clean-sheet-title">' + task.label + '</div>';
+
+  // Who did it
+  const whoLbl = document.createElement('div');
+  whoLbl.className = 'clean-sheet-label';
+  whoLbl.textContent = 'Who did it?';
+  sheet.appendChild(whoLbl);
+
+  let assignee = activeProfile || 'marius';
+  const pillRow = document.createElement('div');
+  pillRow.className = 'clean-sheet-pills';
+  [['marius','Marius'],['vilde','Vilde'],['both','Both']].forEach(([who, lbl]) => {
+    const btn = document.createElement('button');
+    btn.className = 'clean-sheet-pill' + (who === assignee ? ' active' : '');
+    btn.textContent = lbl;
+    btn.dataset.who = who;
+    btn.addEventListener('click', () => {
+      assignee = who;
+      pillRow.querySelectorAll('.clean-sheet-pill').forEach(b => b.classList.toggle('active', b.dataset.who === who));
+    });
+    pillRow.appendChild(btn);
+  });
+  sheet.appendChild(pillRow);
+
+  // Confirm
+  const confirm = document.createElement('button');
+  confirm.className = 'clean-sheet-confirm';
+  confirm.textContent = '✓ Mark as done';
+  confirm.addEventListener('click', async () => {
+    confirm.disabled = true;
+    confirm.textContent = 'Saving…';
+    await logCleaningDone(task.id, assignee);
+    closeCleanSheet();
+  });
+  sheet.appendChild(confirm);
+
+  // Cancel
+  const cancel = document.createElement('button');
+  cancel.className = 'clean-sheet-cancel';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', closeCleanSheet);
+  sheet.appendChild(cancel);
+
+  backdrop.addEventListener('click', closeCleanSheet);
+  document.body.appendChild(backdrop);
+  document.body.appendChild(sheet);
+
+  requestAnimationFrame(() => {
+    backdrop.classList.add('open');
+    sheet.classList.add('open');
+  });
+}
+
+function closeCleanSheet() {
+  const backdrop = document.getElementById('clean-sheet-backdrop');
+  const sheet = document.querySelector('.clean-sheet');
+  if (backdrop) { backdrop.classList.remove('open'); setTimeout(() => backdrop.remove(), 300); }
+  if (sheet)    { sheet.classList.remove('open');    setTimeout(() => sheet.remove(),    300); }
+}
 
 function renderCleanView(container) {
-  const todayISOStr = todayISO();
-  const DAYS_OF_WEEK_C = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
-
   const wrap = document.createElement('div');
   wrap.className = 'clean-view';
   wrap.id = 'clean-view-wrap';
@@ -4166,177 +4229,83 @@ function refreshCleanView() {
   const wrap = document.getElementById('clean-view-wrap');
   if (!wrap) return;
   wrap.innerHTML = '';
-  const todayISOStr = todayISO();
-  const DAYS_OF_WEEK_C = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
 
   ['weekly','monthly'].forEach(cat => {
     const tasks = CLEAN_TASKS.filter(t => t.cat === cat);
+
+    // Sort by urgency: red first, then amber, then green; within same colour by diffDays desc
+    const withStatus = tasks.map(t => ({ t, s: cleanTaskStatus(t.id, cat) }));
+    withStatus.sort((a, b) => {
+      // colour order: red=2, amber=1, green=0
+      const rank = s => s.color === '#ef4444' ? 2 : s.color === '#FFA726' ? 1 : 0;
+      const dr = rank(b.s) - rank(a.s);
+      if (dr !== 0) return dr;
+      return b.s.diffDays - a.s.diffDays;
+    });
+
     const section = document.createElement('div');
     section.className = 'clean-section';
 
     // Section header
     const hdr = document.createElement('div');
-    hdr.className = 'clean-section-hdr';
+    hdr.className = 'clean-sec-hdr';
     const title = document.createElement('span');
-    title.className = 'clean-section-title';
-    title.textContent = cat === 'weekly' ? '📅 Weekly cleaning' : '🗓 Monthly cleaning';
+    title.className = 'clean-sec-title';
+    title.textContent = cat === 'weekly' ? '📅 Weekly' : '🗓 Monthly';
     const chev = document.createElement('span');
-    chev.className = 'clean-section-chevron' + (_cleanSectionOpen[cat] ? ' open' : '');
+    chev.className = 'clean-sec-chev' + (_cleanSecOpen[cat] ? ' open' : '');
     chev.textContent = '›';
-    hdr.appendChild(title);
-    hdr.appendChild(chev);
-
-    const body = document.createElement('div');
-    body.className = 'clean-section-body';
-    body.style.maxHeight = _cleanSectionOpen[cat] ? '9999px' : '0';
-
+    hdr.appendChild(title); hdr.appendChild(chev);
     hdr.addEventListener('click', () => {
-      _cleanSectionOpen[cat] = !_cleanSectionOpen[cat];
-      body.style.maxHeight = _cleanSectionOpen[cat] ? '9999px' : '0';
-      chev.classList.toggle('open', _cleanSectionOpen[cat]);
+      _cleanSecOpen[cat] = !_cleanSecOpen[cat];
+      body.style.maxHeight = _cleanSecOpen[cat] ? '9999px' : '0';
+      chev.classList.toggle('open', _cleanSecOpen[cat]);
     });
-
     section.appendChild(hdr);
 
-    // Tasks
-    tasks.forEach(task => {
+    const body = document.createElement('div');
+    body.className = 'clean-sec-body';
+    body.style.maxHeight = _cleanSecOpen[cat] ? '9999px' : '0';
+
+    withStatus.forEach(({ t, s }) => {
       const card = document.createElement('div');
-      card.className = 'clean-task';
+      card.className = 'clean-card';
 
-      // Main row
-      const row = document.createElement('div');
-      row.className = 'clean-task-row';
-      const iconEl = document.createElement('span');
-      iconEl.className = 'clean-task-icon';
-      iconEl.textContent = task.icon;
+      // Colour dot
+      const dot = document.createElement('div');
+      dot.className = 'clean-card-dot';
+      dot.style.background = s.color;
+
+      // Icon
+      const icon = document.createElement('span');
+      icon.className = 'clean-card-icon';
+      icon.textContent = t.icon;
+
+      // Info
       const info = document.createElement('div');
-      info.className = 'clean-task-info';
-      const nameEl = document.createElement('div');
-      nameEl.className = 'clean-task-name';
-      nameEl.textContent = task.label;
-      const lastEl = document.createElement('div');
-      lastEl.className = 'clean-task-last';
-      lastEl.style.color = lastDoneColor(task.id, task.cat);
-      lastEl.textContent = lastDoneText(task.id);
-      info.appendChild(nameEl);
-      info.appendChild(lastEl);
-      const expandBtn = document.createElement('button');
-      expandBtn.className = 'clean-task-expand';
-      expandBtn.textContent = _cleanTaskOpen[task.id] ? '▴' : '▾';
-      row.appendChild(iconEl);
-      row.appendChild(info);
-      row.appendChild(expandBtn);
-      card.appendChild(row);
+      info.className = 'clean-card-info';
+      const name = document.createElement('div');
+      name.className = 'clean-card-name';
+      name.textContent = t.label;
+      const sub = document.createElement('div');
+      sub.className = 'clean-card-sub';
+      const lastText = cleanLastDoneText(s.diffDays);
+      const weekText = s.weekCount > 0 ? s.weekCount + '× this week · ' : '';
+      sub.textContent = weekText + lastText;
+      info.appendChild(name); info.appendChild(sub);
 
-      // Detail panel
-      const detail = document.createElement('div');
-      detail.className = 'clean-task-detail' + (_cleanTaskOpen[task.id] ? ' open' : '');
+      // Log button
+      const logBtn = document.createElement('span');
+      logBtn.className = 'clean-card-log';
+      logBtn.textContent = '+';
+      logBtn.style.cssText = 'font-size:24px;font-weight:300;color:#26A69A;padding:0 4px;';
 
-      // Day picker
-      const dayLbl = document.createElement('div');
-      dayLbl.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;';
-      dayLbl.textContent = 'Day';
-      detail.appendChild(dayLbl);
+      card.appendChild(dot);
+      card.appendChild(icon);
+      card.appendChild(info);
+      card.appendChild(logBtn);
 
-      // Init with today selected if not yet set
-      if (!_cleanDayPick[task.id]) _cleanDayPick[task.id] = new Set([todayISOStr]);
-      const dayRow = document.createElement('div');
-      dayRow.className = 'clean-day-row';
-      DAYS_OF_WEEK_C.forEach((dName, di) => {
-        const iso = getWeekDateISO(wi, di);
-        const isToday = iso === todayISOStr;
-        const selected = _cleanDayPick[task.id].has(iso);
-        const btn = document.createElement('button');
-        btn.className = 'clean-day-pill' + (isToday ? ' today-pill' : '') + (selected ? ' active' : '');
-        btn.textContent = isToday ? 'Today' : dName.slice(0,3);
-        btn.title = iso;
-        btn.addEventListener('click', () => {
-          const pick = _cleanDayPick[task.id];
-          if (pick.has(iso)) {
-            pick.delete(iso); // unclick = deselect
-          } else {
-            pick.add(iso);    // click = select (multiple allowed)
-          }
-          btn.classList.toggle('active', pick.has(iso));
-        });
-        dayRow.appendChild(btn);
-      });
-      detail.appendChild(dayRow);
-
-      // Assignee picker
-      const assLbl = document.createElement('div');
-      assLbl.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;';
-      assLbl.textContent = 'For';
-      detail.appendChild(assLbl);
-
-      if (!_cleanAssPick[task.id]) _cleanAssPick[task.id] = activeProfile || 'marius';
-      const assRow = document.createElement('div');
-      assRow.className = 'clean-ass-row';
-      [['marius','Marius'],['vilde','Vilde'],['both','Both']].forEach(([who, lbl]) => {
-        const btn = document.createElement('button');
-        btn.className = 'clean-ass-pill' + (who === _cleanAssPick[task.id] ? ' active' : '');
-        btn.textContent = lbl;
-        btn.dataset.who = who;
-        btn.addEventListener('click', () => {
-          _cleanAssPick[task.id] = who;
-          assRow.querySelectorAll('.clean-ass-pill').forEach(b => b.classList.toggle('active', b.dataset.who === who));
-        });
-        assRow.appendChild(btn);
-      });
-      detail.appendChild(assRow);
-
-      // Done button
-      const doneBtn = document.createElement('button');
-      doneBtn.className = 'clean-done-btn';
-      doneBtn.textContent = '✓ Mark as done';
-      doneBtn.addEventListener('click', async () => {
-        const days = [...(_cleanDayPick[task.id] || new Set())];
-        if (!days.length) { alert('Pick at least one day first.'); return; }
-        doneBtn.disabled = true;
-        doneBtn.textContent = 'Saving…';
-        // Log one entry per selected day
-        for (const day of days) {
-          await logCleaningDone(task.id, _cleanAssPick[task.id], day);
-        }
-        // Reset to today only after saving
-        _cleanDayPick[task.id] = new Set([todayISOStr]);
-        _cleanTaskOpen[task.id] = false;
-        refreshCleanView();
-      });
-      detail.appendChild(doneBtn);
-
-      // History (last 3)
-      const hist = cleaningLog.filter(e => e.task_id === task.id).slice(0, 3);
-      if (hist.length) {
-        const histDiv = document.createElement('div');
-        histDiv.className = 'clean-history';
-        const histLbl = document.createElement('div');
-        histLbl.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;';
-        histLbl.textContent = 'Recent';
-        histDiv.appendChild(histLbl);
-        hist.forEach(e => {
-          const r = document.createElement('div');
-          r.className = 'clean-hist-row';
-          const dt = new Date(e.completed_at);
-          const who = e.assigned_to === 'marius' ? 'Marius' : e.assigned_to === 'vilde' ? 'Vilde' : 'Both';
-          r.innerHTML = '<span>' + who + '</span><span>' + dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + '</span>';
-          histDiv.appendChild(r);
-        });
-        detail.appendChild(histDiv);
-      }
-
-      card.appendChild(detail);
-
-      // Toggle expand
-      const toggleDetail = () => {
-        _cleanTaskOpen[task.id] = !_cleanTaskOpen[task.id];
-        detail.classList.toggle('open', _cleanTaskOpen[task.id]);
-        expandBtn.textContent = _cleanTaskOpen[task.id] ? '▴' : '▾';
-      };
-      expandBtn.addEventListener('click', e => { e.stopPropagation(); toggleDetail(); });
-      row.addEventListener('click', toggleDetail);
-
+      card.addEventListener('click', () => openCleanSheet(t));
       body.appendChild(card);
     });
 
