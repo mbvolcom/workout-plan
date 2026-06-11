@@ -961,6 +961,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .stats-tab-btn { background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500; color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s; white-space:nowrap; }
 .stats-tab-btn.active { background:#f0ede8; color:#0e0f11; }
 #stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; margin-bottom:4px; display:inline-flex; }
+#lt-pace-input:focus { border-color:rgba(252,76,2,0.6); box-shadow:0 0 0 3px rgba(252,76,2,0.12); }
 .stats-scope-btn {
   background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500;
   color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s;
@@ -1268,7 +1269,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.10.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.10.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1441,10 +1442,31 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       </div>
     </div>
     <div id="stats-running-header" style="padding:10px 20px 0;">
-      <div id="stats-scope-toggle">
-        <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
-        <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
-        <button class="stats-scope-btn" data-scope="week" onclick="setStatsScope('week')">Week</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div id="stats-scope-toggle">
+          <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
+          <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
+          <button class="stats-scope-btn" data-scope="week" onclick="setStatsScope('week')">Week</button>
+        </div>
+        <button id="lt-input-btn" onclick="openLTModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(252,76,2,0.4);background:rgba(252,76,2,0.1);color:#FC4C02;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">❤️ LT Pace</button>
+      </div>
+    </div>
+
+    <!-- LT Pace Modal -->
+    <div id="lt-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+      <div id="lt-modal" style="background:#1a1d22;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px;width:320px;max-width:90vw;position:relative;">
+        <div style="font-size:16px;font-weight:700;color:#f0ede8;margin-bottom:4px;">❤️ Lactate Threshold Pace</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:20px;">Enter your latest LT pace from Garmin. Format: mm:ss (e.g. 4:32)</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <input id="lt-pace-input" type="text" placeholder="4:32" maxlength="5"
+            style="flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;color:#f0ede8;font-size:18px;font-weight:700;font-family:inherit;outline:none;text-align:center;letter-spacing:0.05em;"
+            oninput="this.value=this.value.replace(/[^0-9:]/g,'')"
+            onkeydown="if(event.key==='Enter')saveLTPace()"/>
+          <span style="font-size:13px;color:#6b7280;white-space:nowrap;">/km</span>
+        </div>
+        <div id="lt-history-wrap" style="margin-bottom:16px;"></div>
+        <button onclick="saveLTPace()" style="width:100%;padding:13px;background:#FC4C02;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Save</button>
+        <button onclick="closeLTModal()" style="width:100%;margin-top:8px;padding:10px;background:none;color:#6b7280;border:none;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>
       </div>
     </div>
     <div id="stats-content"></div>
@@ -7187,8 +7209,8 @@ let statsWeekIdx = -1; // -1 = use current week
 
 function openStatsPage() {
   document.getElementById('stats-overlay').classList.add('open');
-  sgSessions = null; // reset cache so we always get fresh data
-  renderStats();
+  sgSessions = null;
+  loadLTHistory().then(renderStats);
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
@@ -7204,6 +7226,71 @@ function setStatsTab(tab) {
   document.querySelectorAll('.stats-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.getElementById('stats-running-header').style.display = tab === 'running' ? '' : 'none';
   renderStats();
+}
+
+// ── LACTATE THRESHOLD ──────────────────────────────────────────────────────
+let ltHistory = []; // cached from Supabase
+
+async function loadLTHistory() {
+  try {
+    const res = await fetch(SUPA_BASE + 'lactate_threshold?select=*&order=recorded_at.desc&limit=20', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    ltHistory = await res.json();
+  } catch(e) { console.warn('[LT] load failed:', e); }
+}
+
+function openLTModal() {
+  const backdrop = document.getElementById('lt-modal-backdrop');
+  backdrop.style.display = 'flex';
+  const inp = document.getElementById('lt-pace-input');
+  inp.value = '';
+  // Pre-fill with latest
+  if (ltHistory.length) inp.value = ltHistory[0].pace;
+  inp.focus(); inp.select();
+  renderLTHistory();
+}
+
+function closeLTModal() {
+  document.getElementById('lt-modal-backdrop').style.display = 'none';
+}
+
+function renderLTHistory() {
+  const wrap = document.getElementById('lt-history-wrap');
+  if (!wrap) return;
+  if (!ltHistory.length) { wrap.innerHTML = '<div style="font-size:11px;color:#4b5563;">No entries yet.</div>'; return; }
+  wrap.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Recent</div>';
+  ltHistory.slice(0, 4).forEach(row => {
+    const dt = new Date(row.recorded_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;';
+    el.innerHTML = '<span style="color:#6b7280;">' + dt + '</span><span style="color:#FC4C02;font-weight:700;">' + row.pace + '/km</span>';
+    wrap.appendChild(el);
+  });
+}
+
+async function saveLTPace() {
+  const inp = document.getElementById('lt-pace-input');
+  const raw = (inp.value||'').trim();
+  // Validate mm:ss
+  if (!/^d{1,2}:d{2}$/.test(raw)) { inp.style.borderColor='#f06e6e'; setTimeout(()=>inp.style.borderColor='',1200); return; }
+  const body = { pace: raw, recorded_at: new Date().toISOString() };
+  try {
+    const res = await fetch(SUPA_BASE + 'lactate_threshold', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { console.error('[LT] save failed:', res.status, await res.text()); alert('Save failed — check console.'); return; }
+    await loadLTHistory();
+    closeLTModal();
+    renderStats(); // refresh stats page to show updated LT
+  } catch(e) { console.error('[LT] save error:', e); alert('Network error: ' + e.message); }
+}
+
+// Latest LT pace as seconds/km (null if no data)
+function latestLTPaceSecs() {
+  if (!ltHistory.length) return null;
+  return paceStrToSecs(ltHistory[0].pace);
 }
 
 function renderStats() {
@@ -7367,10 +7454,18 @@ async function renderIntervalStats() {
       body.appendChild(paceRow);
 
       // Avg + best pace
+      // HR across all intervals in this session
+      const allHrs    = intervals.map(iv=>iv.avgHr).filter(Boolean);
+      const allMaxHrs = intervals.map(iv=>iv.maxHr).filter(Boolean);
+      const sessionAvgHr = allHrs.length    ? Math.round(allHrs.reduce((a,b)=>a+b,0)/allHrs.length) : null;
+      const sessionMaxHr = allMaxHrs.length ? Math.max(...allMaxHrs) : null;
+
       const metaRow = document.createElement('div');
-      metaRow.style.cssText = 'display:flex;gap:16px;';
-      if (avgSecs)  metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Avg <span style="color:#d1d5db;font-weight:600;">${secsToMinSec(avgSecs)}/km</span></div>`;
-      if (bestSecs) metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Best <span style="color:#FC4C02;font-weight:600;">${secsToMinSec(bestSecs)}/km</span></div>`;
+      metaRow.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;';
+      if (avgSecs)       metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Avg <span style="color:#d1d5db;font-weight:600;">${secsToMinSec(avgSecs)}/km</span></div>`;
+      if (bestSecs)      metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Best <span style="color:#FC4C02;font-weight:600;">${secsToMinSec(bestSecs)}/km</span></div>`;
+      if (sessionAvgHr)  metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Avg HR <span style="color:#f06e6e;font-weight:600;">${sessionAvgHr} bpm</span></div>`;
+      if (sessionMaxHr)  metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Max HR <span style="color:#f0a96e;font-weight:600;">${sessionMaxHr} bpm</span></div>`;
       body.appendChild(metaRow);
 
       // Toggle expand
@@ -7600,6 +7695,15 @@ function renderRunningStats() {
     (sickDays+injuredDays)||'—', 'health', 'Days impacted',
     [{label:'Sick', val:sickDays},{label:'Injured', val:injuredDays},{label:'Missed runs', val:missedDueToHealth}]
   );
+  // Card 5: LT Pace (if available)
+  const ltSecs = latestLTPaceSecs();
+  if (ltSecs) {
+    const ltDate = ltHistory.length ? new Date(ltHistory[0].recorded_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+    buildStatsKpiCard(kpiGrid,
+      ltHistory[0].pace + '/km', 'orange', 'Lactate Threshold Pace',
+      [{label:'recorded', val: ltDate}, {label:'entries', val: ltHistory.length}]
+    );
+  }
   container.appendChild(kpiGrid);
 
   // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
@@ -7706,85 +7810,6 @@ function renderRunningStats() {
   }
   rtSection.appendChild(rtWrap); container.appendChild(rtSection);
 
-  // ── MONTHLY TABLE ─────────────────────────────────────────────────────────
-  const monthlyData=buildMonthlyData(weeks);
-  const tableSection=document.createElement('div'); tableSection.className='stats-section';
-  tableSection.innerHTML='<div class="stats-section-title">Monthly breakdown</div>';
-  const tableWrap=document.createElement('div'); tableWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
-  const table=document.createElement('table'); table.className='stats-table';
-  table.innerHTML='<thead><tr><th>Month</th><th>Planned km</th><th>Logged km</th><th>Runs done</th><th>Completion</th></tr></thead>';
-  const tbody=document.createElement('tbody');
-  monthlyData.forEach(mo=>{
-    const pct=mo.plannedKm>0?Math.round((mo.actualKm/mo.plannedKm)*100):0;
-    const pctClass=pct>=90?'good':pct>=60?'warn':'muted';
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${mo.label}</td><td class="num">${mo.plannedKm.toFixed(0)} km</td><td class="num">${mo.actualKm.toFixed(1)} km</td><td>${mo.doneSessions}/${mo.plannedSessions} runs</td><td class="${pctClass}">${mo.plannedKm>0?pct+'%':'—'}</td>`;
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody); tableWrap.appendChild(table);
-  tableSection.appendChild(tableWrap); container.appendChild(tableSection);
-
-  // ── TRAINING HEATMAP ──────────────────────────────────────────────────────
-  const heatSection=document.createElement('div'); heatSection.className='stats-section';
-  heatSection.innerHTML='<div class="stats-section-title">Training heatmap</div>';
-  const heatWrap=document.createElement('div'); heatWrap.className='stats-heatmap-wrap';
-  const heatmap=document.createElement('div'); heatmap.className='stats-heatmap';
-  weeks.forEach(wk=>{
-    wk.days.forEach(day=>{
-      const dot=document.createElement('div'); dot.className='stats-heat-day';
-      const isPast=day.date<=today;
-      if (!isPast)           dot.classList.add('stats-heat-empty');
-      else if (day.hasRun&&day.hasStr) dot.classList.add('stats-heat-both');
-      else if (day.hasLong)  dot.classList.add('stats-heat-long');
-      else if (day.hasQuality) dot.classList.add('stats-heat-quality');
-      else if (day.hasRun)   dot.classList.add('stats-heat-easy');
-      else if (day.hasStr)   dot.classList.add('stats-heat-str');
-      else if (day.wasPlanned) dot.classList.add('stats-heat-missed');
-      else                   dot.classList.add('stats-heat-rest');
-      dot.title=day.dateStr;
-      heatmap.appendChild(dot);
-    });
-  });
-  const heatLegend=document.createElement('div');
-  heatLegend.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;';
-  heatLegend.innerHTML='<div class="stats-legend-item"><div class="stats-heat-day stats-heat-long" style="flex-shrink:0"></div>Long run</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-quality" style="flex-shrink:0"></div>Quality</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-easy" style="flex-shrink:0"></div>Easy run</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-str" style="flex-shrink:0"></div>Strength</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-both" style="flex-shrink:0"></div>Run+Str</div><div class="stats-legend-item"><div class="stats-heat-day stats-heat-missed" style="flex-shrink:0"></div>Missed</div>';
-  heatWrap.appendChild(heatmap); heatWrap.appendChild(heatLegend);
-  heatSection.appendChild(heatWrap); container.appendChild(heatSection);
-
-  // ── HEALTH EVENTS ─────────────────────────────────────────────────────────
-  if (healthEvents.length) {
-    const healthSection = document.createElement('div'); healthSection.className='stats-section';
-    healthSection.innerHTML = '<div class="stats-section-title">Health events</div>';
-    const healthWrap = document.createElement('div');
-    healthWrap.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
-
-    healthEvents.sort((a,b)=>a.date-b.date).forEach(ev => {
-      const info = flagInfo(ev.type);
-      const dateStr = ev.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-      const hadRun = ev.hadPlannedRun;
-      const didRun = ev.hadStravaRun;
-      let impact = '';
-      if (hadRun && !didRun) impact = '<span style="color:#f06e6e;font-size:10px;font-weight:600;"> · missed run</span>';
-      else if (hadRun && didRun) impact = '<span style="color:#c8f06e;font-size:10px;"> · ran anyway</span>';
-      else if (!hadRun) impact = '<span style="color:#6b7280;font-size:10px;"> · rest day</span>';
-
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);';
-      row.innerHTML = `
-        <div style="font-size:20px;flex-shrink:0;padding-top:1px;">${info.icon}</div>
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:600;color:#d1d5db;">${info.label}${impact}</div>
-          <div style="font-size:11px;color:#4b5563;margin-top:2px;">${dateStr} · ${ev.weekLabel}</div>
-          ${ev.note ? `<div style="font-size:11px;color:#6b7280;margin-top:3px;font-style:italic;">"${ev.note}"</div>` : ''}
-        </div>`;
-      healthWrap.appendChild(row);
-    });
-
-    // Remove last border
-    healthWrap.lastElementChild && (healthWrap.lastElementChild.style.borderBottom = 'none');
-    healthSection.appendChild(healthWrap);
-    container.appendChild(healthSection);
-  }
 }
 
 
@@ -8661,34 +8686,127 @@ function renderWeekStats() {
     }
   });
 
-  if (intervalRuns.length) {
-    const intSection=document.createElement('div'); intSection.className='stats-section';
-    intSection.innerHTML='<div class="stats-section-title">Intervals</div>';
-    const intWrap=document.createElement('div');
-    intWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:4px 16px;';
-    intervalRuns.forEach(({a,di,label}) => {
-      const km=(a.distance||0)/1000;
-      const pace=a.distance&&a.moving_time?formatPace(a.distance,a.moving_time):'—';
-      const dur=a.moving_time?formatDuration(a.moving_time):'';
-      const date=new Date(y,m-1,d+di);
-      const dateStr=date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-      const row=document.createElement('div'); row.className='stats-interval-row';
-      row.innerHTML=
-        '<span class="stats-interval-icon">🎯</span>'+
-        '<div class="stats-interval-info">'+
-          '<div class="stats-interval-name">'+(a.name||label)+'</div>'+
-          '<div class="stats-interval-meta">'+dateStr+' · '+km.toFixed(1)+'km'+(dur?' · '+dur:'')+'</div>'+
-        '</div>'+
-        '<div class="stats-interval-pace">'+pace+'/km</div>';
-      intWrap.appendChild(row);
+  // ── Intervals + Session history (same as active plan tab) ──────────────
+  renderIntervalStatsForWeek(container, wk);
+}
+
+async function renderIntervalStatsForWeek(container, wk) {
+  const [y,m,d] = WEEK_MONDAYS[wk.wi];
+  // Compute ISO date range for this week
+  const monISO = getWeekDateISO(wk.wi, 0);
+  const sunISO = getWeekDateISO(wk.wi, 6);
+
+  // Section header
+  const sectionHdr = document.createElement('div');
+  sectionHdr.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;';
+  sectionHdr.textContent = '⚡ Interval history';
+  container.appendChild(sectionHdr);
+
+  const loading = document.createElement('div');
+  loading.style.cssText = 'padding:16px 20px;text-align:center;color:#4b5563;font-size:13px;';
+  loading.textContent = 'Loading…';
+  container.appendChild(loading);
+
+  try {
+    const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&activity_date=gte.' + monISO + '&activity_date=lte.' + sunISO + '&order=activity_date.desc', { headers: SUPA_HDR });
+    loading.remove();
+    if (!res.ok) { container.appendChild(Object.assign(document.createElement('div'),{style:'padding:12px 20px;color:#f06e6e;font-size:12px;',textContent:'Could not load interval data.'})); return; }
+    const rows = await res.json();
+
+    if (!rows.length) {
+      // Fall back to showing Strava quality runs from this week
+      const stravaSessions = [];
+      DAYS.forEach((_,di) => {
+        const runVal=(ats(wk.wi)).runs[di];
+        const prefix=runVal?runVal.split(':')[0]:'';
+        if(prefix==='quality'||prefix==='kinder') {
+          const acts=getStravaForDay(wk.wi,di,'runs');
+          if(acts) acts.forEach(a=>stravaSessions.push({a,di}));
+        }
+      });
+      if (!stravaSessions.length) {
+        container.appendChild(Object.assign(document.createElement('div'),{style:'color:#4b5563;font-size:12px;padding:4px 20px 12px;',textContent:'No interval sessions this week.'}));
+        return;
+      }
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;margin:0 20px 10px;padding:4px 16px;';
+      stravaSessions.forEach(({a,di}) => {
+        const km=(a.distance||0)/1000;
+        const pace=a.distance&&a.moving_time?formatPace(a.distance,a.moving_time):'—';
+        const dur=a.moving_time?formatDuration(a.moving_time):'';
+        const date=new Date(y,m-1,d+di);
+        const dateStr=date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+        const row=document.createElement('div'); row.className='stats-interval-row';
+        row.innerHTML='<span class="stats-interval-icon">🎯</span>'+
+          '<div class="stats-interval-info">'+
+            '<div class="stats-interval-name">'+(a.name||'Quality run')+'</div>'+
+            '<div class="stats-interval-meta">'+dateStr+' · '+km.toFixed(1)+'km'+(dur?' · '+dur:'')+'</div>'+
+          '</div>'+
+          '<div class="stats-interval-pace">'+pace+'/km</div>';
+        wrap.appendChild(row);
+      });
+      container.appendChild(wrap);
+      return;
+    }
+
+    // Full session cards (identical to active plan tab)
+    rows.forEach(r => {
+      const intervals = r.intervals||[];
+      if (!intervals.length) return;
+      const paces = intervals.map(iv=>paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+      const avgSecs  = paces.length ? paces.reduce((a,b)=>a+b,0)/paces.length : null;
+      const bestSecs = paces.length ? Math.min(...paces) : null;
+      const allHrs   = intervals.map(iv=>iv.avgHr).filter(Boolean);
+      const allMaxHrs= intervals.map(iv=>iv.maxHr).filter(Boolean);
+      const sessionAvgHr = allHrs.length    ? Math.round(allHrs.reduce((a,b)=>a+b,0)/allHrs.length) : null;
+      const sessionMaxHr = allMaxHrs.length ? Math.max(...allMaxHrs) : null;
+      const date = r.activity_date ? new Date(r.activity_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;margin:0 20px 10px;overflow:hidden;cursor:pointer;transition:border-color 0.15s;';
+      card.addEventListener('mouseenter',()=>card.style.borderColor='rgba(255,255,255,0.15)');
+      card.addEventListener('mouseleave',()=>card.style.borderColor='rgba(255,255,255,0.07)');
+
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;';
+      header.innerHTML = `<div><div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}</div><div style="font-size:11px;color:#4b5563;margin-top:2px;">${date} · ${r.threshold_pace||''} threshold</div></div><div style="text-align:right;flex-shrink:0;"><div style="font-size:18px;font-weight:800;color:#FC4C02;">${intervals.length}×</div><div style="font-size:10px;color:#4b5563;">reps</div></div>`;
+
+      const body = document.createElement('div');
+      body.style.cssText = 'padding:0 16px 14px;';
+      const paceRow = document.createElement('div');
+      paceRow.style.cssText = 'display:flex;align-items:flex-end;gap:4px;height:48px;margin-bottom:6px;';
+      const minSecs = bestSecs*0.98, maxSecs = Math.max(...paces)*1.01;
+      intervals.forEach((iv,i) => {
+        const secs = paceStrToSecs(iv.avgPaceStr);
+        if(!secs) return;
+        const pct = Math.round(((maxSecs-secs)/(maxSecs-minSecs||1))*100);
+        const barH = Math.max(20,Math.round(pct/100*40)+8);
+        const col = document.createElement('div');
+        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;';
+        col.innerHTML = `<div style="width:100%;height:${barH}px;background:#FC4C02aa;border-radius:3px 3px 0 0;" title="Interval ${i+1}: ${iv.avgPaceStr}/km"></div><div style="font-size:8px;color:#4b5563;">${i+1}</div>`;
+        paceRow.appendChild(col);
+      });
+      body.appendChild(paceRow);
+
+      const metaRow = document.createElement('div');
+      metaRow.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;';
+      if (avgSecs)       metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Avg <span style="color:#d1d5db;font-weight:600;">${secsToMinSec(avgSecs)}/km</span></div>`;
+      if (bestSecs)      metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Best <span style="color:#FC4C02;font-weight:600;">${secsToMinSec(bestSecs)}/km</span></div>`;
+      if (sessionAvgHr)  metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Avg HR <span style="color:#f06e6e;font-weight:600;">${sessionAvgHr} bpm</span></div>`;
+      if (sessionMaxHr)  metaRow.innerHTML += `<div style="font-size:11px;color:#9ca3af;">Max HR <span style="color:#f0a96e;font-weight:600;">${sessionMaxHr} bpm</span></div>`;
+      body.appendChild(metaRow);
+
+      let expanded = false;
+      const detail = document.createElement('div');
+      detail.style.cssText = 'display:none;border-top:1px solid rgba(255,255,255,0.05);padding:10px 16px;';
+      detail.innerHTML = intervals.map((iv,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><div style="font-size:12px;color:#9ca3af;">${i+1}</div><div style="font-size:12px;color:#d1d5db;">${(iv.distance/1000).toFixed(2)} km</div><div style="font-size:12px;color:#d1d5db;">${Math.floor(iv.duration/60)}:${String(iv.duration%60).padStart(2,'0')}</div><div style="font-size:13px;font-weight:700;color:#FC4C02;">${iv.avgPaceStr}/km</div>${iv.avgHr?'<div style="font-size:11px;color:#6b7280;">'+iv.avgHr+' bpm</div>':''}</div>`).join('');
+      card.addEventListener('click',()=>{ expanded=!expanded; detail.style.display=expanded?'':'none'; card.style.borderColor=expanded?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.07)'; });
+      card.appendChild(header); card.appendChild(body); card.appendChild(detail);
+      container.appendChild(card);
     });
-    intSection.appendChild(intWrap);
-    container.appendChild(intSection);
-  } else if (!wk.isCurrent || wk.actualKm === 0) {
-    const intSection=document.createElement('div'); intSection.className='stats-section';
-    intSection.innerHTML='<div class="stats-section-title">Intervals</div>'+
-      '<div style="color:#4b5563;font-size:12px;padding:12px 0;">No interval sessions logged this week.</div>';
-    container.appendChild(intSection);
+  } catch(e) {
+    loading.remove();
+    container.appendChild(Object.assign(document.createElement('div'),{style:'padding:12px 20px;color:#f06e6e;font-size:12px;',textContent:'Error: '+e.message}));
   }
 }
 
