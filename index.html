@@ -1244,7 +1244,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.8.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1252,6 +1252,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <button class="profile-btn p-vilde" id="profile-btn-vilde" onclick="setProfile('vilde')">
         <span class="avatar">V</span> Vilde
       </button>
+      <button id="save-profile-btn" onclick="saveProfileToDevice()">💾 Save</button>
       <div class="options-wrap">
         <button class="profile-btn options-btn" id="options-btn" onclick="toggleOptionsMenu()">⋯ Options</button>
         <div class="options-menu glass" id="options-menu">
@@ -1778,6 +1779,8 @@ body.shop-mode #briefing-card { display:none !important; }
 .options-wrap { display:none; align-items:center; }
 @media (max-width:600px) and (orientation:portrait) { .options-wrap { display:flex; } }
 .options-btn { padding:4px 10px; }
+#save-profile-btn { display:none; margin-left:4px; padding:4px 10px; border-radius:20px; border:1.5px solid rgba(38,166,154,0.7); background:rgba(38,166,154,0.18); cursor:pointer; font:600 11px 'Inter Tight',system-ui,sans-serif; color:#26A69A; transition:all 0.2s; white-space:nowrap; }
+#save-profile-btn:active { background:rgba(38,166,154,0.35); }
 /* Fixed so it escapes parent overflow/stacking contexts and sits on top of everything */
 .options-menu { display:none; position:fixed; min-width:180px; border-radius:16px; padding:8px; z-index:99999; flex-direction:column; gap:3px; box-shadow:0 20px 60px rgba(0,0,0,0.35),0 0 0 1px rgba(255,255,255,0.45); backdrop-filter:blur(24px) saturate(1.8); -webkit-backdrop-filter:blur(24px) saturate(1.8); background:rgba(255,255,255,0.88); }
 .options-menu.open { display:flex; }
@@ -2053,6 +2056,13 @@ const vState = WEEKS.map(() => ({
 }));
 
 // ── PROFILE ─────────────────────────────────────────────────────────────────
+// Allow ?profile=vilde in URL to default to Vilde's profile on that device
+(function() {
+  const urlProfile = new URLSearchParams(window.location.search).get('profile');
+  if (urlProfile === 'vilde' || urlProfile === 'marius') {
+    localStorage.setItem('cal_profile', urlProfile);
+  }
+})();
 let activeProfile = localStorage.getItem('cal_profile') || 'marius'; // 'marius' | 'vilde'
 let showPartnerTraining = false;
 
@@ -2071,12 +2081,33 @@ function writeTraining(wi, row, di, val) {
 
 function setProfile(p) {
   activeProfile = p;
-  localStorage.setItem('cal_profile', p);
+  // Don't auto-save to localStorage — show save button instead
+  // (so switching to check Vilde's view doesn't permanently change your device)
   document.getElementById('profile-btn-marius').classList.toggle('active', p === 'marius');
   document.getElementById('profile-btn-vilde').classList.toggle('active', p === 'vilde');
+  // Show save button if selected profile differs from what's stored on this device
+  const stored = localStorage.getItem('cal_profile') || 'marius';
+  const saveBtn = document.getElementById('save-profile-btn');
+  if (saveBtn) {
+    if (p !== stored) {
+      saveBtn.style.display = 'inline-flex';
+      saveBtn.textContent = '💾 Save as ' + (p === 'marius' ? 'Marius' : 'Vilde') + '\u2019s device';
+    } else {
+      saveBtn.style.display = 'none';
+    }
+  }
   WEEKS.forEach((_,wi) => renderWeek(wi));
   renderBriefing();
   if (typeof renderMobileView === 'function') { if (isMobilePortrait()) renderMobileView(); }
+}
+
+function saveProfileToDevice() {
+  localStorage.setItem('cal_profile', activeProfile);
+  const saveBtn = document.getElementById('save-profile-btn');
+  if (saveBtn) {
+    saveBtn.textContent = '✓ Saved';
+    setTimeout(() => { saveBtn.style.display = 'none'; }, 1200);
+  }
 }
 
 function toggleOptionsMenu() {
@@ -8714,10 +8745,10 @@ function renderMobileView() {
   }
   else if (mobMode === 'shop') { renderShopView(mc); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
   else if (mobMode === 'clean') {
-    loadCleaningLog().then(() => {
-      renderCleanView(mc);
-      requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
-    });
+    renderCleanView(mc);
+    requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
+    // Silently refresh from server in background
+    loadCleaningLog().then(refreshCleanView);
     return;
   }
   else { renderMobileMonth(); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
@@ -10038,12 +10069,13 @@ function renderBriefing() {
     const preview = pendingShop.slice(0,3).map(i => escShop(i.item)).join(', ');
     const more = pendingShop.length > 3 ? ` +${pendingShop.length-3}` : '';
     const val = `${pendingShop.length} to buy<span style="color:var(--ink-meta);font-weight:400;"> · ${preview}${more}</span> ›`;
-    rows += `<div class="brief-row brief-row-tap" onclick="setView('shop')"><div class="ic">🛒</div><div class="bd"><div class="bl">Shopping</div><div class="bv">${val}</div></div></div>`;
+    rows += `<div class="brief-row brief-row-tap" onclick="mobMode='shop';renderMobileView();"><div class="ic">🛒</div><div class="bd"><div class="bl">Shopping</div><div class="bv">${val}</div></div></div>`;
   }
 
   // Solo-evening heuristic (partner working evening / long / night)
+  // Only relevant for Marius — Vilde is the one working so she already knows
   let alert = '';
-  if (wifePrefix === 'eve' || wifePrefix === 'other') {
+  if (activeProfile === 'marius' && (wifePrefix === 'eve' || wifePrefix === 'other')) {
     alert = `<div class="brief-alert">🧒 You're likely on kids tonight — partner working late.</div>`;
   }
 
