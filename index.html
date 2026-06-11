@@ -1269,7 +1269,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.10.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.10.4</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1448,7 +1448,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
           <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
           <button class="stats-scope-btn" data-scope="week" onclick="setStatsScope('week')">Week</button>
         </div>
-        <button id="lt-input-btn" onclick="openLTModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(252,76,2,0.4);background:rgba(252,76,2,0.1);color:#FC4C02;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">❤️ LT Pace</button>
+        <button id="lt-input-btn" onclick="openLTModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(252,76,2,0.4);background:rgba(252,76,2,0.1);color:#FC4C02;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">LT Pace</button>
       </div>
     </div>
 
@@ -7272,7 +7272,10 @@ async function saveLTPace() {
   const inp = document.getElementById('lt-pace-input');
   const raw = (inp.value||'').trim();
   // Validate mm:ss
-  if (!/^d{1,2}:d{2}$/.test(raw)) { inp.style.borderColor='#f06e6e'; setTimeout(()=>inp.style.borderColor='',1200); return; }
+  const parts = raw.split(':');
+  if (parts.length !== 2 || parts[0].length < 1 || parts[1].length !== 2 || isNaN(+parts[0]) || isNaN(+parts[1])) {
+    inp.style.borderColor='#f06e6e'; setTimeout(()=>inp.style.borderColor='rgba(255,255,255,0.12)',1200); return;
+  }
   const body = { pace: raw, recorded_at: new Date().toISOString() };
   try {
     const res = await fetch(SUPA_BASE + 'lactate_threshold', {
