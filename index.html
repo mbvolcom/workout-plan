@@ -968,8 +968,28 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .stats-scope-btn.active { background:#f0ede8; color:#0e0f11; }
 
 /* KPI cards */
-.stats-kpi-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:20px 20px 0; }
+.stats-kpi-grid { display:grid; grid-template-columns:1fr; gap:10px; padding:20px 20px 0; }
+.stats-kpi-grid.two-col { grid-template-columns:repeat(2,1fr); }
 @media(min-width:500px){ .stats-kpi-grid { grid-template-columns:repeat(4,1fr); } }
+.stats-kpi { position:relative; cursor:default; }
+.stats-kpi-main { display:flex; align-items:baseline; gap:10px; margin-bottom:4px; }
+.stats-kpi-secondary { display:flex; gap:16px; flex-wrap:wrap; }
+.stats-kpi-sec-item { font-size:11px; color:#4b5563; }
+.stats-kpi-sec-item span { color:#6b7280; font-weight:600; }
+.stats-kpi-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; background:rgba(200,240,110,0.12); color:#c8f06e; margin-left:auto; }
+/* Week nav in stats */
+.stats-week-nav { display:flex; align-items:center; justify-content:space-between; padding:12px 20px 0; }
+.stats-week-nav-btn { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#d1d5db; font-size:18px; width:36px; height:36px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.stats-week-nav-btn:disabled { opacity:0.3; cursor:default; }
+.stats-week-nav-label { font-size:13px; font-weight:600; color:#f0ede8; text-align:center; line-height:1.3; }
+.stats-week-nav-sub { font-size:11px; color:#4b5563; }
+/* Interval detail */
+.stats-interval-row { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.stats-interval-icon { font-size:20px; flex-shrink:0; }
+.stats-interval-info { flex:1; }
+.stats-interval-name { font-size:13px; font-weight:600; color:#d1d5db; }
+.stats-interval-meta { font-size:11px; color:#4b5563; margin-top:2px; }
+.stats-interval-pace { font-size:13px; font-weight:700; color:#f0c060; }
 .stats-kpi {
   background:#16181c; border:1px solid rgba(255,255,255,0.07);
   border-radius:14px; padding:16px 14px;
@@ -1248,7 +1268,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.9.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.10.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1424,6 +1444,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div id="stats-scope-toggle">
         <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
         <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
+        <button class="stats-scope-btn" data-scope="week" onclick="setStatsScope('week')">Week</button>
       </div>
     </div>
     <div id="stats-content"></div>
@@ -7159,6 +7180,7 @@ function renderStrLoggedBody(dateStr) {
 }
 let statsScope = 'plan';
 let statsTab   = 'running';
+let statsWeekIdx = -1; // -1 = use current week
 
 function openStatsPage() {
   document.getElementById('stats-overlay').classList.add('open');
@@ -7170,6 +7192,7 @@ function closeStatsPage() {
 }
 function setStatsScope(scope) {
   statsScope = scope;
+  if (scope === 'week') statsWeekIdx = -1; // reset to current week
   document.querySelectorAll('.stats-scope-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === scope));
   renderStats();
 }
@@ -7181,6 +7204,7 @@ function setStatsTab(tab) {
 }
 
 function renderStats() {
+  if (statsTab === 'running' && statsScope === 'week') { renderWeekStats(); return; }
   if (statsTab === 'strength')  { renderSGStats(); return; }
   renderRunningStats();
   renderIntervalStats(); // appended at bottom of running tab
@@ -7529,19 +7553,50 @@ function renderRunningStats() {
     });
   });
 
+  // ── NEW KPI CARDS (full width) ───────────────────────────────────────────
   const kpiGrid = document.createElement('div'); kpiGrid.className='stats-kpi-grid';
-  [
-    {val:totalActualKm.toFixed(0)+'km', sub:`of ${totalPlannedKm.toFixed(0)}km planned`, lbl:'Distance logged', cls:'accent'},
-    {val:completionPct+'%', sub:`${totalDoneRuns}/${totalPlannedRuns} runs`, lbl:'Run completion', cls:'blue'},
-    {val:longestRun>0?(longestRun/1000).toFixed(1)+'km':'—', sub:'longest Strava run', lbl:'Longest run', cls:'orange'},
-    {val:avgPace?formatPace(1000,avgPace*60):'—', sub:'avg easy run pace', lbl:'Avg pace', cls:'gold'},
-    {val:sickDays+injuredDays || '—', sub:`${sickDays} sick · ${injuredDays} run injury`, lbl:'Days impacted', cls:'health'},
-    {val:missedDueToHealth || '—', sub:'planned runs missed', lbl:'Missed due to health', cls:'health'},
-  ].forEach(({val,sub,lbl,cls})=>{
-    const card=document.createElement('div'); card.className='stats-kpi';
-    card.innerHTML=`<div class="stats-kpi-val ${cls}">${val}</div><div class="stats-kpi-lbl">${lbl}</div><div class="stats-kpi-sub">${sub}</div>`;
-    kpiGrid.appendChild(card);
+
+  // Calculate extra metrics
+  const allLongRuns = weeks.flatMap(wk=>{
+    const longActs=[];
+    DAYS.forEach((_,di)=>{
+      const [y,m,d]=WEEK_MONDAYS[wk.wi];
+      const runVal=(ats(wk.wi)).runs[di];
+      if(runVal&&runVal.split(':')[0]==='long'){
+        const acts=getStravaForDay(wk.wi,di,'runs');
+        if(acts) acts.forEach(a=>longActs.push((a.distance||0)/1000));
+      }
+    });
+    return longActs;
   });
+  const totalLongRunsDone = allLongRuns.length;
+  const avgLongKm = totalLongRunsDone ? (allLongRuns.reduce((a,b)=>a+b,0)/totalLongRunsDone) : 0;
+  const longestRunKm = longestRun > 0 ? (longestRun/1000) : 0;
+  const avgRunKm = totalDoneRuns > 0 ? totalActualKm/totalDoneRuns : 0;
+  const allRunCount = weeks.reduce((a,wk)=>a+(wk.doneSessions||0),0);
+
+  // Card 1: Distance logged
+  buildStatsKpiCard(kpiGrid,
+    totalActualKm.toFixed(1)+' km', 'accent', 'Distance logged',
+    [{label:'Avg per run', val: allRunCount>0?avgRunKm.toFixed(1)+' km':'—'},
+     {label:'of planned', val: completionPct+'%'}]
+  );
+  // Card 2: Long run
+  buildStatsKpiCard(kpiGrid,
+    longestRunKm>0?longestRunKm.toFixed(1)+' km':'—', 'orange', 'Longest run',
+    [{label:'Long runs done', val: totalLongRunsDone||'—'},
+     {label:'Avg long', val: avgLongKm>0?avgLongKm.toFixed(1)+' km':'—'}]
+  );
+  // Card 3: Average pace
+  buildStatsKpiCard(kpiGrid,
+    avgPace?formatPace(1000,avgPace*60):'—', 'gold', 'Average pace',
+    [{label:'across', val: allRunCount+' runs'}]
+  );
+  // Card 4: Days impacted
+  buildStatsKpiCard(kpiGrid,
+    (sickDays+injuredDays)||'—', 'health', 'Days impacted',
+    [{label:'Sick', val:sickDays},{label:'Injured', val:injuredDays},{label:'Missed runs', val:missedDueToHealth}]
+  );
   container.appendChild(kpiGrid);
 
   // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
@@ -8475,6 +8530,164 @@ function drawSGLine(canvas, labels, data, color) {
   data.forEach((_,i)=>{if(i%step===0||i===n-1)ctx.fillText(labels[i],xS(i),h-6);});
 }
 
+
+function buildStatsKpiCard(grid, mainVal, cls, label, secondaryItems) {
+  const card = document.createElement('div');
+  card.className = 'stats-kpi';
+  card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px 18px;';
+  const lbl = document.createElement('div');
+  lbl.style.cssText = 'font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;';
+  lbl.textContent = label;
+  const main = document.createElement('div');
+  main.style.cssText = 'font-size:32px;font-weight:800;letter-spacing:-0.02em;margin-bottom:8px;line-height:1;';
+  const colors = {accent:'#c8f06e',blue:'#6eb8f0',orange:'#FC4C02',gold:'#f0c060',health:'#f06e6e'};
+  main.style.color = colors[cls] || '#f0ede8';
+  main.textContent = mainVal;
+  const secs = document.createElement('div');
+  secs.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;margin-top:4px;';
+  secondaryItems.forEach(({label:sl, val:sv}) => {
+    const item = document.createElement('div');
+    item.style.cssText = 'font-size:11px;color:#4b5563;';
+    item.innerHTML = '<span style="color:#6b7280;font-weight:600;">' + sv + '</span> ' + sl;
+    secs.appendChild(item);
+  });
+  card.appendChild(lbl); card.appendChild(main); card.appendChild(secs);
+  grid.appendChild(card);
+}
+
+function renderWeekStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = '';
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let allWeeks;
+  try { allWeeks = buildStatsWeeks(); } catch(e) { container.innerHTML='<div style="color:#f06e6e;padding:20px;">Error: '+e.message+'</div>'; return; }
+
+  // Determine which week to show
+  let currentWi = allWeeks.findIndex(wk => wk.isCurrent);
+  if (currentWi === -1) currentWi = allWeeks.length - 1;
+  if (statsWeekIdx === -1) statsWeekIdx = currentWi;
+  statsWeekIdx = Math.max(0, Math.min(allWeeks.length-1, statsWeekIdx));
+  const wk = allWeeks[statsWeekIdx];
+
+  // ── Week navigator ──────────────────────────────────────────────────────
+  const nav = document.createElement('div'); nav.className = 'stats-week-nav';
+  const prevBtn = document.createElement('button'); prevBtn.className = 'stats-week-nav-btn';
+  prevBtn.textContent = '‹'; prevBtn.disabled = statsWeekIdx === 0;
+  prevBtn.addEventListener('click', () => { statsWeekIdx--; renderWeekStats(); });
+  const nextBtn = document.createElement('button'); nextBtn.className = 'stats-week-nav-btn';
+  nextBtn.textContent = '›'; nextBtn.disabled = statsWeekIdx === allWeeks.length-1;
+  nextBtn.addEventListener('click', () => { statsWeekIdx++; renderWeekStats(); });
+  const navLabel = document.createElement('div');
+  navLabel.innerHTML = '<div class="stats-week-nav-label">' + wk.label + (wk.isCurrent ? ' · <span style="color:#c8f06e;font-size:11px;">current</span>' : '') + '</div>' +
+    '<div class="stats-week-nav-sub">' + (wk.dates || '') + '</div>';
+  nav.appendChild(prevBtn); nav.appendChild(navLabel); nav.appendChild(nextBtn);
+  container.appendChild(nav);
+
+  // ── KPIs for this week ──────────────────────────────────────────────────
+  const kpiGrid = document.createElement('div'); kpiGrid.className = 'stats-kpi-grid';
+
+  const weekPaceRuns = wk.paceRuns;
+  const weekAvgPace = weekPaceRuns.length ? weekPaceRuns.reduce((a,b)=>a+b,0)/weekPaceRuns.length : null;
+  const weekAvgRunKm = wk.doneSessions > 0 ? wk.actualKm / wk.doneSessions : 0;
+  const weekCompPct = wk.plannedKm > 0 ? Math.round((wk.actualKm/wk.plannedKm)*100) : 0;
+  const weekLongestKm = wk.longestRun > 0 ? wk.longestRun/1000 : 0;
+  const weekLongCount = wk.longRuns || 0;
+
+  // Health
+  const weekSick = wk.days.filter(d=>{const f=dayFlags[d.dateStr];return f&&f.type==='sick';}).length;
+  const weekInj  = wk.days.filter(d=>{const f=dayFlags[d.dateStr];return f&&f.type==='injured_run';}).length;
+
+  buildStatsKpiCard(kpiGrid, wk.actualKm.toFixed(1)+' km', 'accent', 'Distance logged',
+    [{label:'Avg per run', val: wk.doneSessions>0?weekAvgRunKm.toFixed(1)+' km':'—'},
+     {label:'of '+wk.plannedKm+'km planned', val: weekCompPct+'%'}]);
+  buildStatsKpiCard(kpiGrid, weekLongestKm>0?weekLongestKm.toFixed(1)+' km':'—', 'orange', 'Longest run',
+    [{label:'long runs', val: weekLongCount||'0'},
+     {label:'runs total', val: wk.doneSessions}]);
+  buildStatsKpiCard(kpiGrid, weekAvgPace?formatPace(1000,weekAvgPace*60):'—', 'gold', 'Average pace',
+    [{label:'easy run pace', val: wk.doneSessions+' runs'}]);
+  buildStatsKpiCard(kpiGrid, (weekSick+weekInj)||'—', 'health', 'Days impacted',
+    [{label:'Sick', val:weekSick},{label:'Injured', val:weekInj}]);
+  container.appendChild(kpiGrid);
+
+  // ── Weekly KM bar (just this week's days) ───────────────────────────────
+  const barSection = document.createElement('div'); barSection.className = 'stats-section';
+  barSection.innerHTML = '<div class="stats-section-title">Weekly km — planned vs actual</div>';
+  const barWrap = document.createElement('div'); barWrap.className = 'stats-bar-chart';
+  const [y,m,d] = WEEK_MONDAYS[wk.wi];
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const barsEl = document.createElement('div'); barsEl.className = 'stats-bars';
+  const maxDayKm = Math.max(...DAYS.map((_,di)=>{
+    const acts=getStravaForDay(wk.wi,di,'runs');
+    return acts?acts.reduce((a,act)=>a+(act.distance||0)/1000,0):0;
+  }),1);
+  DAYS.forEach((_,di) => {
+    const acts = getStravaForDay(wk.wi,di,'runs');
+    const dayKm = acts?acts.reduce((a,act)=>a+(act.distance||0)/1000,0):0;
+    const runVal = (ats(wk.wi)).runs[di];
+    const isToday = today.getDay() === (di+1)%7 && wk.isCurrent;
+    const col = document.createElement('div'); col.className = 'stats-bar-col';
+    const wrap = document.createElement('div'); wrap.className = 'stats-bar-wrap'; wrap.style.height='120px';
+    if (runVal) {
+      const planned = document.createElement('div'); planned.className='stats-bar-planned';
+      planned.style.height='8px'; planned.title='Planned run';
+      wrap.appendChild(planned);
+    }
+    if (dayKm > 0) {
+      const actual = document.createElement('div'); actual.className='stats-bar-actual';
+      actual.style.cssText='height:'+Math.round((dayKm/maxDayKm)*110)+'px;background:#c8f06e;';
+      actual.title=dayKm.toFixed(1)+'km';
+      wrap.appendChild(actual);
+    }
+    const lbl = document.createElement('div');
+    lbl.className = 'stats-bar-lbl'+(isToday?' current':'');
+    lbl.textContent = dayNames[di];
+    col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
+  });
+  barWrap.appendChild(barsEl); barSection.appendChild(barWrap);
+  container.appendChild(barSection);
+
+  // ── Intervals ──────────────────────────────────────────────────────────
+  const intervalRuns = [];
+  DAYS.forEach((_,di) => {
+    const runVal=(ats(wk.wi)).runs[di];
+    const prefix=runVal?runVal.split(':')[0]:'';
+    if(prefix==='quality'||prefix==='kinder') {
+      const acts=getStravaForDay(wk.wi,di,'runs');
+      if(acts) acts.forEach(a=>intervalRuns.push({a,di,label:runVal?runVal.split(':')[1]:'Quality'}));
+    }
+  });
+
+  if (intervalRuns.length) {
+    const intSection=document.createElement('div'); intSection.className='stats-section';
+    intSection.innerHTML='<div class="stats-section-title">Intervals</div>';
+    const intWrap=document.createElement('div');
+    intWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:4px 16px;';
+    intervalRuns.forEach(({a,di,label}) => {
+      const km=(a.distance||0)/1000;
+      const pace=a.distance&&a.moving_time?formatPace(a.distance,a.moving_time):'—';
+      const dur=a.moving_time?formatDuration(a.moving_time):'';
+      const date=new Date(y,m-1,d+di);
+      const dateStr=date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      const row=document.createElement('div'); row.className='stats-interval-row';
+      row.innerHTML=
+        '<span class="stats-interval-icon">🎯</span>'+
+        '<div class="stats-interval-info">'+
+          '<div class="stats-interval-name">'+(a.name||label)+'</div>'+
+          '<div class="stats-interval-meta">'+dateStr+' · '+km.toFixed(1)+'km'+(dur?' · '+dur:'')+'</div>'+
+        '</div>'+
+        '<div class="stats-interval-pace">'+pace+'/km</div>';
+      intWrap.appendChild(row);
+    });
+    intSection.appendChild(intWrap);
+    container.appendChild(intSection);
+  } else if (!wk.isCurrent || wk.actualKm === 0) {
+    const intSection=document.createElement('div'); intSection.className='stats-section';
+    intSection.innerHTML='<div class="stats-section-title">Intervals</div>'+
+      '<div style="color:#4b5563;font-size:12px;padding:12px 0;">No interval sessions logged this week.</div>';
+    container.appendChild(intSection);
+  }
+}
 
 function buildStatsWeeks() {
   const today = new Date(); today.setHours(0,0,0,0);
