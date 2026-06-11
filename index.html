@@ -1248,7 +1248,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.9.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.9.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -2068,6 +2068,11 @@ const vState = WEEKS.map(() => ({
   }
 })();
 let activeProfile = localStorage.getItem('cal_profile') || 'marius'; // 'marius' | 'vilde'
+// Sync button active classes immediately (HTML hardcodes Marius as active)
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('profile-btn-marius')?.classList.toggle('active', activeProfile === 'marius');
+  document.getElementById('profile-btn-vilde')?.classList.toggle('active', activeProfile === 'vilde');
+});
 let showPartnerTraining = false;
 
 // Returns the active profile's training state for week wi
@@ -2107,11 +2112,18 @@ function setProfile(p) {
 
 function saveProfileToDevice() {
   localStorage.setItem('cal_profile', activeProfile);
+  // Update button classes to reflect saved state
+  document.getElementById('profile-btn-marius')?.classList.toggle('active', activeProfile === 'marius');
+  document.getElementById('profile-btn-vilde')?.classList.toggle('active', activeProfile === 'vilde');
   const saveBtn = document.getElementById('save-profile-btn');
   if (saveBtn) {
     saveBtn.textContent = '✓ Saved';
     setTimeout(() => { saveBtn.style.display = 'none'; }, 1200);
   }
+  // Re-render with saved profile
+  WEEKS.forEach((_,wi) => renderWeek(wi));
+  renderBriefing();
+  if (typeof renderMobileView === 'function' && isMobilePortrait()) renderMobileView();
 }
 
 function toggleOptionsMenu() {
@@ -2630,7 +2642,9 @@ addConfirmBtn.addEventListener('click', e => {
   if (row === 'wife') wifeState[weekIdx][dayIdx] = prefix + ':' + label;
   else if (row === 'kinder') kinderState[weekIdx][dayIdx] = prefix + ':' + label;
   else writeTraining(weekIdx, row, dayIdx, prefix + ':' + label);
-  renderWeek(weekIdx); closeAddModal();
+  renderWeek(weekIdx);
+  triggerAutosave();
+  closeAddModal();
 });
 document.getElementById('add-cancel-btn').addEventListener('click', e => { e.stopPropagation(); closeAddModal(); });
 addOverlay.addEventListener('click', e => { if (e.target === addOverlay) closeAddModal(); });
@@ -3564,6 +3578,16 @@ if (_local) applyState(JSON.parse(_local));
 
   // 8. Init mobile portrait view
   initMobileView();
+  // Sync profile UI after full init — ensures Vilde's device shows her data
+  if (activeProfile !== 'marius') {
+    document.getElementById('profile-btn-marius')?.classList.remove('active');
+    document.getElementById('profile-btn-vilde')?.classList.add('active');
+    // Re-render all weeks in Vilde's context (suppress extra autosave)
+    _renderWeekDepth++;
+    WEEKS.forEach((_, wi) => _origRenderWeek(wi));
+    _renderWeekDepth--;
+    if (isMobilePortrait()) renderMobileView();
+  }
 
   // 9. Family briefing + shared shopping list + recipe library
   renderBriefing();
