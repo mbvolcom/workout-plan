@@ -977,6 +977,23 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .race-est-conf-bar { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
 .race-est-conf-fill { height:100%; border-radius:2px; background:#FC4C02; transition:width 0.4s; }
 .race-est-conf-label { font-size:10px; color:#6b7280; white-space:nowrap; }
+.race-guid-wrap { margin-top:12px; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px; }
+.race-guid-toggle { display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; padding:2px 0; }
+.race-guid-toggle-label { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#6b7280; }
+.race-guid-toggle-chev { font-size:12px; color:#6b7280; transition:transform 0.2s; }
+.race-guid-toggle-chev.open { transform:rotate(90deg); }
+.race-guid-body { overflow:hidden; max-height:0; transition:max-height 0.3s ease; }
+.race-guid-body.open { max-height:800px; }
+.race-guid-item { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.race-guid-item:last-child { border-bottom:none; }
+.race-guid-icon { font-size:18px; flex-shrink:0; padding-top:1px; }
+.race-guid-content { flex:1; min-width:0; }
+.race-guid-title { font-size:12px; font-weight:700; color:#d1d5db; margin-bottom:3px; }
+.race-guid-desc { font-size:11px; color:#6b7280; line-height:1.5; }
+.race-guid-benefit { display:inline-block; margin-top:4px; font-size:10px; font-weight:700; color:#c8f06e; background:rgba(200,240,110,0.1); padding:2px 7px; border-radius:10px; }
+.race-guid-warn { color:#f0c060; background:rgba(240,192,96,0.1); }
+.race-guid-urgent { color:#f06e6e; background:rgba(240,110,110,0.1); }
+.race-guid-phase { font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#4b5563; margin-bottom:8px; padding-top:10px; }
 .stats-scope-btn {
   background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500;
   color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s;
@@ -1284,7 +1301,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -2194,7 +2211,7 @@ function toggleOptionsMenu() {
     return;
   }
 
-  // Move to <body> so it's completely outside any parent stacking context
+  // Move to <body> so it is completely outside any parent stacking context
   if (menu.parentNode !== document.body) document.body.appendChild(menu);
 
   // Always recalculate position fresh
@@ -3824,7 +3841,7 @@ async function deleteTodoItem(id, weekIdx) {
 }
 
 function renderShopView(container) {
-  // Build a self-contained shop panel (don't move #shop-view out of its anchor)
+  // Build a self-contained shop panel (do not move #shop-view out of its anchor)
   const wrap = document.createElement('div');
   wrap.style.cssText = 'padding-bottom:40px;';
 
@@ -4846,7 +4863,7 @@ async function runIntervalAnalysis(activityId) {
     });
 
     // Step 2: Build a per-second "fast" boolean array
-    // A point is "fast" if it's >= threshold
+    // A point is "fast" if it is >= threshold
     const isFast = smoothed.map(v => v >= thresholdMps);
 
     // Step 3: Detect candidate intervals using a state machine
@@ -4884,9 +4901,9 @@ async function runIntervalAnalysis(activityId) {
     // Step 4: Smart merge — merge intervals where gap < recovery_threshold
     // For structured intervals, recovery is typically 1-3 min
     // Use expected interval duration to set merge threshold:
-    // If user set expected=3min, don't merge gaps > 3min (that's a new set)
+    // If user set expected=3min, do not merge gaps > 3min (that is a new set)
     const maxMergeGap = expectedSecs
-      ? Math.min(expectedSecs * 1.5, 90)  // don't merge if gap > 90s
+      ? Math.min(expectedSecs * 1.5, 90)  // do not merge if gap > 90s
       : 45;
 
     const merged = [];
@@ -7627,6 +7644,133 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
   };
 }
 
+function buildRaceGuidance(plan, est, weeks, ltSecs, longestRunM, raceKm, raceDate) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const raceDt = raceDate ? new Date(raceDate) : null;
+  const msLeft = raceDt ? raceDt - today : null;
+  const daysLeft = msLeft ? Math.max(0, Math.floor(msLeft / 86400000)) : null;
+  const weeksLeft = daysLeft !== null ? Math.floor(daysLeft / 7) : null;
+
+  // Phase logic
+  // 0-3 weeks left: taper / race prep
+  // 4-8 weeks left: sharpening
+  // 9+ weeks left: base / build
+  const phase = weeksLeft === null ? 'build'
+    : weeksLeft <= 3  ? 'taper'
+    : weeksLeft <= 8  ? 'sharp'
+    : 'build';
+
+  const goalSecs = goalTimeToSecs(plan.goal);
+  const gapSecs = goalSecs ? est.central - goalSecs : null; // positive = slower than goal
+  const longestKm = longestRunM / 1000;
+
+  const items = [];
+
+  // ── Phase-aware header message ───────────────────────────────────────────
+  let phaseMsg = '', phaseIcon = '';
+  if (phase === 'taper') {
+    phaseIcon = '🎯';
+    phaseMsg = weeksLeft <= 1
+      ? 'Race week — protect fitness, no hard sessions.'
+      : 'Taper phase (' + weeksLeft + ' weeks to race). Reduce volume by 30–40%, keep intensity sharp with 1 short quality session. The hay is in the barn.';
+  } else if (phase === 'sharp') {
+    phaseIcon = '⚡';
+    phaseMsg = weeksLeft + ' weeks to race — sharpening phase. Focus on race-pace work and one long run with MP miles. LT improvements are still possible but gains taper off.';
+  } else {
+    phaseIcon = '🏗️';
+    const weeksStr = weeksLeft !== null ? weeksLeft + ' weeks to race — ' : '';
+    phaseMsg = weeksStr + 'base/build phase. This is where fitness is made. Volume and long runs drive the biggest gains now.';
+  }
+
+  items.push({ icon: phaseIcon, title: 'Where you are in the plan', desc: phaseMsg, benefit: null, urgent: false });
+
+  // ── LT pace improvement ──────────────────────────────────────────────────
+  if (phase !== 'taper') {
+    // Each 5 sec/km LT improvement → ~3:45 marathon improvement (coeff 1.07 × 42.195 × 5 = 225s ≈ 3:45)
+    const ltImproveSecs = 5; // 5 sec/km LT improvement
+    const timeGainSecs = Math.round(ltImproveSecs * 1.07 * raceKm);
+    const timeGainStr = secsToMinSec(timeGainSecs).replace(':','m ') + 's';
+    let ltDesc = '';
+    if (phase === 'sharp') {
+      ltDesc = 'With ' + weeksLeft + ' weeks left, a 3–5 sec/km LT gain is realistic with 1–2 threshold sessions/week at LT pace (' + ltHistory[0].pace + '/km). That would shave ~' + timeGainStr + ' off your estimate.';
+    } else {
+      ltDesc = 'Your current LT is ' + ltHistory[0].pace + '/km. Every 5 sec/km improvement cuts ~' + timeGainStr + ' off your marathon time. Threshold runs (20–40 min at LT pace) once a week are the most direct way to move this number.';
+    }
+    items.push({ icon: '💓', title: 'Improve your LT pace', desc: ltDesc, benefit: '~' + timeGainStr + ' per 5 sec/km LT gain', urgent: false });
+  }
+
+  // ── Volume gap ───────────────────────────────────────────────────────────
+  const totalPlannedKm = weeks.reduce((a,wk)=>a+wk.plannedKm,0);
+  const totalActualKm  = weeks.reduce((a,wk)=>a+wk.actualKm,0);
+  const completionPct  = totalPlannedKm > 0 ? totalActualKm/totalPlannedKm : 1;
+  if (completionPct < 0.85 && phase !== 'taper') {
+    const missedKm = Math.round(totalPlannedKm - totalActualKm);
+    const missedPct = Math.round((1 - completionPct) * 100);
+    // Rough estimate: each 10% volume increase ≈ 2-3% performance improvement
+    const estGainMins = Math.round((1 - completionPct) * est.central / 60 * 0.15);
+    items.push({
+      icon: '📉',
+      title: 'Close the volume gap',
+      desc: 'You have logged ' + Math.round(completionPct*100) + '% of planned km (' + missedKm + ' km missed). Consistently hitting 85–95% of planned volume is one of the strongest predictors of race performance. Each week you hit your target adds to your aerobic base.',
+      benefit: 'Up to ' + estGainMins + ' min gain from consistent volume',
+      urgent: completionPct < 0.70
+    });
+  }
+
+  // ── Long run readiness ───────────────────────────────────────────────────
+  const longRunThreshold = raceKm * 0.75; // e.g. 31.6km for marathon
+  if (longestKm < longRunThreshold && phase !== 'taper') {
+    const deficit = Math.round(longRunThreshold - longestKm);
+    const isUrgent = weeksLeft !== null && weeksLeft < 6 && longestKm < raceKm * 0.6;
+    items.push({
+      icon: '🏃',
+      title: 'Long run coverage',
+      desc: 'Your longest run so far is ' + longestKm.toFixed(1) + ' km. Reaching ' + Math.round(longRunThreshold) + ' km+ (75% of race distance) gives you race-specific endurance that pace work alone cannot replicate.' + (isUrgent ? ' With ' + weeksLeft + ' weeks left, prioritise this soon.' : ''),
+      benefit: '5–10 min gain from race-specific endurance',
+      urgent: isUrgent
+    });
+  } else if (longestKm >= longRunThreshold) {
+    items.push({
+      icon: '✅',
+      title: 'Long run — good coverage',
+      desc: 'Your longest run of ' + longestKm.toFixed(1) + ' km gives solid race-specific endurance. ' + (phase === 'taper' ? 'No more long efforts needed — protect what you have built.' : 'One more 30–35 km run with the final 10 km at marathon pace would sharpen race-day feel.'),
+      benefit: null, urgent: false
+    });
+  }
+
+  // ── Taper-specific advice ────────────────────────────────────────────────
+  if (phase === 'taper') {
+    items.push({
+      icon: '🛌',
+      title: 'Sleep and recovery',
+      desc: 'The most impactful thing in the last ' + weeksLeft + ' week' + (weeksLeft !== 1 ? 's' : '') + ' is sleep. Aim for 8–9 hours. Fitness cannot be built now but can be wasted with poor recovery or last-minute hard sessions.',
+      benefit: 'Race day readiness', urgent: false
+    });
+    if (gapSecs !== null && gapSecs > 120) {
+      items.push({
+        icon: '🎽',
+        title: 'Pacing strategy',
+        desc: 'Your estimate is ' + Math.round(gapSecs/60) + ' min behind your goal of ' + plan.goal + '. Consider starting at your estimated pace (' + est.racePaceStr + '/km) rather than goal pace — going out too fast is the most common race day mistake. You can always negative split.',
+        benefit: null, urgent: true
+      });
+    }
+  }
+
+  // ── Goal gap insight ─────────────────────────────────────────────────────
+  if (gapSecs !== null && gapSecs > 300 && phase !== 'taper') {
+    const minsBehind = Math.round(gapSecs / 60);
+    const ltNeeded = Math.round(gapSecs / (1.07 * raceKm)); // sec/km LT improvement needed
+    items.push({
+      icon: '🎯',
+      title: 'Closing the gap to your goal',
+      desc: 'You are ' + minsBehind + ' min behind your ' + plan.goal + ' goal. To reach it purely through LT improvement, you would need ~' + ltNeeded + ' sec/km faster LT pace — ' + (ltNeeded <= 10 ? 'achievable in ' + (weeksLeft||12) + ' weeks with consistent threshold work.' : 'ambitious but gives you a clear target. Combine LT work with volume consistency for the fastest route.'),
+      benefit: null, urgent: false
+    });
+  }
+
+  return { items, phase, weeksLeft, daysLeft };
+}
+
 function renderRaceEstimate(container, weeks) {
   const plan = getActivePlan();
   if (!plan) return;
@@ -7669,6 +7813,62 @@ function renderRaceEstimate(container, weeks) {
       '<div class="race-est-conf-bar"><div class="race-est-conf-fill" style="width:' + est.confidence + '%"></div></div>' +
       '<span class="race-est-conf-label">' + est.confidence + '%</span>' +
     '</div>';
+
+  // ── Guidance section ─────────────────────────────────────────────────────
+  const guidance = buildRaceGuidance(plan, est, weeks, ltSecs, longestRun, raceDist.km, plan.race_date);
+
+  const guidWrap = document.createElement('div');
+  guidWrap.className = 'race-guid-wrap';
+
+  const toggle = document.createElement('div');
+  toggle.className = 'race-guid-toggle';
+  const chev = document.createElement('span');
+  chev.className = 'race-guid-toggle-chev';
+  chev.textContent = '›';
+  toggle.innerHTML = '<span class="race-guid-toggle-label">How to improve</span>';
+  toggle.appendChild(chev);
+
+  const body = document.createElement('div');
+  body.className = 'race-guid-body';
+
+  // Phase label
+  const phaseColors = { taper:'#f0c060', sharp:'#6eb8f0', build:'#c8f06e' };
+  const phaseLabels = { taper:'🎯 Taper & race prep', sharp:'⚡ Sharpening phase', build:'🏗️ Base & build phase' };
+  const phaseEl = document.createElement('div');
+  phaseEl.className = 'race-guid-phase';
+  phaseEl.style.color = phaseColors[guidance.phase] || '#4b5563';
+  phaseEl.textContent = phaseLabels[guidance.phase] || '';
+  if (guidance.weeksLeft !== null) {
+    phaseEl.textContent += ' · ' + guidance.weeksLeft + ' weeks to race';
+  }
+  body.appendChild(phaseEl);
+
+  guidance.items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'race-guid-item';
+    const benefitHtml = item.benefit
+      ? '<span class="race-guid-benefit' + (item.urgent ? ' race-guid-urgent' : '') + '">' + item.benefit + '</span>'
+      : '';
+    el.innerHTML =
+      '<div class="race-guid-icon">' + item.icon + '</div>' +
+      '<div class="race-guid-content">' +
+        '<div class="race-guid-title">' + item.title + '</div>' +
+        '<div class="race-guid-desc">' + item.desc + '</div>' +
+        benefitHtml +
+      '</div>';
+    body.appendChild(el);
+  });
+
+  let open = false;
+  toggle.addEventListener('click', () => {
+    open = !open;
+    body.classList.toggle('open', open);
+    chev.classList.toggle('open', open);
+  });
+
+  guidWrap.appendChild(toggle);
+  guidWrap.appendChild(body);
+  card.appendChild(guidWrap);
 
   container.appendChild(card);
 }
@@ -9478,13 +9678,13 @@ function renderMobileRaceWeek() {
       pills.style.display = 'none';
       hdr.style.cursor = 'pointer';
       hdr.addEventListener('click', e => {
-        if (e.target.classList.contains('mob-day-weather')) return; // don't collapse when tapping weather
+        if (e.target.classList.contains('mob-day-weather')) return; // do not collapse when tapping weather
         if (e.target.classList.contains('mob-day-name') || e.target.classList.contains('mob-day-num')) return; // plan opens
         const isOpen = pills.style.display !== 'none';
         pills.style.display = isOpen ? 'none' : '';
         card.style.opacity = isOpen ? '0.7' : '1';
       });
-      // Add a small chevron to hint it's expandable
+      // Add a small chevron to hint it is expandable
       const chev = document.createElement('span');
       chev.style.cssText = 'font-size:10px;color:var(--muted);margin-left:auto;padding-left:6px;';
       chev.textContent = '›';
