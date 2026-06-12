@@ -1183,6 +1183,26 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .clean-sheet-confirm { width:100%; margin-top:18px; padding:14px; background:#26A69A; color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
 .clean-sheet-confirm:active { opacity:0.85; }
 .clean-sheet-cancel { width:100%; margin-top:8px; padding:10px; background:none; color:var(--muted); border:none; font-size:13px; cursor:pointer; font-family:inherit; }
+/* Add task modal */
+.clean-add-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1002; display:none; align-items:flex-end; justify-content:center; }
+.clean-add-backdrop.open { display:flex; }
+.clean-add-sheet { width:100%; max-width:480px; background:var(--bg); border-radius:20px 20px 0 0; padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 20px); transform:translateY(100%); transition:transform 0.28s cubic-bezier(0.32,0.72,0,1); }
+.clean-add-backdrop.open .clean-add-sheet { transform:translateY(0); }
+.clean-add-drag { width:36px; height:4px; background:var(--border-mid); border-radius:2px; margin:0 auto 16px; }
+.clean-add-title { font-size:16px; font-weight:700; color:var(--text); margin-bottom:16px; }
+.clean-add-label { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6b7280; margin-bottom:6px; display:block; }
+.clean-add-input { width:100%; box-sizing:border-box; background:#16181c; border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; color:#f0ede8; font-size:14px; font-family:inherit; outline:none; margin-bottom:14px; }
+.clean-add-input:focus { border-color:rgba(38,166,154,0.6); }
+.clean-cat-row { display:flex; gap:8px; margin-bottom:14px; }
+.clean-cat-pill { flex:1; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:none; color:#6b7280; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; text-align:center; }
+.clean-cat-pill.active { background:#26A69A; border-color:#26A69A; color:#fff; }
+.clean-emoji-selected { font-size:32px; text-align:center; margin-bottom:8px; cursor:pointer; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:#16181c; }
+.clean-emoji-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:4px; max-height:160px; overflow-y:auto; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:8px; background:#0e0f11; margin-bottom:14px; }
+.clean-emoji-btn { font-size:22px; background:none; border:none; cursor:pointer; border-radius:6px; padding:4px; text-align:center; transition:background 0.1s; }
+.clean-emoji-btn:hover, .clean-emoji-btn.sel { background:rgba(255,255,255,0.1); }
+.clean-add-open-btn { width:100%; margin-top:16px; padding:13px; background:#16181c; border:1px solid rgba(255,255,255,0.1); border-radius:12px; color:#9ca3af; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; gap:8px; }
+.clean-add-open-btn:active { opacity:0.8; }
+.clean-card-del { flex-shrink:0; font-size:18px; color:#4b5563; background:none; border:none; cursor:pointer; padding:2px 6px; line-height:1; }
 .todo-group { margin-bottom:18px; }
 .todo-group-label { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; padding:0 2px; }
 .todo-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--glass); border:0.5px solid var(--border-mid); border-radius:10px; margin-bottom:6px; cursor:pointer; }
@@ -1308,7 +1328,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3698,6 +3718,7 @@ if (_local) applyState(JSON.parse(_local));
       loadShoppingList(),
       loadTodoItems(wi),
       loadCleaningLog(),
+      loadCustomCleanTasks(),
     ]).then(() => {
       renderBriefing();
       renderInlineShopList();
@@ -4205,6 +4226,172 @@ const CLEAN_THRESHOLDS = {
 let cleaningLog = [];
 let _cleanSecOpen = { weekly: true, monthly: false };
 
+// Custom tasks — stored in Supabase custom_clean_tasks table, cached locally
+let _customCleanTasks = []; // cache
+let _customCleanLoaded = false;
+
+function getAllCleanTasks() {
+  return [...CLEAN_TASKS, ..._customCleanTasks];
+}
+
+async function loadCustomCleanTasks() {
+  try {
+    const res = await fetch(SUPA_BASE + 'custom_clean_tasks?order=created_at', { headers: SUPA_HDR });
+    if (!res.ok) { console.warn('[custom clean] load failed:', res.status); return; }
+    const rows = await res.json();
+    _customCleanTasks = rows.map(r => ({ id: r.id, label: r.label, icon: r.icon, cat: r.cat, custom: true }));
+    _customCleanLoaded = true;
+  } catch(e) { console.warn('[custom clean] load error:', e); }
+}
+
+async function addCustomCleanTask(label, icon, cat) {
+  const body = { label, icon, cat };
+  // Optimistic
+  const tmpId = 'tmp_' + Date.now();
+  _customCleanTasks = [..._customCleanTasks, { id: tmpId, label, icon, cat, custom: true }];
+  refreshCleanView();
+  try {
+    const res = await fetch(SUPA_BASE + 'custom_clean_tasks', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { console.error('[custom clean] save failed:', res.status, await res.text()); return; }
+    const saved = await res.json();
+    const real = Array.isArray(saved) ? saved[0] : saved;
+    _customCleanTasks = _customCleanTasks.map(t => t.id === tmpId ? { ...t, id: real.id } : t);
+    refreshCleanView();
+  } catch(e) { console.error('[custom clean] save error:', e); }
+}
+
+async function deleteCustomCleanTask(id) {
+  // Optimistic
+  _customCleanTasks = _customCleanTasks.filter(t => t.id !== id);
+  refreshCleanView();
+  try {
+    await fetch(SUPA_BASE + 'custom_clean_tasks?id=eq.' + id, { method: 'DELETE', headers: SUPA_HDR });
+  } catch(e) { console.warn('[custom clean] delete error:', e); }
+}
+
+// Curated cleaning/home emojis
+const CLEAN_EMOJIS = [
+  '🧹','🧺','🧻','🧼','🪣','🪥','🧽','🫧',
+  '🚽','🚿','🛁','🪴','🛋️','🪟','🚪','🛏️',
+  '🍳','🧊','🍽️','🥄','🫙','🗑️','🪤','🔧',
+  '🤖','🌿','🌱','🌲','🌻','🐶','🐱','🐾',
+  '👗','👟','🧦','🧤','🧣','👔','🪮','🎒',
+  '💡','🔑','📦','🪜','🛠️','🔩','🧲','⚡',
+  '🌊','💧','❄️','☀️','🌬️','🌡️','🪞','🖼️',
+];
+
+let _cleanAddSelectedEmoji = '🧹';
+let _cleanAddSelectedCat = 'weekly';
+
+function openCleanAddModal() {
+  // Remove any existing
+  document.getElementById('clean-add-backdrop')?.remove();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'clean-add-backdrop';
+  backdrop.className = 'clean-add-backdrop';
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeCleanAddModal(); });
+
+  const sheet = document.createElement('div');
+  sheet.className = 'clean-add-sheet';
+
+  const drag = document.createElement('div'); drag.className = 'clean-add-drag';
+  const title = document.createElement('div'); title.className = 'clean-add-title';
+  title.textContent = 'Add cleaning task';
+
+  // Category selector
+  const catLbl = document.createElement('div'); catLbl.className = 'clean-add-label'; catLbl.textContent = 'Frequency';
+  const catRow = document.createElement('div'); catRow.className = 'clean-cat-row';
+  ['weekly','monthly'].forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'clean-cat-pill' + (cat === _cleanAddSelectedCat ? ' active' : '');
+    btn.textContent = cat === 'weekly' ? '📅 Weekly' : '🗓 Monthly';
+    btn.dataset.cat = cat;
+    btn.addEventListener('click', () => {
+      _cleanAddSelectedCat = cat;
+      catRow.querySelectorAll('.clean-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+    });
+    catRow.appendChild(btn);
+  });
+
+  // Emoji picker
+  const emojiLbl = document.createElement('div'); emojiLbl.className = 'clean-add-label'; emojiLbl.textContent = 'Icon';
+  const selectedEl = document.createElement('div'); selectedEl.className = 'clean-emoji-selected';
+  selectedEl.textContent = _cleanAddSelectedEmoji;
+
+  const grid = document.createElement('div'); grid.className = 'clean-emoji-grid';
+  CLEAN_EMOJIS.forEach(em => {
+    const btn = document.createElement('button');
+    btn.className = 'clean-emoji-btn' + (em === _cleanAddSelectedEmoji ? ' sel' : '');
+    btn.textContent = em;
+    btn.addEventListener('click', () => {
+      _cleanAddSelectedEmoji = em;
+      selectedEl.textContent = em;
+      grid.querySelectorAll('.clean-emoji-btn').forEach(b => b.classList.toggle('sel', b.textContent === em));
+    });
+    grid.appendChild(btn);
+  });
+
+  // Task name input
+  const nameLbl = document.createElement('div'); nameLbl.className = 'clean-add-label'; nameLbl.textContent = 'Task name';
+  const nameInp = document.createElement('input');
+  nameInp.className = 'clean-add-input';
+  nameInp.placeholder = 'e.g. Clean windows';
+  nameInp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+
+  // Confirm button
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'clean-sheet-confirm';
+  confirmBtn.textContent = 'Add task';
+  confirmBtn.addEventListener('click', doAdd);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'clean-sheet-cancel';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', closeCleanAddModal);
+
+  async function doAdd() {
+    const label = nameInp.value.trim();
+    if (!label) { nameInp.style.borderColor = '#f06e6e'; setTimeout(() => nameInp.style.borderColor = '', 1200); return; }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Saving…';
+    closeCleanAddModal();
+    await addCustomCleanTask(label, _cleanAddSelectedEmoji, _cleanAddSelectedCat);
+  }
+
+  sheet.appendChild(drag);
+  sheet.appendChild(title);
+  sheet.appendChild(catLbl);
+  sheet.appendChild(catRow);
+  sheet.appendChild(emojiLbl);
+  sheet.appendChild(selectedEl);
+  sheet.appendChild(grid);
+  sheet.appendChild(nameLbl);
+  sheet.appendChild(nameInp);
+  sheet.appendChild(confirmBtn);
+  sheet.appendChild(cancelBtn);
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
+
+  requestAnimationFrame(() => {
+    backdrop.classList.add('open');
+    setTimeout(() => nameInp.focus(), 300);
+  });
+}
+
+function closeCleanAddModal() {
+  const backdrop = document.getElementById('clean-add-backdrop');
+  if (!backdrop) return;
+  backdrop.classList.remove('open');
+  const sheet = backdrop.querySelector('.clean-add-sheet');
+  if (sheet) sheet.style.transform = 'translateY(100%)';
+  setTimeout(() => backdrop.remove(), 300);
+}
+
 async function loadCleaningLog() {
   try {
     const res = await fetch(SUPA_BASE + 'cleaning_log?order=completed_at.desc&limit=500', { headers: SUPA_HDR });
@@ -4349,7 +4536,7 @@ function refreshCleanView() {
   wrap.innerHTML = '';
 
   ['weekly','monthly'].forEach(cat => {
-    const tasks = CLEAN_TASKS.filter(t => t.cat === cat);
+    const tasks = getAllCleanTasks().filter(t => t.cat === cat);
 
     // Sort by urgency: red first, then amber, then green; within same colour by diffDays desc
     const withStatus = tasks.map(t => ({ t, s: cleanTaskStatus(t.id, cat) }));
@@ -4424,12 +4611,35 @@ function refreshCleanView() {
       card.appendChild(logBtn);
 
       card.addEventListener('click', () => openCleanSheet(t));
+
+      // Delete button for custom tasks
+      if (t.custom) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'clean-card-del';
+        delBtn.textContent = '×';
+        delBtn.title = 'Remove task';
+        delBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          if (confirm('Remove "' + t.label + '"?')) {
+            deleteCustomCleanTask(t.id);
+            refreshCleanView();
+          }
+        });
+        card.appendChild(delBtn);
+      }
       body.appendChild(card);
     });
 
     section.appendChild(body);
     wrap.appendChild(section);
   });
+
+  // ── Add task button ───────────────────────────────────────────────────────
+  const addBtn = document.createElement('button');
+  addBtn.className = 'clean-add-open-btn';
+  addBtn.innerHTML = '<span>+</span><span>Add cleaning task</span>';
+  addBtn.addEventListener('click', openCleanAddModal);
+  wrap.appendChild(addBtn);
 }
 
 // ── STRAVA ─────────────────────────────────────────────────────────────────
@@ -9581,8 +9791,11 @@ function renderMobileView() {
   else if (mobMode === 'clean') {
     renderCleanView(mc);
     requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
-    // Silently refresh from server in background
-    loadCleaningLog().then(refreshCleanView);
+    // Load custom tasks + cleaning log in background
+    Promise.all([
+      _customCleanLoaded ? Promise.resolve() : loadCustomCleanTasks(),
+      loadCleaningLog()
+    ]).then(refreshCleanView);
     return;
   }
   else { renderMobileMonth(); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
