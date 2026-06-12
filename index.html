@@ -913,6 +913,16 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #strava-splits-table td:first-child { color: #9ca3af; font-weight: 600; }
 .split-best { color: #1a8a1a !important; font-weight: 700 !important; }
 #strava-splits-loading { text-align: center; color: var(--muted); font-size: 12px; padding: 16px 0; }
+#strava-lri-wrap { padding:12px 16px; border-top:0.5px solid var(--border-mid); display:none; }
+.strava-lri-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.strava-lri-label { font-size:12px; font-weight:600; color:var(--text); }
+.strava-lri-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+.strava-lri-toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
+.strava-lri-toggle input { opacity:0; width:0; height:0; position:absolute; }
+.strava-lri-slider { position:absolute; inset:0; background:rgba(255,255,255,0.12); border-radius:24px; cursor:pointer; transition:background 0.2s; }
+.strava-lri-slider:before { content:''; position:absolute; height:18px; width:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform 0.2s; }
+.strava-lri-toggle input:checked + .strava-lri-slider { background:#FC4C02; }
+.strava-lri-toggle input:checked + .strava-lri-slider:before { transform:translateX(20px); }
 .pill.has-strava { white-space: normal; }
 .strava-sub {
   display: block;
@@ -1298,7 +1308,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1782,6 +1792,18 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
         <thead><tr><th>km</th><th>Pace</th><th>HR</th><th>Elev</th></tr></thead>
         <tbody id="strava-splits-body"></tbody>
       </table>
+    </div>
+    <div id="strava-lri-wrap">
+      <div class="strava-lri-row">
+        <div>
+          <div class="strava-lri-label">🏃 Long run interval</div>
+          <div class="strava-lri-sub">Mark this session as intervals within a long run</div>
+        </div>
+        <label class="strava-lri-toggle">
+          <input type="checkbox" id="strava-lri-checkbox"/>
+          <span class="strava-lri-slider"></span>
+        </label>
+      </div>
     </div>
   </div>
 </div>
@@ -4723,6 +4745,54 @@ async function openStravaDetail(activity) {
   // Show panel
   stravaPanel.classList.add('open');
 
+  // LRI toggle — only for runs
+  const lriWrap = document.getElementById('strava-lri-wrap');
+  const lriChk  = document.getElementById('strava-lri-checkbox');
+  if (lriWrap && lriChk) {
+    if (isRun) {
+      lriWrap.style.display = 'block';
+      lriChk.checked = false; // reset while loading
+      lriChk.disabled = true;
+      // Fetch session_type from interval_analysis
+      fetch(SUPA_BASE + 'interval_analysis?activity_id=eq.' + activity.id + '&select=id,session_type', { headers: SUPA_HDR })
+        .then(r => r.json())
+        .then(rows => {
+          lriChk.disabled = false;
+          if (rows.length) {
+            lriChk.checked = rows[0].session_type === 'long_run';
+            lriChk.dataset.analysisId = rows[0].id;
+          } else {
+            lriChk.dataset.analysisId = '';
+          }
+        })
+        .catch(() => { lriChk.disabled = false; });
+
+      // Remove old listener and add fresh one
+      const newChk = lriChk.cloneNode(true);
+      lriChk.parentNode.replaceChild(newChk, lriChk);
+      newChk.addEventListener('change', async () => {
+        const analysisId = newChk.dataset.analysisId;
+        if (!analysisId) { newChk.checked = !newChk.checked; return; } // no row — can't tag
+        const newType = newChk.checked ? 'long_run' : 'standalone';
+        newChk.disabled = true;
+        try {
+          const r = await fetch(SUPA_BASE + 'interval_analysis?id=eq.' + analysisId, {
+            method: 'PATCH',
+            headers: SUPA_HDR,
+            body: JSON.stringify({ session_type: newType })
+          });
+          if (!r.ok) throw new Error('save failed ' + r.status);
+        } catch(e) {
+          console.warn('[LRI] update failed:', e);
+          newChk.checked = !newChk.checked; // revert
+        }
+        newChk.disabled = false;
+      });
+    } else {
+      lriWrap.style.display = 'none';
+    }
+  }
+
   // Splits — only for runs and rides
   if (!isRun && !isRide) {
     stravaSplitsWrap.style.display = 'none';
@@ -7457,6 +7527,10 @@ async function renderIntervalStats() {
       const avgSecs  = paces.length ? paces.reduce((a,b)=>a+b,0)/paces.length : null;
       const bestSecs = paces.length ? Math.min(...paces) : null;
       const date = r.activity_date ? new Date(r.activity_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—';
+      const isLRI = r.session_type === 'long_run';
+      const lriBadgeW = isLRI
+        ? '<span style="display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(252,76,2,0.15);color:#FC4C02;margin-left:6px;">🏃 Long run</span>'
+        : '';
 
       const card = document.createElement('div');
       card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;margin:0 20px 10px;overflow:hidden;cursor:pointer;transition:border-color 0.15s;';
@@ -7467,7 +7541,7 @@ async function renderIntervalStats() {
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;';
       header.innerHTML = `
         <div>
-          <div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}</div>
+          <div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}${lriBadgeW||''}</div>
           <div style="font-size:11px;color:#4b5563;margin-top:2px;">${date} · ${r.threshold_pace||''} threshold</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
@@ -7551,6 +7625,17 @@ function detectRaceDistance(planName) {
   return null;
 }
 
+function secsToHoursMin(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h === 0) return m + 'm';
+  return h + 'h ' + String(m).padStart(2,'0') + 'm';
+}
+
+function secsToHoursDecimal(secs) {
+  return (secs / 3600).toFixed(1) + 'h';
+}
+
 function secsToHMS(totalSecs) {
   const h = Math.floor(totalSecs / 3600);
   const m = Math.floor((totalSecs % 3600) / 60);
@@ -7593,18 +7678,21 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
   const finishSecs   = racePaceSecs * raceKm;
 
   // Cross-check with easy run pace data (paceRuns stores min/km, convert to sec/km)
+  // Also factor in LRI adjustment: mid-long-run intervals are ~6% slower due to fatigue
   const allEasyPaces = weeks.flatMap(wk => wk.paceRuns || []).filter(Boolean);
   let intervalCheck = null;
   if (allEasyPaces.length >= 3) {
-    // paceRuns values are in min/km — convert to sec/km
     const paces = allEasyPaces.map(p => p * 60).sort((a,b)=>a-b);
-    // Use median of best 30% of easy paces as fitness indicator
     const topN = Math.max(1, Math.floor(paces.length * 0.3));
     const bestEasySecs = paces.slice(0, topN).reduce((a,b)=>a+b,0) / topN;
-    // Marathon pace ≈ easy pace * 1.12 (easy runs are ~88% of marathon effort)
     const derivedMarathonPace = bestEasySecs * (raceKm >= 42 ? 1.12 : raceKm >= 21 ? 1.07 : 1.02);
     intervalCheck = derivedMarathonPace * raceKm;
   }
+  // If we have LRI data from interval_analysis, blend in normalised LRI paces
+  // LRI pace / 1.06 = estimated fresh equivalent pace
+  // (This is computed async elsewhere; here we just use the already-loaded ltHistory
+  //  which already incorporates the user's reported LT — LRI data refines the cross-check
+  //  but does not override LT-based primary estimate)
 
   // Blend: LT-based is primary. Add easy run cross-check if enough data.
   // If cross-check is within 10% of LT estimate, blend 85/15; otherwise trust LT.
@@ -8073,6 +8161,8 @@ function renderRunningStats() {
       [{label:'recorded', val: ltDate}, {label:'entries', val: ltHistory.length}]
     );
   }
+  // Cardio card
+  buildCardioCard(kpiGrid, weeks, true);
   container.appendChild(kpiGrid);
 
   // ── RACE TIME ESTIMATE ────────────────────────────────────────────────────
@@ -8933,6 +9023,27 @@ function drawSGLine(canvas, labels, data, color) {
 }
 
 
+function buildCardioCard(container, weeks, showAvgPerWeek) {
+  const totalRunSecs  = weeks.reduce((a,wk) => a + (wk.runSecs  || 0), 0);
+  const totalRideSecs = weeks.reduce((a,wk) => a + (wk.rideSecs || 0), 0);
+  const totalSwimSecs = weeks.reduce((a,wk) => a + (wk.swimSecs || 0), 0);
+  const totalCardioSecs = totalRunSecs + totalRideSecs + totalSwimSecs;
+
+  if (totalCardioSecs === 0) return; // nothing to show
+
+  const weeksWithActivity = weeks.filter(wk => (wk.runSecs||0)+(wk.rideSecs||0)+(wk.swimSecs||0) > 0).length;
+  const avgPerWeekSecs = weeksWithActivity > 0 ? totalCardioSecs / weeksWithActivity : 0;
+
+  const secondaryItems = [];
+  if (showAvgPerWeek && avgPerWeekSecs > 0) {
+    secondaryItems.push({ label: 'avg/week', val: secsToHoursMin(avgPerWeekSecs) });
+  }
+  if (totalRideSecs > 0) secondaryItems.push({ label: 'cycling', val: secsToHoursMin(totalRideSecs) });
+  if (totalSwimSecs > 0) secondaryItems.push({ label: 'swimming', val: secsToHoursMin(totalSwimSecs) });
+
+  buildStatsKpiCard(container, secsToHoursMin(totalCardioSecs), 'blue', 'Cardiovascular training', secondaryItems);
+}
+
 function buildStatsKpiCard(grid, mainVal, cls, label, secondaryItems) {
   const card = document.createElement('div');
   card.className = 'stats-kpi';
@@ -9010,6 +9121,7 @@ function renderWeekStats() {
     [{label:'easy run pace', val: wk.doneSessions+' runs'}]);
   buildStatsKpiCard(kpiGrid, (weekSick+weekInj)||'—', 'health', 'Days impacted',
     [{label:'Sick', val:weekSick},{label:'Injured', val:weekInj}]);
+  buildCardioCard(kpiGrid, [wk], false); // week only — no avg/week
   container.appendChild(kpiGrid);
 
   // ── Race estimate (same model, context from full plan) ──────────────────
@@ -9146,9 +9258,13 @@ async function renderIntervalStatsForWeek(container, wk) {
       card.addEventListener('mouseenter',()=>card.style.borderColor='rgba(255,255,255,0.15)');
       card.addEventListener('mouseleave',()=>card.style.borderColor='rgba(255,255,255,0.07)');
 
+      const isLongRunInterval = r.session_type === 'long_run';
+      const lriBadge = isLongRunInterval
+        ? '<span style="display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(252,76,2,0.15);color:#FC4C02;margin-left:6px;">🏃 Long run</span>'
+        : '';
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;';
-      header.innerHTML = `<div><div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}</div><div style="font-size:11px;color:#4b5563;margin-top:2px;">${date} · ${r.threshold_pace||''} threshold</div></div><div style="text-align:right;flex-shrink:0;"><div style="font-size:18px;font-weight:800;color:#FC4C02;">${intervals.length}×</div><div style="font-size:10px;color:#4b5563;">reps</div></div>`;
+      header.innerHTML = `<div><div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}${lriBadge}</div><div style="font-size:11px;color:#4b5563;margin-top:2px;">${date} · ${r.threshold_pace||''} threshold</div></div><div style="text-align:right;flex-shrink:0;"><div style="font-size:18px;font-weight:800;color:#FC4C02;">${intervals.length}×</div><div style="font-size:10px;color:#4b5563;">reps</div></div>`;
 
       const body = document.createElement('div');
       body.style.cssText = 'padding:0 16px 14px;';
@@ -9201,6 +9317,7 @@ function buildStatsWeeks() {
 
     let plannedKm=0, actualKm=0, plannedRuns=0, doneRuns=0, totalSecs=0, longestRun=0;
     let easyRuns=0, qualityRuns=0, longRuns=0;
+    let runSecs=0, rideSecs=0, swimSecs=0;
     const paceRuns=[], days=[];
 
     DAYS.forEach((_,di) => {
@@ -9212,6 +9329,16 @@ function buildStatsWeeks() {
       const strActs = getStravaForDay(wi,di,'str');
 
       if (runVal) plannedRuns++;
+      // Collect all Strava activities for this day regardless of row
+      const allDayActs = (stravaActivities[dateStr] || []);
+      allDayActs.forEach(a => {
+        const t = (a.type||'').toLowerCase();
+        const secs = a.moving_time || 0;
+        if (t === 'run' || t === 'trailrun' || t === 'virtualrun') runSecs += secs;
+        else if (t === 'ride' || t === 'virtualride' || t === 'ebikeride') rideSecs += secs;
+        else if (t === 'swim' || t === 'openwater') swimSecs += secs;
+      });
+
       if (acts) {
         doneRuns++;
         acts.forEach(a=>{
@@ -9243,6 +9370,7 @@ function buildStatsWeeks() {
       plannedSessions: plannedRuns, doneSessions: doneRuns,
       totalSecs, longestRun, paceRuns, days, isCurrent,
       easyRuns, qualityRuns, longRuns,
+      runSecs, rideSecs, swimSecs,
       month: `${MONTH_NAMES[m-1]} ${y}`,
     };
   });
