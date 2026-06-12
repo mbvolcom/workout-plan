@@ -947,7 +947,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 
 #stats-header {
   position:sticky; top:0; z-index:10;
-  background:rgba(255,255,255,0.6); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-bottom:0.5px solid rgba(255,255,255,0.4);
+  background:#0e0f11; border-bottom:1px solid rgba(255,255,255,0.08);
   padding:14px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
 }
 #stats-back {
@@ -957,9 +957,6 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 }
 #stats-back:hover { color:#f0ede8; border-color:rgba(255,255,255,0.3); }
 #stats-title { font-size:16px; font-weight:700; color:#f0ede8; flex:1; }
-#stats-tab-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; }
-.stats-tab-btn { background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500; color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s; white-space:nowrap; }
-.stats-tab-btn.active { background:#f0ede8; color:#0e0f11; }
 #stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; margin-bottom:4px; display:inline-flex; }
 #lt-pace-input:focus { border-color:rgba(252,76,2,0.6); box-shadow:0 0 0 3px rgba(252,76,2,0.12); }
 .race-est-card { background:linear-gradient(135deg,#1a1d22 0%,#16181c 100%); border:1px solid rgba(252,76,2,0.25); border-radius:16px; padding:20px; margin:0 0 0; }
@@ -1301,7 +1298,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.11.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1468,10 +1465,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     <div id="stats-header">
       <button id="stats-back" onclick="closeStatsPage()">← Back to calendar</button>
       <div id="stats-title">Statistics</div>
-      <div id="stats-tab-toggle">
-        <button class="stats-tab-btn active" data-tab="running" onclick="setStatsTab('running')">🏃 Running</button>
-        <button class="stats-tab-btn" data-tab="strength" onclick="setStatsTab('strength')">💪 Sterk Gutt</button>
-      </div>
+      <div id="stats-tab-toggle" style="display:none;"></div>
     </div>
     <div id="stats-running-header" style="padding:10px 20px 0;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -7267,7 +7261,7 @@ function setStatsScope(scope) {
 function setStatsTab(tab) {
   statsTab = tab;
   document.querySelectorAll('.stats-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.getElementById('stats-running-header').style.display = tab === 'running' ? '' : 'none';
+  document.getElementById('stats-running-header').style.display = 'block';
   renderStats();
 }
 
@@ -7340,8 +7334,9 @@ function latestLTPaceSecs() {
 }
 
 function renderStats() {
-  if (statsTab === 'running' && statsScope === 'week') { renderWeekStats(); return; }
-  if (statsTab === 'strength')  { renderSGStats(); return; }
+  statsTab = 'running'; // always running now
+  if (statsScope === 'week') { renderWeekStats(); return; }
+  // Sterk Gutt stats moved to dedicated app
   renderRunningStats();
   renderIntervalStats(); // appended at bottom of running tab
 }
