@@ -1332,7 +1332,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.4</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3756,21 +3756,50 @@ async function loadBacklogItems() {
 }
 
 async function assignBacklogItem(id, dayISO) {
-  backlogItems = backlogItems.filter(i => i.id !== id);
+  await reassignTodoItem(id, dayISO);
+}
+
+async function reassignTodoItem(id, dayISO) {
+  // dayISO = null means move to backlog; otherwise move to that date
+  const newDay = (!dayISO || dayISO === 'backlog') ? null : dayISO;
+  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+  // Update both arrays optimistically
+  const fromWeek = todoItems.find(i => i.id === id);
+  const fromBacklog = backlogItems.find(i => i.id === id);
+  if (newDay === null) {
+    // Moving to backlog
+    if (fromWeek) {
+      todoItems = todoItems.filter(i => i.id !== id);
+      backlogItems = [...backlogItems, { ...fromWeek, day: null }];
+      cacheTodosLocally(wi, todoItems);
+    }
+  } else {
+    // Moving to a specific day
+    if (fromBacklog) {
+      backlogItems = backlogItems.filter(i => i.id !== id);
+      todoItems = [...todoItems, { ...fromBacklog, day: newDay }];
+      cacheTodosLocally(wi, todoItems);
+    } else if (fromWeek) {
+      todoItems = todoItems.map(i => i.id === id ? { ...i, day: newDay } : i);
+      cacheTodosLocally(wi, todoItems);
+    }
+  }
+  // Refresh UI immediately
   const lw = document.getElementById('todo-list-wrap');
   if (lw) refreshTodoList(lw, todayISO(), window._todoFilterDay || todayISO(), lw.parentElement);
+  renderBriefing();
+  // Persist to Supabase
   try {
-    const res = await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
+    await fetch(SUPA_BASE + 'todo_list?id=eq.' + id, {
       method: 'PATCH',
       headers: SUPA_HDR,
-      body: JSON.stringify({ day: dayISO })
+      body: JSON.stringify({ day: newDay })
     });
-    if (!res.ok) console.warn('[backlog] assign failed:', res.status);
-    await loadTodoItems(typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0);
+    // Reload both to stay in sync
+    await Promise.all([loadTodoItems(wi), loadBacklogItems()]);
     const lw2 = document.getElementById('todo-list-wrap');
     if (lw2) refreshTodoList(lw2, todayISO(), window._todoFilterDay || todayISO(), lw2.parentElement);
-    renderBriefing();
-  } catch(e) { console.warn('[backlog] assign error:', e); }
+  } catch(e) { console.warn('[todo] reassign error:', e); }
 }
 
 function escTodo(s) {
@@ -4177,6 +4206,112 @@ function renderTodoView(container) {
   refreshTodoList(listWrap, todayISOStr, filterDayRef, wrap);
 }
 
+function buildTodoCard(item, tISO, filterDay, listWrap, wrap) {
+  const wi = typeof mobWeekIndex !== 'undefined' ? mobWeekIndex : 0;
+  const assCls = item.assignee === 'marius' ? 'marius' : item.assignee === 'vilde' ? 'vilde' : 'both';
+  const assLabel = item.assignee === 'marius' ? 'Marius' : item.assignee === 'vilde' ? 'Vilde' : 'Both';
+  const isBacklogItem = !item.day;
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:var(--glass);border:0.5px solid var(--border-mid);border-radius:10px;margin-bottom:6px;overflow:hidden;';
+
+  // ── Main row ──────────────────────────────────────────────────────────────
+  const row = document.createElement('div');
+  row.className = 'todo-item' + (item.done ? ' done' : '');
+  row.dataset.id = item.id;
+  row.style.cssText = 'background:none;border:none;border-radius:0;margin-bottom:0;';
+  row.innerHTML =
+    '<div class="tck">' + (isBacklogItem ? '📋' : (item.done ? '✓' : '')) + '</div>' +
+    '<div class="ttx">' + escTodo(item.text) + '</div>' +
+    '<span class="tass ' + assCls + '">' + assLabel + '</span>' +
+    '<button class="trm" data-id="' + item.id + '">×</button>';
+
+  // ── Inline reassign picker ────────────────────────────────────────────────
+  const picker = document.createElement('div');
+  picker.style.cssText = 'display:none;padding:8px 10px 10px;border-top:0.5px solid var(--border-mid);';
+
+  const pickerLbl = document.createElement('div');
+  pickerLbl.style.cssText = 'font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;';
+  pickerLbl.textContent = 'Move to';
+
+  const pickerRow = document.createElement('div');
+  pickerRow.style.cssText = 'display:flex;gap:4px;flex-wrap:nowrap;';
+
+  // Day pills Mon–Sun
+  const DAYS_SHORT2 = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  DAYS_SHORT2.forEach((label, di) => {
+    const iso = getWeekDateISO(wi, di);
+    const isToday2 = iso === tISO;
+    const isCurrent = item.day === iso;
+    const pb = document.createElement('button');
+    pb.style.cssText = 'flex:1;padding:5px 2px;border-radius:20px;border:1px solid var(--border-mid);font-size:10px;font-weight:600;' +
+      'background:' + (isCurrent ? 'var(--text)' : 'none') + ';' +
+      'color:' + (isCurrent ? 'var(--bg)' : 'var(--muted)') + ';cursor:pointer;font-family:inherit;';
+    pb.textContent = isToday2 ? 'Today' : label;
+    pb.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (isCurrent) return; // already here
+      pb.textContent = '…'; pb.disabled = true;
+      await reassignTodoItem(item.id, iso);
+    });
+    pickerRow.appendChild(pb);
+  });
+
+  // Backlog pill
+  const bBtn = document.createElement('button');
+  bBtn.style.cssText = 'flex:1;padding:5px 2px;border-radius:20px;border:1px solid var(--border-mid);font-size:10px;font-weight:600;' +
+    'background:' + (isBacklogItem ? 'var(--text)' : 'none') + ';' +
+    'color:' + (isBacklogItem ? 'var(--bg)' : 'var(--muted)') + ';cursor:pointer;font-family:inherit;';
+  bBtn.textContent = '📋';
+  bBtn.title = 'Move to backlog';
+  bBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (isBacklogItem) return;
+    bBtn.textContent = '…'; bBtn.disabled = true;
+    await reassignTodoItem(item.id, null);
+  });
+  pickerRow.appendChild(bBtn);
+
+  picker.appendChild(pickerLbl);
+  picker.appendChild(pickerRow);
+
+  // ── Tap behaviour ─────────────────────────────────────────────────────────
+  let pickerOpen = false;
+  row.addEventListener('click', e => {
+    if (e.target.classList.contains('trm')) return;
+    if (item.done && !isBacklogItem) {
+      // Tapping done tasks toggles them back — don't open picker
+      toggleTodoItem(item.id, wi).then(() =>
+        refreshTodoList(listWrap, tISO, filterDay, wrap));
+      return;
+    }
+    pickerOpen = !pickerOpen;
+    picker.style.display = pickerOpen ? 'block' : 'none';
+    row.style.borderBottom = pickerOpen ? '0.5px solid var(--border-mid)' : '';
+  });
+
+  // Tick (done) — long press or separate tck tap
+  const tck = row.querySelector('.tck');
+  if (tck && !isBacklogItem) {
+    tck.style.cursor = 'pointer';
+    tck.addEventListener('click', async e => {
+      e.stopPropagation();
+      await toggleTodoItem(item.id, wi);
+      refreshTodoList(listWrap, tISO, filterDay, wrap);
+    });
+  }
+
+  row.querySelector('.trm').addEventListener('click', async e => {
+    e.stopPropagation();
+    await deleteTodoItem(item.id, wi);
+    refreshTodoList(listWrap, tISO, filterDay, wrap);
+  });
+
+  card.appendChild(row);
+  card.appendChild(picker);
+  return card;
+}
+
 function refreshTodoList(listWrap, todayISOArg, filterDay, wrap) {
   if (!listWrap) return;
   const tISO = todayISOArg || todayISO();
@@ -4203,30 +4338,11 @@ function refreshTodoList(listWrap, todayISOArg, filterDay, wrap) {
       (isSelected ? 'border-bottom:2px solid #26A69A;' : '');
     dayHdr.textContent = isToday ? 'Today — ' + dayName_ : dayName_;
     listWrap.appendChild(dayHdr);
-    // Tasks for this day
+    // Tasks for this day — use shared buildTodoCard
     const active = dayTasks.filter(i => !i.done);
     const done   = dayTasks.filter(i =>  i.done);
     [...active, ...done].forEach(item => {
-      const el = document.createElement('div');
-      el.className = 'todo-item' + (item.done ? ' done' : '');
-      el.dataset.id = item.id;
-      const assCls = item.assignee === 'marius' ? 'marius' : item.assignee === 'vilde' ? 'vilde' : 'both';
-      const assLabel = item.assignee === 'marius' ? 'Marius' : item.assignee === 'vilde' ? 'Vilde' : 'Both';
-      el.innerHTML =
-        '<div class="tck">' + (item.done ? '✓' : '') + '</div>' +
-        '<div class="ttx">' + escTodo(item.text) + '</div>' +
-        '<span class="tass ' + assCls + '">' + assLabel + '</span>' +
-        '<button class="trm" data-id="' + item.id + '">×</button>';
-      el.addEventListener('click', async () => {
-        await toggleTodoItem(item.id, mobWeekIndex);
-        refreshTodoList(listWrap, tISO, filterDay, wrap);
-      });
-      el.querySelector('.trm').addEventListener('click', async e => {
-        e.stopPropagation();
-        await deleteTodoItem(item.id, mobWeekIndex);
-        refreshTodoList(listWrap, tISO, filterDay, wrap);
-      });
-      listWrap.appendChild(el);
+      listWrap.appendChild(buildTodoCard(item, tISO, filterDay, listWrap, wrap));
     });
   });
   if (!hasAny && filterDay !== 'backlog') {
@@ -4254,60 +4370,7 @@ function refreshTodoList(listWrap, todayISOArg, filterDay, wrap) {
       listWrap.appendChild(be);
     } else {
       backlogItems.forEach(item => {
-        const el = document.createElement('div');
-        el.className = 'todo-item';
-        el.dataset.id = item.id;
-        const assCls = item.assignee === 'marius' ? 'marius' : item.assignee === 'vilde' ? 'vilde' : 'both';
-        const assLabel = item.assignee === 'marius' ? 'Marius' : item.assignee === 'vilde' ? 'Vilde' : 'Both';
-        el.innerHTML =
-          '<div class="tck" style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2);">📋</div>' +
-          '<div class="ttx">' + escTodo(item.text) + '</div>' +
-          '<span class="tass ' + assCls + '">' + assLabel + '</span>' +
-          '<button class="trm" data-id="' + item.id + '">×</button>';
-
-        // Inline day picker — expands below the task card when tapped
-        const picker = document.createElement('div');
-        picker.style.cssText = 'display:none;padding:8px 10px 10px;border-top:0.5px solid var(--border-mid);';
-        const pickerLbl = document.createElement('div');
-        pickerLbl.style.cssText = 'font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;';
-        pickerLbl.textContent = 'Assign to day this week';
-        const pickerRow = document.createElement('div');
-        pickerRow.style.cssText = 'display:flex;gap:4px;flex-wrap:nowrap;';
-        const DAYS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-        DAYS_SHORT.forEach((label, di) => {
-          const iso = getWeekDateISO(wi, di);
-          const isToday2 = iso === tISO;
-          const pb = document.createElement('button');
-          pb.style.cssText = 'flex:1;padding:6px 2px;border-radius:20px;border:1px solid var(--border-mid);font-size:11px;font-weight:600;background:none;color:var(--muted);cursor:pointer;font-family:inherit;';
-          pb.textContent = isToday2 ? 'Today' : label;
-          pb.addEventListener('click', async e => {
-            e.stopPropagation();
-            pb.textContent = '…';
-            await assignBacklogItem(item.id, iso);
-          });
-          pickerRow.appendChild(pb);
-        });
-        picker.appendChild(pickerLbl);
-        picker.appendChild(pickerRow);
-
-        let pickerOpen = false;
-        const card = document.createElement('div');
-        card.className = 'todo-item-wrap';
-        card.style.cssText = 'background:var(--glass);border:0.5px solid var(--border-mid);border-radius:10px;margin-bottom:6px;overflow:hidden;';
-        el.style.cssText = 'background:none;border:none;border-radius:0;margin-bottom:0;';
-        el.addEventListener('click', e => {
-          if (e.target.classList.contains('trm')) return;
-          pickerOpen = !pickerOpen;
-          picker.style.display = pickerOpen ? 'block' : 'none';
-          el.style.borderBottom = pickerOpen ? '0.5px solid var(--border-mid)' : '';
-        });
-        el.querySelector('.trm').addEventListener('click', async e => {
-          e.stopPropagation();
-          await deleteTodoItem(item.id, wi);
-        });
-        card.appendChild(el);
-        card.appendChild(picker);
-        listWrap.appendChild(card);
+        listWrap.appendChild(buildTodoCard(item, tISO, filterDay, listWrap, wrap));
       });
     }
   }
