@@ -1261,6 +1261,10 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-pill-target { font-size:11px; color:#0C447C; display:block; margin-top:1px; }
 .mob-rest { font-size:13px; color:var(--border-mid); font-style:italic; padding:4px 0; }
 .mob-swipe-hint { text-align:center; font-size:11px; color:var(--border-mid); margin-top:12px; }
+.mob-prev-toggle { display:flex; align-items:center; gap:8px; padding:10px 16px; cursor:pointer; user-select:none; margin-bottom:2px; }
+.mob-prev-toggle-line { flex:1; height:1px; background:var(--border-mid); }
+.mob-prev-toggle-label { font-size:11px; font-weight:600; color:var(--muted2); white-space:nowrap; letter-spacing:0.04em; }
+.mob-prev-days-wrap { overflow:hidden; transition:max-height 0.3s ease; }
 .mob-month-hdr { font-size:13px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.06em; padding:14px 0 8px; border-top:0.5px solid var(--border-mid); margin-top:4px; }
 .mob-month-hdr:first-child { border-top:none; padding-top:0; }
 .mob-mini-week { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:6px; display:flex; align-items:center; gap:10px; cursor:pointer; }
@@ -1328,7 +1332,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10152,6 +10156,47 @@ function renderMobileRaceWeek() {
     card.appendChild(pills);
     daysEl.appendChild(card);
   });
+
+  // ── Collapse past day cards behind a toggle ──────────────────────────────
+  const allCards = [...daysEl.children];
+  const isFutureWeek = new Date(y, m-1, d+6) < today; // whole week is past
+  const isCurrentWeek = allCards.some(c => c.classList.contains('mob-today'));
+
+  // Separate past cards from today/future cards
+  const pastCards = allCards.filter(c => c.classList.contains('mob-past-day'));
+  const restCards = allCards.filter(c => !c.classList.contains('mob-past-day'));
+
+  if (pastCards.length > 0 && isCurrentWeek) {
+    // Clear daysEl and rebuild with toggle
+    daysEl.innerHTML = '';
+
+    // Toggle row
+    let prevOpen = false;
+    const toggleRow = document.createElement('div');
+    toggleRow.className = 'mob-prev-toggle';
+    toggleRow.innerHTML =
+      '<div class="mob-prev-toggle-line"></div>' +
+      '<span class="mob-prev-toggle-label">▸ Show previous days (' + pastCards.length + ')</span>' +
+      '<div class="mob-prev-toggle-line"></div>';
+
+    // Collapsible wrapper for past cards
+    const prevWrap = document.createElement('div');
+    prevWrap.className = 'mob-prev-days-wrap';
+    prevWrap.style.maxHeight = '0';
+    pastCards.forEach(c => { c.style.cssText = ''; prevWrap.appendChild(c); }); // remove opacity override
+
+    toggleRow.addEventListener('click', () => {
+      prevOpen = !prevOpen;
+      prevWrap.style.maxHeight = prevOpen ? prevWrap.scrollHeight + 'px' : '0';
+      const lbl = toggleRow.querySelector('.mob-prev-toggle-label');
+      lbl.textContent = (prevOpen ? '▾ Hide previous days' : '▸ Show previous days (' + pastCards.length + ')');
+    });
+
+    daysEl.appendChild(prevWrap);
+    daysEl.appendChild(toggleRow);
+    restCards.forEach(c => daysEl.appendChild(c));
+  }
+  // For past or future weeks — show all days normally (no toggle)
 
   mc.appendChild(daysEl);
   const hint=document.createElement('div'); hint.className='mob-swipe-hint'; hint.textContent='← swipe to navigate weeks →';
