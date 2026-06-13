@@ -1264,7 +1264,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-prev-toggle { display:flex; align-items:center; gap:8px; padding:10px 16px; cursor:pointer; user-select:none; margin-bottom:2px; }
 .mob-prev-toggle-line { flex:1; height:1px; background:var(--border-mid); }
 .mob-prev-toggle-label { font-size:11px; font-weight:600; color:var(--muted2); white-space:nowrap; letter-spacing:0.04em; }
-.mob-prev-days-wrap { overflow:hidden; transition:max-height 0.3s ease; }
+.mob-prev-days-wrap { overflow:hidden; transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
 .mob-month-hdr { font-size:13px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.06em; padding:14px 0 8px; border-top:0.5px solid var(--border-mid); margin-top:4px; }
 .mob-month-hdr:first-child { border-top:none; padding-top:0; }
 .mob-mini-week { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:6px; display:flex; align-items:center; gap:10px; cursor:pointer; }
@@ -1332,7 +1332,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9973,6 +9973,25 @@ function initMobileView() {
   }
 }
 
+function buildMobWeekNav(onNav) {
+  // Returns a nav element; onNav(newWi) called when user changes week
+  const w = WEEKS[mobWeekIndex] || WEEKS[0];
+  const nav = document.createElement('div'); nav.className = 'mob-week-nav';
+  const prev = document.createElement('button'); prev.className = 'mob-week-nav-btn'; prev.textContent = '‹';
+  prev.disabled = mobWeekIndex === 0;
+  prev.style.opacity = mobWeekIndex === 0 ? '0.3' : '';
+  prev.addEventListener('click', () => { mobWeekIndex = Math.max(0, mobWeekIndex - 1); onNav(mobWeekIndex); });
+  const info = document.createElement('div'); info.className = 'mob-week-info';
+  info.innerHTML = '<div class="mob-week-num">' + (w.num || 'Week') + '</div>' +
+    '<div class="mob-week-dates">' + (w.dates || '') + '</div>';
+  const next = document.createElement('button'); next.className = 'mob-week-nav-btn'; next.textContent = '›';
+  next.disabled = mobWeekIndex === WEEKS.length - 1;
+  next.style.opacity = mobWeekIndex === WEEKS.length - 1 ? '0.3' : '';
+  next.addEventListener('click', () => { mobWeekIndex = Math.min(WEEKS.length - 1, mobWeekIndex + 1); onNav(mobWeekIndex); });
+  nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
+  return nav;
+}
+
 function renderMobileView() {
   const mc = document.getElementById('mobile-cal');
   const _savedScroll = window.scrollY;
@@ -9981,23 +10000,37 @@ function renderMobileView() {
 
   if (mobMode === 'race') { renderMobileRaceWeek(); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
   else if (mobMode === 'todo') {
-    // Load from local immediately (sync), render, then cloud-sync in background
+    mc.appendChild(buildMobWeekNav(() => {
+      // Changing week — reset filter day to today of new week or Mon
+      const newWeekDates = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+        .map((_, di) => getWeekDateISO(mobWeekIndex, di));
+      const todaySt = todayISO();
+      window._todoFilterDay = newWeekDates.includes(todaySt) ? todaySt : newWeekDates[0];
+      mobMode = 'todo';
+      renderMobileView();
+    }));
+    // Load from local immediately, render, then cloud-sync
     const localAll = loadTodosFromLocal();
     todoItems = localAll[mobWeekIndex] || [];
     renderTodoView(mc);
-    // Background cloud sync
-    loadTodoItems(mobWeekIndex).then(() => {
+    // Background cloud sync — load new week + backlog
+    Promise.all([loadTodoItems(mobWeekIndex), loadBacklogItems()]).then(() => {
       const lw = document.getElementById('todo-list-wrap');
-      if (lw) refreshTodoList(lw, todayISO(), window._todoFilterDay || todayISO(), lw.parentElement);
+      const fd = window._todoFilterDay || todayISO();
+      if (lw) refreshTodoList(lw, todayISO(), fd, lw.parentElement);
     });
     requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
     return;
   }
-  else if (mobMode === 'shop') { renderShopView(mc); requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'})); }
+  else if (mobMode === 'shop') {
+    mc.appendChild(buildMobWeekNav(() => { mobMode = 'shop'; renderMobileView(); }));
+    renderShopView(mc);
+    requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
+  }
   else if (mobMode === 'clean') {
+    mc.appendChild(buildMobWeekNav(() => { mobMode = 'clean'; renderMobileView(); }));
     renderCleanView(mc);
     requestAnimationFrame(() => window.scrollTo({top:_savedScroll,behavior:'instant'}));
-    // Load custom tasks + cleaning log in background
     Promise.all([
       _customCleanLoaded ? Promise.resolve() : loadCustomCleanTasks(),
       loadCleaningLog()
@@ -10389,9 +10422,16 @@ function renderMobileRaceWeek() {
 
     toggleRow.addEventListener('click', () => {
       prevOpen = !prevOpen;
-      prevWrap.style.maxHeight = prevOpen ? prevWrap.scrollHeight + 'px' : '0';
+      // Use a large fixed value — CSS transition handles the animation
+      prevWrap.style.maxHeight = prevOpen ? '9999px' : '0';
+      // Tighten to actual height after transition for clean overflow behaviour
+      if (prevOpen) {
+        setTimeout(() => {
+          if (prevOpen) prevWrap.style.maxHeight = prevWrap.scrollHeight + 'px';
+        }, 350);
+      }
       const lbl = toggleRow.querySelector('.mob-prev-toggle-label');
-      lbl.textContent = (prevOpen ? '▾ Hide previous days' : '▸ Show previous days (' + pastCards.length + ')');
+      lbl.textContent = prevOpen ? '▾ Hide previous days' : '▸ Show previous days (' + pastCards.length + ')';
     });
 
     daysEl.appendChild(prevWrap);
