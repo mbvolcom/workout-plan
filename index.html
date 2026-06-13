@@ -1332,7 +1332,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.6</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10422,13 +10422,22 @@ function renderMobileRaceWeek() {
 
     toggleRow.addEventListener('click', () => {
       prevOpen = !prevOpen;
-      // Use a large fixed value — CSS transition handles the animation
-      prevWrap.style.maxHeight = prevOpen ? '9999px' : '0';
-      // Tighten to actual height after transition for clean overflow behaviour
       if (prevOpen) {
+        prevWrap.style.maxHeight = '9999px';
+        // After animation, switch to overflow:visible so inner cards can expand
         setTimeout(() => {
-          if (prevOpen) prevWrap.style.maxHeight = prevWrap.scrollHeight + 'px';
-        }, 350);
+          if (prevOpen) {
+            prevWrap.style.maxHeight = 'none';
+            prevWrap.style.overflow = 'visible';
+          }
+        }, 420);
+      } else {
+        // Collapse: snap overflow back to hidden first, then animate height to 0
+        prevWrap.style.overflow = 'hidden';
+        prevWrap.style.maxHeight = prevWrap.scrollHeight + 'px';
+        requestAnimationFrame(() => {
+          prevWrap.style.maxHeight = '0';
+        });
       }
       const lbl = toggleRow.querySelector('.mob-prev-toggle-label');
       lbl.textContent = prevOpen ? '▾ Hide previous days' : '▸ Show previous days (' + pastCards.length + ')';
