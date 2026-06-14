@@ -1332,7 +1332,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.12.7</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -7765,7 +7765,7 @@ function openStatsPage() {
   const needsStrava = Object.keys(stravaActivities).length === 0;
   const stravaPromise = needsStrava ? fetchStravaActivities() : Promise.resolve();
 
-  Promise.all([loadLTHistory(), stravaPromise]).then(() => renderStats());
+  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), stravaPromise]).then(() => renderStats());
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
@@ -7840,9 +7840,48 @@ async function saveLTPace() {
     });
     if (!res.ok) { console.error('[LT] save failed:', res.status, await res.text()); alert('Save failed — check console.'); return; }
     await loadLTHistory();
+    // Store race estimate snapshot for this LT entry
+    await saveRaceEstimateSnapshot();
     closeLTModal();
-    renderStats(); // refresh stats page to show updated LT
+    renderStats();
   } catch(e) { console.error('[LT] save error:', e); alert('Network error: ' + e.message); }
+}
+
+async function saveRaceEstimateSnapshot() {
+  try {
+    const ltSecs = latestLTPaceSecs();
+    if (!ltSecs) return;
+    const plan = getActivePlan ? getActivePlan() : null;
+    const raceDist = plan ? detectRaceDistance(plan.race_name || plan.name) : null;
+    if (!raceDist) return;
+    let weeks = [];
+    try { weeks = buildStatsWeeks(); } catch(e) { return; }
+    const longestRun = Math.max(...weeks.map(wk => wk.longestRun), 0);
+    const est = computeRaceEstimate(ltSecs, raceDist.km, longestRun, weeks);
+    // Store in Supabase race_estimate_history table
+    await fetch(SUPA_BASE + 'race_estimate_history', {
+      method: 'POST',
+      headers: { ...SUPA_HDR },
+      body: JSON.stringify({
+        lt_pace: ltHistory[0].pace,
+        estimated_finish: secsToHMS(est.central),
+        estimated_finish_secs: est.central,
+        race_distance_km: raceDist.km,
+        race_label: raceDist.label,
+        confidence: est.confidence,
+        recorded_at: new Date().toISOString()
+      })
+    });
+  } catch(e) { console.warn('[estimate history] save failed:', e); }
+}
+
+let raceEstimateHistory = [];
+async function loadRaceEstimateHistory() {
+  try {
+    const res = await fetch(SUPA_BASE + 'race_estimate_history?order=recorded_at.asc&limit=50', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    raceEstimateHistory = await res.json();
+  } catch(e) { console.warn('[estimate history] load failed:', e); }
 }
 
 // Latest LT pace as seconds/km (null if no data)
@@ -8655,17 +8694,33 @@ function renderRunningStats() {
   barWrap.appendChild(barsEl); barWrap.appendChild(legend);
   barSection.appendChild(barWrap); container.appendChild(barSection);
 
-  // ── PACE PROGRESSION ──────────────────────────────────────────────────────
-  try {
-    const pacePoints=buildPacePoints(weeks);
-    if (pacePoints.length>=2) {
-      const paceSection=document.createElement('div'); paceSection.className='stats-section';
-      paceSection.innerHTML='<div class="stats-section-title">Pace progression (easy runs)</div>';
-      const paceWrap=document.createElement('div'); paceWrap.className='stats-pace-chart';
-      paceWrap.appendChild(buildPaceSVG(pacePoints));
-      paceSection.appendChild(paceWrap); container.appendChild(paceSection);
-    }
-  } catch(e) { console.warn('Pace chart error:', e); }
+  // ── LT PACE PROGRESSION ───────────────────────────────────────────────────
+  if (ltHistory.length >= 2) {
+    const ltSection = document.createElement('div'); ltSection.className = 'stats-section';
+    ltSection.innerHTML = '<div class="stats-section-title">Lactate threshold pace</div>';
+    const ltWrap = document.createElement('div'); ltWrap.className = 'stats-pace-chart';
+    ltWrap.appendChild(buildLTProgressionSVG(ltHistory));
+    ltSection.appendChild(ltWrap);
+    container.appendChild(ltSection);
+  } else if (ltHistory.length === 1) {
+    const ltSection = document.createElement('div'); ltSection.className = 'stats-section';
+    ltSection.innerHTML = '<div class="stats-section-title">Lactate threshold pace</div>';
+    const ltWrap = document.createElement('div');
+    ltWrap.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;color:#4b5563;font-size:12px;';
+    ltWrap.textContent = 'Add more LT entries over time to see your progression chart.';
+    ltSection.appendChild(ltWrap);
+    container.appendChild(ltSection);
+  }
+
+  // ── RACE ESTIMATE HISTORY ─────────────────────────────────────────────────
+  if (raceEstimateHistory.length >= 2) {
+    const estSection = document.createElement('div'); estSection.className = 'stats-section';
+    estSection.innerHTML = '<div class="stats-section-title">Race estimate progression</div>';
+    const estWrap = document.createElement('div'); estWrap.className = 'stats-pace-chart';
+    estWrap.appendChild(buildEstimateHistorySVG(raceEstimateHistory));
+    estSection.appendChild(estWrap);
+    container.appendChild(estSection);
+  }
 
   // ── RUN TYPE BREAKDOWN ────────────────────────────────────────────────────
   const totalEasy    = weeks.reduce((a,wk)=>a+(wk.easyRuns||0),0);
@@ -9827,6 +9882,164 @@ function buildStatsWeeks() {
 function lastPhase(wi) {
   for (let i=wi;i>=0;i--) { if(WEEKS[i].phase) return WEEKS[i].phase; }
   return '';
+}
+
+function buildLTProgressionSVG(ltEntries) {
+  // ltEntries sorted desc from Supabase — reverse for chronological
+  const entries = [...ltEntries].reverse();
+  const W = 600, H = 110, pad = 36;
+  const paces = entries.map(e => paceStrToSecs(e.pace));
+  const minP = Math.min(...paces) - 5;
+  const maxP = Math.max(...paces) + 5;
+  const xStep = entries.length > 1 ? (W - pad * 2) / (entries.length - 1) : 0;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.cssText = `width:100%;height:${H}px;`;
+
+  // Grid lines — 3 horizontal
+  [0, 0.5, 1].forEach(t => {
+    const pace = maxP - t * (maxP - minP);
+    const y = pad + t * (H - pad * 2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', pad); line.setAttribute('x2', W - pad);
+    line.setAttribute('y1', y);  line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'rgba(255,255,255,0.06)'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    const m = Math.floor(pace / 60), s = Math.round(pace % 60);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', pad - 4); txt.setAttribute('y', y + 4);
+    txt.setAttribute('fill', '#4b5563'); txt.setAttribute('font-size', '9');
+    txt.setAttribute('text-anchor', 'end');
+    txt.textContent = m + ':' + String(s).padStart(2, '0');
+    svg.appendChild(txt);
+  });
+
+  // Line + area fill
+  const ptCoords = entries.map((e, i) => {
+    const x = pad + i * xStep;
+    const y = pad + (1 - (paceStrToSecs(e.pace) - minP) / (maxP - minP)) * (H - pad * 2);
+    return { x, y, e };
+  });
+
+  if (ptCoords.length >= 2) {
+    // Area fill
+    const areaD = ptCoords.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') +
+      ` L${ptCoords[ptCoords.length-1].x},${H-pad} L${ptCoords[0].x},${H-pad} Z`;
+    const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    area.setAttribute('d', areaD);
+    area.setAttribute('fill', 'rgba(252,76,2,0.08)');
+    svg.appendChild(area);
+
+    // Line
+    const lineD = ptCoords.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+    const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    linePath.setAttribute('d', lineD);
+    linePath.setAttribute('stroke', '#FC4C02'); linePath.setAttribute('stroke-width', '2');
+    linePath.setAttribute('fill', 'none'); linePath.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(linePath);
+  }
+
+  // Dots + labels
+  ptCoords.forEach((p, i) => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y); circle.setAttribute('r', '4');
+    circle.setAttribute('fill', '#FC4C02'); circle.setAttribute('stroke', '#0e0f11'); circle.setAttribute('stroke-width', '1.5');
+    svg.appendChild(circle);
+
+    // Pace label above dot
+    const val = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    val.setAttribute('x', p.x); val.setAttribute('y', p.y - 7);
+    val.setAttribute('fill', '#FC4C02'); val.setAttribute('font-size', '9');
+    val.setAttribute('text-anchor', 'middle'); val.setAttribute('font-weight', '700');
+    val.textContent = p.e.pace;
+    svg.appendChild(val);
+
+    // Date label below
+    const dt = new Date(p.e.recorded_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', p.x); lbl.setAttribute('y', H - 4);
+    lbl.setAttribute('fill', '#4b5563'); lbl.setAttribute('font-size', '8');
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.textContent = dt;
+    svg.appendChild(lbl);
+  });
+
+  return svg;
+}
+
+function buildEstimateHistorySVG(history) {
+  const W = 600, H = 110, pad = 40;
+  const secs = history.map(e => e.estimated_finish_secs);
+  const minS = Math.min(...secs) - 300; // 5 min buffer
+  const maxS = Math.max(...secs) + 300;
+  const xStep = history.length > 1 ? (W - pad * 2) / (history.length - 1) : 0;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.cssText = `width:100%;height:${H}px;`;
+
+  // Grid lines
+  [0, 0.5, 1].forEach(t => {
+    const s = maxS - t * (maxS - minS);
+    const y = pad + t * (H - pad * 2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', pad); line.setAttribute('x2', W - pad);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'rgba(255,255,255,0.06)'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', pad - 4); txt.setAttribute('y', y + 4);
+    txt.setAttribute('fill', '#4b5563'); txt.setAttribute('font-size', '9'); txt.setAttribute('text-anchor', 'end');
+    txt.textContent = secsToHM(s);
+    svg.appendChild(txt);
+  });
+
+  const ptCoords = history.map((e, i) => ({
+    x: pad + i * xStep,
+    y: pad + (1 - (e.estimated_finish_secs - minS) / (maxS - minS)) * (H - pad * 2),
+    e
+  }));
+
+  if (ptCoords.length >= 2) {
+    // Area
+    const areaD = ptCoords.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') +
+      ` L${ptCoords[ptCoords.length-1].x},${H-pad} L${ptCoords[0].x},${H-pad} Z`;
+    const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    area.setAttribute('d', areaD); area.setAttribute('fill', 'rgba(200,240,110,0.08)');
+    svg.appendChild(area);
+
+    // Line
+    const lineD = ptCoords.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+    const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    linePath.setAttribute('d', lineD); linePath.setAttribute('stroke', '#c8f06e');
+    linePath.setAttribute('stroke-width', '2'); linePath.setAttribute('fill', 'none');
+    linePath.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(linePath);
+  }
+
+  ptCoords.forEach(p => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y); circle.setAttribute('r', '4');
+    circle.setAttribute('fill', '#c8f06e'); circle.setAttribute('stroke', '#0e0f11'); circle.setAttribute('stroke-width', '1.5');
+    svg.appendChild(circle);
+
+    const val = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    val.setAttribute('x', p.x); val.setAttribute('y', p.y - 7);
+    val.setAttribute('fill', '#c8f06e'); val.setAttribute('font-size', '9');
+    val.setAttribute('text-anchor', 'middle'); val.setAttribute('font-weight', '700');
+    val.textContent = secsToHM(p.e.estimated_finish_secs);
+    svg.appendChild(val);
+
+    const dt = new Date(p.e.recorded_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', p.x); lbl.setAttribute('y', H - 4);
+    lbl.setAttribute('fill', '#4b5563'); lbl.setAttribute('font-size', '8'); lbl.setAttribute('text-anchor', 'middle');
+    lbl.textContent = dt;
+    svg.appendChild(lbl);
+  });
+
+  return svg;
 }
 
 function buildPacePoints(weeks) {
