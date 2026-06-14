@@ -1332,7 +1332,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8668,12 +8668,27 @@ function renderRunningStats() {
     const ph=wk.phase; const color=phaseColors[ph]||'#6b7280';
     const col=document.createElement('div'); col.className='stats-bar-col';
     const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
-    const planned=document.createElement('div'); planned.className='stats-bar-planned';
-    planned.style.height=Math.round((wk.plannedKm/maxKm)*120)+'px';
-    planned.title=`${wk.label}: ${wk.plannedKm}km planned`;
-    const actual=document.createElement('div'); actual.className='stats-bar-actual';
-    actual.style.cssText=`height:${Math.round((wk.actualKm/maxKm)*120)}px;background:${color}${wk.isCurrent?'':'99'};`;
-    actual.title=`${wk.label}: ${wk.actualKm.toFixed(1)}km logged`;
+    const plannedH = Math.round((wk.plannedKm / maxKm) * 120);
+    const actualH   = Math.round((wk.actualKm  / maxKm) * 120);
+    const exceeded  = wk.actualKm > wk.plannedKm && wk.plannedKm > 0;
+
+    const planned = document.createElement('div'); planned.className = 'stats-bar-planned';
+    planned.style.height = plannedH + 'px';
+    planned.title = `${wk.label}: ${wk.plannedKm}km planned`;
+
+    const actual = document.createElement('div'); actual.className = 'stats-bar-actual';
+    // When exceeded: show planned height in colour, then a brighter top section for the extra
+    if (exceeded) {
+      const extraH = actualH - plannedH;
+      actual.style.cssText = `height:${plannedH}px;background:${color}${wk.isCurrent?'':'99'};`;
+      const extra = document.createElement('div');
+      extra.style.cssText = `height:${extraH}px;background:${color};border-radius:2px 2px 0 0;border-top:2px solid #fff3;`;
+      extra.title = `${wk.actualKm.toFixed(1)}km logged (+${(wk.actualKm-wk.plannedKm).toFixed(1)}km over plan)`;
+      wrap.appendChild(extra);
+    } else {
+      actual.style.cssText = `height:${actualH}px;background:${color}${wk.isCurrent?'':'99'};`;
+      actual.title = `${wk.label}: ${wk.actualKm.toFixed(1)}km logged`;
+    }
     wrap.appendChild(planned); wrap.appendChild(actual);
     const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'+(wk.isCurrent?' current':''); lbl.textContent=wk.shortLabel;
     // Health flag marker inside bar at bottom
@@ -8690,34 +8705,38 @@ function renderRunningStats() {
     col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
   });
   const legend=document.createElement('div'); legend.className='stats-chart-legend';
-  legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div>';
+  legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div><div class="stats-legend-item"><div style="width:10px;height:10px;border-radius:2px;border-top:2px solid #fff3;background:rgba(200,240,110,0.5);flex-shrink:0;"></div>Over plan</div>';
   barWrap.appendChild(barsEl); barWrap.appendChild(legend);
   barSection.appendChild(barWrap); container.appendChild(barSection);
 
   // ── LT PACE PROGRESSION ───────────────────────────────────────────────────
-  if (ltHistory.length >= 2) {
+  if (ltHistory.length >= 1) {
     const ltSection = document.createElement('div'); ltSection.className = 'stats-section';
     ltSection.innerHTML = '<div class="stats-section-title">Lactate threshold pace</div>';
     const ltWrap = document.createElement('div'); ltWrap.className = 'stats-pace-chart';
     ltWrap.appendChild(buildLTProgressionSVG(ltHistory));
-    ltSection.appendChild(ltWrap);
-    container.appendChild(ltSection);
-  } else if (ltHistory.length === 1) {
-    const ltSection = document.createElement('div'); ltSection.className = 'stats-section';
-    ltSection.innerHTML = '<div class="stats-section-title">Lactate threshold pace</div>';
-    const ltWrap = document.createElement('div');
-    ltWrap.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;color:#4b5563;font-size:12px;';
-    ltWrap.textContent = 'Add more LT entries over time to see your progression chart.';
+    if (ltHistory.length === 1) {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'font-size:10px;color:#4b5563;margin-top:6px;text-align:center;';
+      hint.textContent = 'Log more LT entries over time to see the trend line.';
+      ltWrap.appendChild(hint);
+    }
     ltSection.appendChild(ltWrap);
     container.appendChild(ltSection);
   }
 
   // ── RACE ESTIMATE HISTORY ─────────────────────────────────────────────────
-  if (raceEstimateHistory.length >= 2) {
+  if (raceEstimateHistory.length >= 1) {
     const estSection = document.createElement('div'); estSection.className = 'stats-section';
     estSection.innerHTML = '<div class="stats-section-title">Race estimate progression</div>';
     const estWrap = document.createElement('div'); estWrap.className = 'stats-pace-chart';
     estWrap.appendChild(buildEstimateHistorySVG(raceEstimateHistory));
+    if (raceEstimateHistory.length === 1) {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'font-size:10px;color:#4b5563;margin-top:6px;text-align:center;';
+      hint.textContent = 'Log more LT entries to track how your estimate improves.';
+      estWrap.appendChild(hint);
+    }
     estSection.appendChild(estWrap);
     container.appendChild(estSection);
   }
@@ -9927,17 +9946,21 @@ function buildLTProgressionSVG(ltEntries) {
     const areaD = ptCoords.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') +
       ` L${ptCoords[ptCoords.length-1].x},${H-pad} L${ptCoords[0].x},${H-pad} Z`;
     const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    area.setAttribute('d', areaD);
-    area.setAttribute('fill', 'rgba(252,76,2,0.08)');
+    area.setAttribute('d', areaD); area.setAttribute('fill', 'rgba(252,76,2,0.08)');
     svg.appendChild(area);
-
-    // Line
     const lineD = ptCoords.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
     const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    linePath.setAttribute('d', lineD);
-    linePath.setAttribute('stroke', '#FC4C02'); linePath.setAttribute('stroke-width', '2');
-    linePath.setAttribute('fill', 'none'); linePath.setAttribute('stroke-linecap', 'round');
-    svg.appendChild(linePath);
+    linePath.setAttribute('d', lineD); linePath.setAttribute('stroke', '#FC4C02');
+    linePath.setAttribute('stroke-width', '2'); linePath.setAttribute('fill', 'none');
+    linePath.setAttribute('stroke-linecap', 'round'); svg.appendChild(linePath);
+  } else if (ptCoords.length === 1) {
+    // Single entry — draw a horizontal reference line
+    const refLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    refLine.setAttribute('x1', pad); refLine.setAttribute('x2', W - pad);
+    refLine.setAttribute('y1', ptCoords[0].y); refLine.setAttribute('y2', ptCoords[0].y);
+    refLine.setAttribute('stroke', 'rgba(252,76,2,0.25)'); refLine.setAttribute('stroke-width', '1');
+    refLine.setAttribute('stroke-dasharray', '4,4');
+    svg.appendChild(refLine);
   }
 
   // Dots + labels
