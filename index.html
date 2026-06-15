@@ -1299,6 +1299,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-pill-wife { background:var(--wearly-bg); color:var(--wearly-c); border:0.5px solid var(--wearly-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-kinder { background:var(--kgd-bg); color:var(--kgd-c); border:0.5px solid var(--kgd-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-run, .mob-pill-easy { background:var(--easy-bg); color:var(--easy-c); border:0.5px solid var(--easy-b); border-radius:8px; padding:8px 12px; }
+.mob-pill-done { opacity:0.7; }
+.mob-pill-done .mob-pill-label::before { content:'✓ '; }
 .mob-pill-quality { background:var(--qual-bg); color:var(--qual-c); border:0.5px solid var(--qual-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-long    { background:var(--long-bg); color:var(--long-c); border:0.5px solid var(--long-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-race    { background:var(--race-bg); color:var(--race-c); border:0.5px solid var(--race-b); border-radius:8px; padding:8px 12px; font-weight:700; }
@@ -1332,7 +1334,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -4275,6 +4277,44 @@ function buildTodoCard(item, tISO, filterDay, listWrap, wrap) {
   picker.appendChild(pickerLbl);
   picker.appendChild(pickerRow);
 
+  // ── Assignee row ──────────────────────────────────────────────────────────
+  const assLbl = document.createElement('div');
+  assLbl.style.cssText = 'font-size:10px;color:var(--muted);margin:8px 0 6px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;';
+  assLbl.textContent = 'Assigned to';
+  picker.appendChild(assLbl);
+
+  const assRow = document.createElement('div');
+  assRow.style.cssText = 'display:flex;gap:6px;';
+  [['marius','Marius'],['vilde','Vilde'],['both','Both']].forEach(([who, label]) => {
+    const ab = document.createElement('button');
+    const isCur = item.assignee === who;
+    ab.style.cssText = 'flex:1;padding:6px 4px;border-radius:20px;border:1px solid var(--border-mid);font-size:11px;font-weight:600;' +
+      'background:' + (isCur ? 'var(--text)' : 'none') + ';' +
+      'color:' + (isCur ? 'var(--bg)' : 'var(--muted)') + ';cursor:pointer;font-family:inherit;';
+    ab.textContent = label;
+    ab.dataset.who = who;
+    ab.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (isCur) return;
+      ab.textContent = '…'; ab.disabled = true;
+      // Patch assignee in Supabase
+      try {
+        await fetch(SUPA_BASE + 'todo_list?id=eq.' + item.id, {
+          method: 'PATCH', headers: SUPA_HDR,
+          body: JSON.stringify({ assignee: who })
+        });
+        // Update local arrays
+        const updateFn = i => i.id === item.id ? { ...i, assignee: who } : i;
+        todoItems = todoItems.map(updateFn);
+        backlogItems = backlogItems.map(updateFn);
+        refreshTodoList(listWrap, tISO, filterDay, wrap);
+        renderBriefing();
+      } catch(err) { console.warn('[todo] reassign assignee failed:', err); ab.textContent = label; ab.disabled = false; }
+    });
+    assRow.appendChild(ab);
+  });
+  picker.appendChild(assRow);
+
   // ── Tap behaviour ─────────────────────────────────────────────────────────
   let pickerOpen = false;
   row.addEventListener('click', e => {
@@ -4630,7 +4670,12 @@ function cleanTaskStatus(taskId, cat) {
   const entries = cleaningLog.filter(e => e.task_id === taskId);
   if (!entries.length) return { color:'#ef4444', diffDays: Infinity, count:0, weekCount:0 };
   entries.sort((a,b) => new Date(b.completed_at) - new Date(a.completed_at));
-  const diffDays = (Date.now() - new Date(entries[0].completed_at)) / 86400000;
+  // Use 'day' field if available (end of that day), otherwise fall back to completed_at
+  // This fixes negative diffDays when completed_at is backdated via Supabase
+  const refDate = entries[0].day
+    ? new Date(entries[0].day + 'T23:59:59')
+    : new Date(entries[0].completed_at);
+  const diffDays = (Date.now() - refDate) / 86400000;
   const { green, amber } = CLEAN_THRESHOLDS[cat];
   const color = diffDays <= green ? '#26A69A' : diffDays < amber ? '#FFA726' : '#ef4444';
   // Count completions this week (Mon–Sun)
@@ -4645,6 +4690,7 @@ function cleanLastDoneText(diffDays) {
   if (!isFinite(diffDays)) return 'Never done';
   const d = Math.floor(diffDays);
   const h = Math.floor(diffDays * 24) % 24;
+  if (d < 0) return 'Done today'; // backdated entry
   if (d === 0 && h < 1) return 'Just now';
   if (d === 0) return h + 'h ago';
   if (d === 1) return 'Yesterday';
@@ -10593,8 +10639,10 @@ function renderMobileRaceWeek() {
     if (run) {
       const rp=parse(run); const prefix=run.split(':')[0];
       const cls=prefix==='quality'?'mob-pill-quality':prefix==='long'?'mob-pill-long':prefix==='race'?'mob-pill-race':'mob-pill-easy';
-      runP.className=`mob-pill ${cls}`; runP.style.cursor='pointer';
-      let html=`<span class="mob-pill-label">${rp.label}</span>`;
+      const actsCheck = getStravaForDay(wi,di,'runs');
+      const isDone = !!(actsCheck && actsCheck.length);
+      runP.className=`mob-pill ${cls}${isDone?' mob-pill-done':''}`; runP.style.cursor='pointer';
+      let html=`<span class="mob-pill-label">${isDone?'✓ ':''}${rp.label}</span>`;
       const tkm=runTargets[`${wi}-${di}`];
       if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
       if (activeProfile === 'marius') {
@@ -10616,8 +10664,10 @@ function renderMobileRaceWeek() {
     const strP = document.createElement('div');
     if (str) {
       const sp=parse(str); const isUpper=str.startsWith('upper');
-      strP.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}`; strP.style.cursor='pointer';
-      let html=`<span class="mob-pill-label">${sp.label}</span>`;
+      const strActsCheck = getStravaForDay(wi,di,'str');
+      const strDone = !!(strActsCheck && strActsCheck.length);
+      strP.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}${strDone?' mob-pill-done':''}`; strP.style.cursor='pointer';
+      let html=`<span class="mob-pill-label">${strDone?'✓ ':''}${sp.label}</span>`;
       if (activeProfile === 'marius') {
         const acts=getStravaForDay(wi,di,'str');
         if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
