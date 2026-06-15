@@ -1334,7 +1334,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.6</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8784,6 +8784,8 @@ function renderRunningStats() {
   }
   // Cardio card
   buildCardioCard(kpiGrid, weeks, true);
+  // Total training card
+  buildTotalTrainingCard(kpiGrid, weeks, true);
   container.appendChild(kpiGrid);
 
   // ── RACE TIME ESTIMATE ────────────────────────────────────────────────────
@@ -9687,8 +9689,9 @@ function buildCardioCard(container, weeks, showAvgPerWeek) {
 
   if (totalCardioSecs === 0) return; // nothing to show
 
-  const weeksWithActivity = weeks.filter(wk => (wk.runSecs||0)+(wk.rideSecs||0)+(wk.swimSecs||0) > 0).length;
-  const avgPerWeekSecs = weeksWithActivity > 0 ? totalCardioSecs / weeksWithActivity : 0;
+  // Only count weeks with actual cardio activity — excludes injury/sick weeks
+  const weeksWithCardio = weeks.filter(wk => (wk.runSecs||0)+(wk.rideSecs||0)+(wk.swimSecs||0) > 0).length;
+  const avgPerWeekSecs = weeksWithCardio > 0 ? totalCardioSecs / weeksWithCardio : 0;
 
   const secondaryItems = [];
   if (showAvgPerWeek && avgPerWeekSecs > 0) {
@@ -9698,6 +9701,34 @@ function buildCardioCard(container, weeks, showAvgPerWeek) {
   if (totalSwimSecs > 0) secondaryItems.push({ label: 'swimming', val: secsToHoursMin(totalSwimSecs) });
 
   buildStatsKpiCard(container, secsToHoursMin(totalCardioSecs), 'blue', 'Cardiovascular training', secondaryItems);
+}
+
+function buildTotalTrainingCard(container, weeks, showAvgPerWeek) {
+  const totalRunSecs  = weeks.reduce((a,wk) => a + (wk.runSecs  || 0), 0);
+  const totalRideSecs = weeks.reduce((a,wk) => a + (wk.rideSecs || 0), 0);
+  const totalSwimSecs = weeks.reduce((a,wk) => a + (wk.swimSecs || 0), 0);
+  const totalStrSecs  = weeks.reduce((a,wk) => a + (wk.strSecs  || 0), 0);
+  const totalSecs = totalRunSecs + totalRideSecs + totalSwimSecs + totalStrSecs;
+
+  if (totalSecs === 0) return;
+
+  // Cross training = cycling + swimming + strength (everything except running)
+  const totalCrossSecs = totalRideSecs + totalSwimSecs + totalStrSecs;
+
+  // Average only over weeks with any training activity
+  const weeksWithTraining = weeks.filter(wk =>
+    (wk.runSecs||0)+(wk.rideSecs||0)+(wk.swimSecs||0)+(wk.strSecs||0) > 0
+  ).length;
+  const avgPerWeekSecs = weeksWithTraining > 0 ? totalSecs / weeksWithTraining : 0;
+
+  const secondaryItems = [];
+  if (showAvgPerWeek && avgPerWeekSecs > 0) {
+    secondaryItems.push({ label: 'avg/week', val: secsToHoursMin(avgPerWeekSecs) });
+  }
+  if (totalStrSecs > 0)  secondaryItems.push({ label: 'strength', val: secsToHoursMin(totalStrSecs) });
+  if (totalCrossSecs > 0) secondaryItems.push({ label: 'cross training', val: secsToHoursMin(totalCrossSecs) });
+
+  buildStatsKpiCard(container, secsToHoursMin(totalSecs), 'accent', 'Total training', secondaryItems);
 }
 
 function buildStatsKpiCard(grid, mainVal, cls, label, secondaryItems) {
@@ -9777,7 +9808,8 @@ function renderWeekStats() {
     [{label:'easy run pace', val: wk.doneSessions+' runs'}]);
   buildStatsKpiCard(kpiGrid, (weekSick+weekInj)||'—', 'health', 'Days impacted',
     [{label:'Sick', val:weekSick},{label:'Injured', val:weekInj}]);
-  buildCardioCard(kpiGrid, [wk], false); // week only — no avg/week
+  buildCardioCard(kpiGrid, [wk], false);
+  buildTotalTrainingCard(kpiGrid, [wk], false);
   container.appendChild(kpiGrid);
 
   // ── Race estimate (same model, context from full plan) ──────────────────
@@ -9973,7 +10005,7 @@ function buildStatsWeeks() {
 
     let plannedKm=0, actualKm=0, plannedRuns=0, doneRuns=0, totalSecs=0, longestRun=0;
     let easyRuns=0, qualityRuns=0, longRuns=0;
-    let runSecs=0, rideSecs=0, swimSecs=0;
+    let runSecs=0, rideSecs=0, swimSecs=0, strSecs=0;
     const paceRuns=[], days=[];
 
     DAYS.forEach((_,di) => {
@@ -9993,8 +10025,9 @@ function buildStatsWeeks() {
         if (t === 'run' || t === 'trailrun' || t === 'virtualrun') runSecs += secs;
         else if (t === 'ride' || t === 'virtualride' || t === 'ebikeride') rideSecs += secs;
         else if (t === 'swim' || t === 'openwater') swimSecs += secs;
+        else if (t === 'weighttraining' || t === 'workout' || t === 'crossfit' || t === 'yoga' || t === 'pilates') strSecs += secs;
       });
-
+      // Also collect from Strava str row directly
       if (acts) {
         doneRuns++;
         acts.forEach(a=>{
@@ -10026,7 +10059,7 @@ function buildStatsWeeks() {
       plannedSessions: plannedRuns, doneSessions: doneRuns,
       totalSecs, longestRun, paceRuns, days, isCurrent,
       easyRuns, qualityRuns, longRuns,
-      runSecs, rideSecs, swimSecs,
+      runSecs, rideSecs, swimSecs, strSecs,
       month: `${MONTH_NAMES[m-1]} ${y}`,
     };
   });
