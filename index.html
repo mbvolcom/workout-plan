@@ -1334,7 +1334,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1774,8 +1774,22 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     </div>
 
     <div class="gcal-form-group">
-      <label class="gcal-form-label">Guests <span style="font-weight:400;color:var(--muted2);">(comma-separated emails)</span></label>
-      <input id="gcf-guests" class="gcal-form-input" type="text" placeholder="email@example.com, another@example.com"/>
+      <label class="gcal-form-label">Guests</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button type="button" id="gcal-guest-vilde" onclick="toggleGcalGuest('vilde')"
+          style="flex:1;padding:9px 10px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;color:#555;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;">
+          👩 Vilde
+        </button>
+        <button type="button" id="gcal-guest-custom-btn" onclick="toggleGcalCustom()"
+          style="flex:1;padding:9px 10px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;color:#555;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;">
+          ✉️ Custom
+        </button>
+      </div>
+      <input id="gcf-guests" type="hidden" value=""/>
+      <input id="gcal-guest-custom-input" class="gcal-form-input" type="email"
+        placeholder="Enter email address"
+        style="display:none;margin-top:0;"
+        oninput="updateGcalCustomGuest(this.value)"/>
     </div>
 
     <div class="gcal-create-error" id="gcal-create-error"></div>
@@ -7477,6 +7491,67 @@ document.getElementById('lf-save').addEventListener('click', async () => {
 const GCAL_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/gcal-proxy';
 let gcalEvents = {}; // keyed by YYYY-MM-DD → array of events
 
+// GCal guest selection
+let _gcalGuestVilde = false;
+let _gcalGuestCustom = false;
+
+function toggleGcalGuest(type) {
+  if (type === 'vilde') {
+    _gcalGuestVilde = !_gcalGuestVilde;
+    const btn = document.getElementById('gcal-guest-vilde');
+    if (btn) {
+      btn.style.background = _gcalGuestVilde ? '#1a73e8' : '#fff';
+      btn.style.color = _gcalGuestVilde ? '#fff' : '#555';
+      btn.style.borderColor = _gcalGuestVilde ? '#1a73e8' : '#e0e0e0';
+    }
+  }
+  updateGcalGuestField();
+}
+
+function toggleGcalCustom() {
+  _gcalGuestCustom = !_gcalGuestCustom;
+  const btn = document.getElementById('gcal-guest-custom-btn');
+  const inp = document.getElementById('gcal-guest-custom-input');
+  if (btn) {
+    btn.style.background = _gcalGuestCustom ? '#1a73e8' : '#fff';
+    btn.style.color = _gcalGuestCustom ? '#fff' : '#555';
+    btn.style.borderColor = _gcalGuestCustom ? '#1a73e8' : '#e0e0e0';
+  }
+  if (inp) {
+    inp.style.display = _gcalGuestCustom ? 'block' : 'none';
+    if (_gcalGuestCustom) setTimeout(() => inp.focus(), 50);
+    else { inp.value = ''; updateGcalGuestField(); }
+  }
+}
+
+function updateGcalCustomGuest(val) {
+  updateGcalGuestField();
+}
+
+function updateGcalGuestField() {
+  const emails = [];
+  if (_gcalGuestVilde) emails.push('vildebringsjord@hotmail.com');
+  if (_gcalGuestCustom) {
+    const inp = document.getElementById('gcal-guest-custom-input');
+    if (inp && inp.value.trim()) emails.push(inp.value.trim());
+  }
+  const field = document.getElementById('gcf-guests');
+  if (field) field.value = emails.join(', ');
+}
+
+function resetGcalGuests() {
+  _gcalGuestVilde = false;
+  _gcalGuestCustom = false;
+  ['gcal-guest-vilde','gcal-guest-custom-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) { btn.style.background='#fff'; btn.style.color='#555'; btn.style.borderColor='#e0e0e0'; }
+  });
+  const inp = document.getElementById('gcal-guest-custom-input');
+  if (inp) { inp.style.display='none'; inp.value=''; }
+  const field = document.getElementById('gcf-guests');
+  if (field) field.value = '';
+}
+
 function showGCalReauthBanner() {
   // Show a banner on the page prompting re-authentication
   let banner = document.getElementById('gcal-reauth-banner');
@@ -7549,6 +7624,7 @@ const GCAL_CREATE_FN = 'https://vxdtzpwqxzwjbxudkfqw.supabase.co/functions/v1/gc
 let _gcalCreateDateStr = null;
 
 function openGCalCreate(dateStr) {
+  resetGcalGuests();
   _gcalCreateDateStr = dateStr;
   const d = document;
   d.getElementById('gcf-title').value = '';
