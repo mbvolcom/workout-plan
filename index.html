@@ -1327,14 +1327,14 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 <header class="glass hdr" id="main-header">
   <div>
     <h1 class="hdr-title">Training Calendar 2026</h1>
-    <div class="hdr-sub" id="header-sub-line">
+    <div class="hdr-sub" id="header-sub-line" style="display:none;">
       <span style="font-weight:600" id="header-plan-name">Stavanger Marathon</span>
       <span class="dot"></span>
       <span class="mono" id="header-race-date">29 August 2026</span>
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.4</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -2189,6 +2189,11 @@ let activeProfile = localStorage.getItem('cal_profile') || 'marius'; // 'marius'
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('profile-btn-marius')?.classList.toggle('active', activeProfile === 'marius');
   document.getElementById('profile-btn-vilde')?.classList.toggle('active', activeProfile === 'vilde');
+  // Hide race subtitle for Vilde
+  if (activeProfile !== 'marius') {
+    const sub = document.getElementById('race-subtitle');
+    if (sub) sub.style.display = 'none';
+  }
 });
 let showPartnerTraining = false;
 
@@ -2225,6 +2230,11 @@ function setProfile(p) {
   WEEKS.forEach((_,wi) => renderWeek(wi));
   renderBriefing();
   if (typeof renderMobileView === 'function') { if (isMobilePortrait()) renderMobileView(); }
+  // Show/hide race subtitle based on profile
+  const subtitle = document.getElementById('race-subtitle');
+  if (subtitle && subtitle.textContent) {
+    subtitle.style.display = p === 'marius' ? '' : 'none';
+  }
 }
 
 function saveProfileToDevice() {
@@ -6774,6 +6784,8 @@ function updateCountdownForPlan(plan) {
   const subtitle = document.getElementById('race-subtitle');
   if (subtitle) {
     subtitle.textContent = `${plan.race_name||plan.name} · ${dateStr}${plan.goal ? ' · Goal: '+plan.goal : ''}`;
+    // Only show for Marius — Vilde is not training for this race
+    subtitle.style.display = activeProfile === 'marius' ? '' : 'none';
   }
   if (typeof window.raceDate !== 'undefined') window.raceDate = new Date(plan.race_date+'T08:45:00+02:00');
 }
