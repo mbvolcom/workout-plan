@@ -1299,8 +1299,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .mob-pill-wife { background:var(--wearly-bg); color:var(--wearly-c); border:0.5px solid var(--wearly-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-kinder { background:var(--kgd-bg); color:var(--kgd-c); border:0.5px solid var(--kgd-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-run, .mob-pill-easy { background:var(--easy-bg); color:var(--easy-c); border:0.5px solid var(--easy-b); border-radius:8px; padding:8px 12px; }
-.mob-pill-done { opacity:0.7; }
-.mob-pill-done .mob-pill-label::before { content:'✓ '; }
+.mob-pill-done { opacity:0.75; position:relative; }
+.mob-pill-done::after { content:'✓'; position:absolute; top:4px; right:6px; font-size:10px; font-weight:700; color:currentColor; opacity:0.7; }
 .mob-pill-quality { background:var(--qual-bg); color:var(--qual-c); border:0.5px solid var(--qual-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-long    { background:var(--long-bg); color:var(--long-c); border:0.5px solid var(--long-b); border-radius:8px; padding:8px 12px; }
 .mob-pill-race    { background:var(--race-bg); color:var(--race-c); border:0.5px solid var(--race-b); border-radius:8px; padding:8px 12px; font-weight:700; }
@@ -1334,7 +1334,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10642,7 +10642,7 @@ function renderMobileRaceWeek() {
       const actsCheck = getStravaForDay(wi,di,'runs');
       const isDone = !!(actsCheck && actsCheck.length);
       runP.className=`mob-pill ${cls}${isDone?' mob-pill-done':''}`; runP.style.cursor='pointer';
-      let html=`<span class="mob-pill-label">${isDone?'✓ ':''}${rp.label}</span>`;
+      let html=`<span class="mob-pill-label">${rp.label}</span>`;
       const tkm=runTargets[`${wi}-${di}`];
       if(tkm!=null) html+=`<span class="mob-pill-target">🎯 ${tkm} km</span>`;
       if (activeProfile === 'marius') {
@@ -10667,7 +10667,7 @@ function renderMobileRaceWeek() {
       const strActsCheck = getStravaForDay(wi,di,'str');
       const strDone = !!(strActsCheck && strActsCheck.length);
       strP.className=`mob-pill ${isUpper?'mob-pill-upper':'mob-pill-lower'}${strDone?' mob-pill-done':''}`; strP.style.cursor='pointer';
-      let html=`<span class="mob-pill-label">${strDone?'✓ ':''}${sp.label}</span>`;
+      let html=`<span class="mob-pill-label">${sp.label}</span>`;
       if (activeProfile === 'marius') {
         const acts=getStravaForDay(wi,di,'str');
         if(acts) acts.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${formatDuration(a.moving_time)}</span>`;});
