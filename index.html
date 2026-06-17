@@ -1001,6 +1001,20 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .race-guid-warn { color:#f0c060; background:rgba(240,192,96,0.1); }
 .race-guid-urgent { color:#f06e6e; background:rgba(240,110,110,0.1); }
 .race-guid-phase { font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#4b5563; margin-bottom:8px; padding-top:10px; }
+/* Marathon readiness */
+.ready-card { background:linear-gradient(135deg,#1a1d22,#16181c); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; }
+.ready-header { display:flex; align-items:center; gap:16px; margin-bottom:16px; }
+.ready-arc-wrap { flex-shrink:0; }
+.ready-score-info { flex:1; }
+.ready-score-label { font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6b7280; margin-bottom:4px; }
+.ready-verdict { font-size:18px; font-weight:800; line-height:1.1; }
+.ready-sub { font-size:11px; color:#6b7280; margin-top:4px; }
+.ready-factors { display:flex; flex-direction:column; gap:8px; }
+.ready-factor { display:flex; align-items:center; gap:10px; }
+.ready-factor-name { font-size:11px; color:#9ca3af; flex:1; }
+.ready-factor-bar-wrap { width:80px; height:5px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; flex-shrink:0; }
+.ready-factor-bar { height:100%; border-radius:3px; transition:width 0.5s ease; }
+.ready-factor-val { font-size:11px; font-weight:700; width:28px; text-align:right; flex-shrink:0; }
 .stats-scope-btn {
   background:none; border:none; padding:5px 12px; font-size:12px; font-weight:500;
   color:#6b7280; cursor:pointer; border-radius:6px; font-family:inherit; transition:all 0.15s;
@@ -1334,7 +1348,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.9</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8348,6 +8362,197 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
   };
 }
 
+function computeMarathonReadiness(plan, weeks, ltSecs) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const raceDt = plan.race_date ? new Date(plan.race_date) : null;
+  const daysLeft = raceDt ? Math.max(0, Math.floor((raceDt - today) / 86400000)) : null;
+  const weeksLeft = daysLeft !== null ? Math.floor(daysLeft / 7) : null;
+  const goalSecs = goalTimeToSecs(plan.goal);
+
+  const factors = {};
+
+  // ── Factor 1: Long run coverage (25%) ──────────────────────────────────
+  // For each past week with a scheduled long run, compare actual vs planned distance
+  let longRunScore = 0, longRunSessions = 0;
+  const today_t = today.getTime();
+  weeks.forEach(wk => {
+    const [y,m,d] = WEEK_MONDAYS[wk.wi];
+    DAYS.forEach((_, di) => {
+      const runVal = (ats(wk.wi)).runs[di];
+      const prefix = runVal ? runVal.split(':')[0] : '';
+      if (prefix !== 'long') return;
+      const dt = new Date(y, m-1, d+di);
+      if (dt > today) return; // future scheduled long runs don't count yet
+      longRunSessions++;
+      const plannedKm = runTargets[`${wk.wi}-${di}`] || 0;
+      const acts = getStravaForDay(wk.wi, di, 'runs');
+      const actualKm = acts ? acts.reduce((a,act) => a + (act.distance||0)/1000, 0) : 0;
+      // Recency weight: runs in last 6 weeks count double
+      const weeksAgo = (today_t - dt.getTime()) / (7 * 86400000);
+      const weight = weeksAgo <= 6 ? 2 : 1;
+      if (plannedKm > 0) {
+        // Credit = min(1, actual/planned) — over-distance = full credit
+        longRunScore += Math.min(1, actualKm / plannedKm) * weight;
+        longRunSessions += weight - 1; // adjust denominator for double-weight
+      } else if (actualKm > 0) {
+        longRunScore += 1 * weight; // no target set but ran = credit
+        longRunSessions += weight - 1;
+      } else {
+        // Missed long run — 0 credit, weight already added to denominator above
+      }
+    });
+  });
+  factors.longRun = {
+    score: longRunSessions > 0 ? Math.round((longRunScore / longRunSessions) * 100) : 0,
+    weight: 25,
+    label: 'Long run coverage'
+  };
+
+  // ── Factor 2: LT pace vs goal (20%) ────────────────────────────────────
+  let ltScore = 0;
+  if (ltSecs && goalSecs) {
+    const raceDist = detectRaceDistance(plan.race_name || plan.name);
+    if (raceDist) {
+      const predictedSecs = ltSecs * 1.07 * raceDist.km;
+      const gap = predictedSecs - goalSecs; // positive = slower than goal
+      // Full score if within 5 min, scales down to 0 at 20+ min behind
+      ltScore = gap <= 300 ? 100 : gap >= 1200 ? 0 : Math.round((1 - (gap - 300) / 900) * 100);
+    }
+  } else if (ltSecs) {
+    ltScore = 60; // have LT data but no goal to compare
+  }
+  factors.lt = { score: ltScore, weight: 20, label: 'LT vs goal pace' };
+
+  // ── Factor 3: Volume consistency (20%) ──────────────────────────────────
+  const pastWeeks = weeks.filter(wk => {
+    const [y,m,d] = WEEK_MONDAYS[wk.wi];
+    return new Date(y,m-1,d) <= today;
+  });
+  const consistentWeeks = pastWeeks.filter(wk =>
+    wk.plannedKm > 0 && wk.actualKm / wk.plannedKm >= 0.8
+  ).length;
+  const consistencyScore = pastWeeks.filter(wk => wk.plannedKm > 0).length > 0
+    ? Math.round((consistentWeeks / pastWeeks.filter(wk => wk.plannedKm > 0).length) * 100)
+    : 0;
+  factors.consistency = { score: consistencyScore, weight: 20, label: 'Training consistency' };
+
+  // ── Factor 4: Recent health (15%) ───────────────────────────────────────
+  let recentSickDays = 0;
+  const fourWeeksAgo = new Date(today_t - 28 * 86400000);
+  weeks.forEach(wk => {
+    wk.days.forEach(day => {
+      if (day.date < fourWeeksAgo) return;
+      const f = dayFlags[day.dateStr];
+      if (f && (f.type === 'sick' || f.type === 'injured_run')) recentSickDays++;
+    });
+  });
+  const healthScore = recentSickDays === 0 ? 100
+    : recentSickDays <= 2 ? 75
+    : recentSickDays <= 5 ? 50
+    : recentSickDays <= 10 ? 25 : 0;
+  factors.health = { score: healthScore, weight: 15, label: 'Recent health' };
+
+  // ── Factor 5: Phase & taper timing (10%) ────────────────────────────────
+  let phaseScore = 70; // default ok
+  if (weeksLeft !== null) {
+    if (weeksLeft <= 3) {
+      // Should be tapering — check volume is reducing
+      const recentVol = weeks.slice(-2).reduce((a,wk) => a + wk.actualKm, 0);
+      const peakVol = Math.max(...weeks.map(wk => wk.actualKm));
+      phaseScore = peakVol > 0 && recentVol / 2 < peakVol * 0.75 ? 100 : 60;
+    } else if (weeksLeft >= 4 && weeksLeft <= 12) {
+      phaseScore = consistencyScore >= 80 ? 100 : 70;
+    } else if (weeksLeft > 12) {
+      phaseScore = 80; // early in plan, hard to judge
+    }
+  }
+  factors.phase = { score: phaseScore, weight: 10, label: 'Phase timing' };
+
+  // ── Factor 6: Overall volume (10%) ──────────────────────────────────────
+  const totalPlanned = pastWeeks.reduce((a,wk) => a + wk.plannedKm, 0);
+  const totalActual  = pastWeeks.reduce((a,wk) => a + wk.actualKm, 0);
+  const volScore = totalPlanned > 0
+    ? Math.min(100, Math.round((totalActual / totalPlanned) * 100))
+    : 0;
+  factors.volume = { score: volScore, weight: 10, label: 'Volume completed' };
+
+  // ── Weighted total ───────────────────────────────────────────────────────
+  const totalWeight = Object.values(factors).reduce((a,f) => a + f.weight, 0);
+  const totalScore = Object.values(factors).reduce((a,f) => a + f.score * f.weight / 100, 0);
+  const overall = Math.round((totalScore / totalWeight) * 100);
+
+  const verdict = overall >= 85 ? { text: 'Race ready', color: '#c8f06e' }
+    : overall >= 70 ? { text: 'On track', color: '#6eb8f0' }
+    : overall >= 55 ? { text: 'Building', color: '#FFA726' }
+    : { text: 'Needs attention', color: '#f06e6e' };
+
+  return { overall, factors, verdict, weeksLeft, daysLeft };
+}
+
+function renderMarathonReadiness(container, weeks) {
+  if (activeProfile !== 'marius') return; // Marius only
+  const plan = getActivePlan ? getActivePlan() : null;
+  if (!plan) return;
+  const ltSecs = latestLTPaceSecs();
+  const result = computeMarathonReadiness(plan, weeks, ltSecs);
+
+  const section = document.createElement('div'); section.className = 'stats-section';
+  section.innerHTML = '<div class="stats-section-title">Marathon readiness</div>';
+
+  const card = document.createElement('div'); card.className = 'ready-card';
+
+  // Arc SVG gauge
+  const size = 80, stroke = 8, r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const arc = circ * 0.75; // 270° arc
+  const filled = arc * (result.overall / 100);
+  const scoreColor = result.verdict.color;
+
+  const arcSVG = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}"
+      fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${stroke}"
+      stroke-dasharray="${arc} ${circ}" stroke-dashoffset="0"
+      stroke-linecap="round" transform="rotate(135 ${size/2} ${size/2})"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}"
+      fill="none" stroke="${scoreColor}" stroke-width="${stroke}"
+      stroke-dasharray="${filled} ${circ}" stroke-dashoffset="0"
+      stroke-linecap="round" transform="rotate(135 ${size/2} ${size/2})"/>
+    <text x="${size/2}" y="${size/2+2}" text-anchor="middle" dominant-baseline="middle"
+      fill="${scoreColor}" font-size="18" font-weight="800" font-family="inherit">${result.overall}</text>
+    <text x="${size/2}" y="${size/2+16}" text-anchor="middle" dominant-baseline="middle"
+      fill="#6b7280" font-size="8" font-family="inherit">/ 100</text>
+  </svg>`;
+
+  const raceNote = result.weeksLeft !== null
+    ? result.weeksLeft + ' weeks to race'
+    : 'No race date set';
+
+  card.innerHTML = `
+    <div class="ready-header">
+      <div class="ready-arc-wrap">${arcSVG}</div>
+      <div class="ready-score-info">
+        <div class="ready-score-label">Readiness score</div>
+        <div class="ready-verdict" style="color:${scoreColor}">${result.verdict.text}</div>
+        <div class="ready-sub">${raceNote}</div>
+      </div>
+    </div>
+    <div class="ready-factors"></div>`;
+
+  const factorsEl = card.querySelector('.ready-factors');
+  Object.values(result.factors).forEach(f => {
+    const fColor = f.score >= 80 ? '#c8f06e' : f.score >= 55 ? '#FFA726' : '#f06e6e';
+    const row = document.createElement('div'); row.className = 'ready-factor';
+    row.innerHTML =
+      `<span class="ready-factor-name">${f.label}</span>` +
+      `<div class="ready-factor-bar-wrap"><div class="ready-factor-bar" style="width:${f.score}%;background:${fColor}"></div></div>` +
+      `<span class="ready-factor-val" style="color:${fColor}">${f.score}%</span>`;
+    factorsEl.appendChild(row);
+  });
+
+  section.appendChild(card);
+  container.appendChild(section);
+}
+
 function buildRaceGuidance(plan, est, weeks, ltSecs, longestRunM, raceKm, raceDate) {
   const today = new Date(); today.setHours(0,0,0,0);
   const raceDt = raceDate ? new Date(raceDate) : null;
@@ -8792,6 +8997,9 @@ function renderRunningStats() {
   const estSection = document.createElement('div'); estSection.className = 'stats-section';
   container.appendChild(estSection);
   renderRaceEstimate(estSection, weeks);
+
+  // ── MARATHON READINESS ────────────────────────────────────────────────────
+  renderMarathonReadiness(container, weeks);
 
   // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
   const barSection=document.createElement('div'); barSection.className='stats-section';
@@ -10616,9 +10824,10 @@ function renderMobileRaceWeek() {
     const actualKm  = sum.totalKm;
     const pct = plannedKm > 0 ? Math.min(100, Math.round((actualKm / plannedKm) * 100)) : 0;
 
-    // Input Target = sum of individual runTarget km set on each run pill this week
+    // Input Target = sum of runTarget km, only for days that have a planned run pill
     const inputTargetKm = DAYS.reduce((acc, _, di) => {
-      return acc + (runTargets[`${wi}-${di}`] || 0);
+      const hasPlannedRun = !!(ats(wi).runs[di]); // only count days with a scheduled run
+      return acc + (hasPlannedRun ? (runTargets[`${wi}-${di}`] || 0) : 0);
     }, 0);
     const inputPct = inputTargetKm > 0 ? Math.min(100, Math.round((actualKm / inputTargetKm) * 100)) : 0;
 
