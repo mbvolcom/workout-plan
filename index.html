@@ -1334,7 +1334,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.6</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.13.9</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10611,24 +10611,48 @@ function renderMobileRaceWeek() {
       <div style="height:6px;"></div>
       <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
   } else {
-    // Marius: show km progress bar
+    // Marius: show km progress — Plan Target + Input Target
     const plannedKm = w.km || 0;
     const actualKm  = sum.totalKm;
     const pct = plannedKm > 0 ? Math.min(100, Math.round((actualKm / plannedKm) * 100)) : 0;
+
+    // Input Target = sum of individual runTarget km set on each run pill this week
+    const inputTargetKm = DAYS.reduce((acc, _, di) => {
+      return acc + (runTargets[`${wi}-${di}`] || 0);
+    }, 0);
+    const inputPct = inputTargetKm > 0 ? Math.min(100, Math.round((actualKm / inputTargetKm) * 100)) : 0;
+
+    const actualSpan = actualKm > 0
+      ? `<span class="actual">${actualKm.toFixed(1)} km</span>`
+      : `<span style="color:var(--muted2);">0 km</span>`;
+
     barWrap.innerHTML = `
       <div class="mob-summary-bar-header">
         <div class="mob-summary-bar-km">
-          ${actualKm > 0
-            ? `<span class="actual">${actualKm.toFixed(1)} km</span>`
-            : `<span style="color:var(--muted2);">0 km</span>`}
+          ${actualSpan}
           ${plannedKm > 0 ? `<span class="planned"> / ${plannedKm} km</span>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
           ${sum.totalSecs > 0 ? `<span style="font-size:11px;color:var(--muted2);">⏱ ${formatDuration(sum.totalSecs)}</span>` : ''}
+          <span style="font-size:9px;color:var(--muted2);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">Plan target</span>
           ${plannedKm > 0 ? `<span class="mob-summary-bar-pct">${pct}%</span>` : ''}
         </div>
       </div>
-      ${plannedKm > 0 ? `<div class="mob-summary-bar-track" style="margin-bottom:10px;"><div class="mob-summary-bar-fill" style="width:${pct}%"></div></div>` : '<div style="height:6px;"></div>'}
+      ${plannedKm > 0 ? `<div class="mob-summary-bar-track" style="margin-bottom:${inputTargetKm > 0 ? 8 : 10}px;"><div class="mob-summary-bar-fill" style="width:${pct}%"></div></div>` : '<div style="height:4px;"></div>'}
+      ${inputTargetKm > 0 ? `
+      <div class="mob-summary-bar-header" style="margin-top:2px;">
+        <div class="mob-summary-bar-km">
+          ${actualSpan}
+          <span class="planned"> / ${inputTargetKm % 1 === 0 ? inputTargetKm : inputTargetKm.toFixed(1)} km</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:9px;color:var(--muted2);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">Input target</span>
+          <span class="mob-summary-bar-pct">${inputPct}%</span>
+        </div>
+      </div>
+      <div class="mob-summary-bar-track" style="margin-bottom:10px;">
+        <div class="mob-summary-bar-fill" style="width:${inputPct}%;background:linear-gradient(90deg,#26A69A,#4db6ac);"></div>
+      </div>` : '<div style="height:6px;"></div>'}
       <div style="display:flex;gap:0;padding:0 2px;">${dotsHTML}</div>`;
   }
 
@@ -10806,17 +10830,18 @@ function renderMobileRaceWeek() {
     const cross=s.cross&&s.cross[di];
     const crossActs = activeProfile === 'marius' ? getStravaForDay(wi,di,'cross') : null;
     const crossP = document.createElement('div');
+    const crossDone = !!(crossActs && crossActs.length);
     if (cross) {
       const cp=parse(cross);
       if(cp) {
-        crossP.className='mob-pill mob-pill-cross'; crossP.style.cursor='pointer';
+        crossP.className='mob-pill mob-pill-cross' + (crossDone?' mob-pill-done':''); crossP.style.cursor='pointer';
         let html=`<span class="mob-pill-label">${cp.label}</span>`;
         if(crossActs) crossActs.forEach(a=>{html+=`<span class="mob-pill-sub">⚡ ${a.name} · ${(a.distance/1000).toFixed(1)}km</span>`;});
         crossP.innerHTML=html;
         addMobPillHandlers(crossP, ()=>{}, wi,'cross',di);
       }
     } else if (crossActs) {
-      crossP.className='mob-pill mob-pill-cross';
+      crossP.className='mob-pill mob-pill-cross mob-pill-done';
       let html='';
       crossActs.forEach(a=>{html+=`<span class="mob-pill-label">⚡ ${a.name}</span><span class="mob-pill-sub">${a.type} · ${(a.distance/1000).toFixed(1)}km</span>`;});
       crossP.innerHTML=html;
@@ -11979,6 +12004,7 @@ async function clearBoughtItems() {
   if (!shoppingItems.some(i => i.done)) return;
   shoppingItems = shoppingItems.filter(i => !i.done);
   renderShoppingList();
+  renderInlineShopList();
   try {
     await fetch(SUPA_BASE + 'shopping_list?done=eq.true', { method:'DELETE', headers:SUPA_HDR });
   } catch(e) { console.warn('Clear failed:', e); loadShoppingList(); }
