@@ -1348,7 +1348,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1523,8 +1523,27 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
           <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
           <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
           <button class="stats-scope-btn" data-scope="week" onclick="setStatsScope('week')">Week</button>
+          <button class="stats-scope-btn" data-scope="cycling" onclick="setStatsScope('cycling')">🚴 Cycling</button>
         </div>
         <button id="lt-input-btn" onclick="openLTModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(252,76,2,0.4);background:rgba(252,76,2,0.1);color:#FC4C02;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">LT Pace</button>
+        <button id="ftp-input-btn" onclick="openFTPModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(110,184,240,0.4);background:rgba(110,184,240,0.1);color:#6eb8f0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">FTP</button>
+      </div>
+    </div>
+
+    <!-- FTP Modal -->
+    <div id="ftp-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+      <div id="ftp-modal" style="background:#1a1d22;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px;width:320px;max-width:90vw;position:relative;">
+        <div style="font-size:16px;font-weight:700;color:#f0ede8;margin-bottom:4px;">🚴 FTP</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:20px;">Enter your current Functional Threshold Power in watts. Format: whole number (e.g. 245)</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <input id="ftp-watts-input" type="number" placeholder="245" min="50" max="500"
+            style="flex:1;background:#0e0f11;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;color:#f0ede8;font-size:18px;font-weight:700;font-family:inherit;outline:none;text-align:center;"
+            onkeydown="if(event.key==='Enter')saveFTP()"/>
+          <span style="font-size:13px;color:#6b7280;white-space:nowrap;">W</span>
+        </div>
+        <div id="ftp-history-wrap" style="margin-bottom:16px;"></div>
+        <button onclick="saveFTP()" style="width:100%;padding:13px;background:#6eb8f0;color:#0e0f11;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Save</button>
+        <button onclick="closeFTPModal()" style="width:100%;margin-top:8px;padding:10px;background:none;color:#6b7280;border:none;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>
       </div>
     </div>
 
@@ -7913,7 +7932,7 @@ function openStatsPage() {
   const needsStrava = Object.keys(stravaActivities).length === 0;
   const stravaPromise = needsStrava ? fetchStravaActivities() : Promise.resolve();
 
-  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), stravaPromise]).then(() => renderStats());
+  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), stravaPromise]).then(() => renderStats());
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
@@ -8039,7 +8058,8 @@ function latestLTPaceSecs() {
 }
 
 function renderStats() {
-  statsTab = 'running'; // always running now
+  statsTab = 'running';
+  if (statsScope === 'cycling') { renderCyclingStats(); return; }
   if (statsScope === 'week') { renderWeekStats(); return; }
   // Sterk Gutt stats moved to dedicated app
   renderRunningStats();
@@ -8247,6 +8267,299 @@ async function renderIntervalStats() {
     err.textContent = 'Error: ' + e.message;
     container.appendChild(err);
   }
+}
+
+// ── FTP TRACKING ───────────────────────────────────────────────────────────
+let ftpHistory = [];
+
+async function loadFTPHistory() {
+  try {
+    const res = await fetch(SUPA_BASE + 'ftp_history?select=*&order=recorded_at.desc&limit=20', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    ftpHistory = await res.json();
+  } catch(e) { console.warn('[FTP] load failed:', e); }
+}
+
+function latestFTP() {
+  return ftpHistory.length ? ftpHistory[0].watts : null;
+}
+
+function openFTPModal() {
+  document.getElementById('ftp-modal-backdrop').style.display = 'flex';
+  const inp = document.getElementById('ftp-watts-input');
+  inp.value = ftpHistory.length ? ftpHistory[0].watts : '';
+  inp.focus(); inp.select();
+  renderFTPHistory();
+}
+
+function closeFTPModal() {
+  document.getElementById('ftp-modal-backdrop').style.display = 'none';
+}
+
+function renderFTPHistory() {
+  const wrap = document.getElementById('ftp-history-wrap');
+  if (!wrap) return;
+  if (!ftpHistory.length) { wrap.innerHTML = '<div style="font-size:11px;color:#4b5563;">No entries yet.</div>'; return; }
+  wrap.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Recent</div>';
+  ftpHistory.slice(0, 4).forEach(row => {
+    const dt = new Date(row.recorded_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;';
+    el.innerHTML = '<span style="color:#6b7280;">' + dt + '</span><span style="color:#6eb8f0;font-weight:700;">' + row.watts + ' W</span>';
+    wrap.appendChild(el);
+  });
+}
+
+async function saveFTP() {
+  const inp = document.getElementById('ftp-watts-input');
+  const val = parseInt(inp.value);
+  if (!val || val < 50 || val > 500) { inp.style.borderColor='#f06e6e'; setTimeout(()=>inp.style.borderColor='',1200); return; }
+  try {
+    const res = await fetch(SUPA_BASE + 'ftp_history', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify({ watts: val, recorded_at: new Date().toISOString() })
+    });
+    if (!res.ok) { alert('Save failed — check console.'); return; }
+    await loadFTPHistory();
+    closeFTPModal();
+    if (statsScope === 'cycling') renderStats();
+  } catch(e) { alert('Network error: ' + e.message); }
+}
+
+// ── CYCLING STATS ──────────────────────────────────────────────────────────
+function getCyclingActivities() {
+  // Collect all Ride/VirtualRide activities from stravaActivities
+  const rides = [];
+  Object.entries(stravaActivities).forEach(([date, acts]) => {
+    acts.forEach(a => {
+      if (a.type === 'Ride' || a.type === 'VirtualRide') {
+        rides.push({ ...a, dateStr: date });
+      }
+    });
+  });
+  rides.sort((a,b) => new Date(a.dateStr) - new Date(b.dateStr));
+  return rides;
+}
+
+function rideIF(avgWatts, ftp) {
+  if (!avgWatts || !ftp) return null;
+  return avgWatts / ftp;
+}
+
+function ridePowerZone(avgWatts, ftp) {
+  if (!avgWatts || !ftp) return null;
+  const pct = avgWatts / ftp;
+  if (pct < 0.56) return { z: 1, label: 'Z1 Recovery', color: '#6b7280' };
+  if (pct < 0.76) return { z: 2, label: 'Z2 Endurance', color: '#6eb8f0' };
+  if (pct < 0.91) return { z: 3, label: 'Z3 Tempo', color: '#c8f06e' };
+  if (pct < 1.06) return { z: 4, label: 'Z4 Threshold', color: '#FFA726' };
+  if (pct < 1.21) return { z: 5, label: 'Z5 VO2max', color: '#f06e6e' };
+  return { z: 6, label: 'Z6 Anaerobic', color: '#f06e6e' };
+}
+
+function rideEfficiency(avgWatts, avgHR, ftp) {
+  // Power:HR ratio relative to FTP — higher = more efficient
+  if (!avgWatts || !avgHR) return null;
+  const ifVal = ftp ? avgWatts / ftp : null;
+  const hrPct = avgHR / 190; // assume 190 max HR
+  if (!ifVal) return null;
+  const ratio = ifVal / hrPct;
+  if (ratio >= 0.95) return { label: 'Efficient', color: '#c8f06e', icon: '🟢' };
+  if (ratio >= 0.80) return { label: 'Moderate', color: '#FFA726', icon: '🟠' };
+  return { label: 'Struggling', color: '#f06e6e', icon: '🔴' };
+}
+
+function renderCyclingStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = '';
+  const rides = getCyclingActivities();
+  const ftp = latestFTP();
+
+  if (!rides.length) {
+    container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">No cycling activities found in Strava for this plan period.</div>';
+    return;
+  }
+
+  const totalSecs   = rides.reduce((a,r) => a + (r.moving_time||0), 0);
+  const totalKm     = rides.reduce((a,r) => a + (r.distance||0)/1000, 0);
+  const totalKJ     = rides.reduce((a,r) => a + (r.kilojoules||r.calories||0), 0);
+  const avgPower    = rides.filter(r=>r.average_watts).length
+    ? Math.round(rides.filter(r=>r.average_watts).reduce((a,r)=>a+(r.average_watts||0),0) / rides.filter(r=>r.average_watts).length)
+    : null;
+  const avgHR       = rides.filter(r=>r.average_heartrate).length
+    ? Math.round(rides.filter(r=>r.average_heartrate).reduce((a,r)=>a+(r.average_heartrate||0),0) / rides.filter(r=>r.average_heartrate).length)
+    : null;
+
+  // ── KPI cards ─────────────────────────────────────────────────────────────
+  const kpiGrid = document.createElement('div'); kpiGrid.className = 'stats-kpi-grid';
+  buildStatsKpiCard(kpiGrid, secsToHoursMin(totalSecs), 'blue', 'Total ride time',
+    [{label:'rides', val:rides.length}, {label:'km', val:totalKm.toFixed(0)}]);
+  buildStatsKpiCard(kpiGrid, avgPower ? avgPower + ' W' : '—', 'orange', 'Avg power',
+    ftp ? [{label:'of FTP', val:Math.round(avgPower/ftp*100)+'%'}, {label:'FTP', val:ftp+' W'}]
+        : [{label:'No FTP set', val:'tap FTP button'}]);
+  buildStatsKpiCard(kpiGrid, avgHR ? avgHR + ' bpm' : '—', 'health', 'Avg heart rate',
+    [{label:'rides with HR', val:rides.filter(r=>r.average_heartrate).length}]);
+  if (ftp) {
+    buildStatsKpiCard(kpiGrid, ftp + ' W', 'accent', 'Current FTP',
+      [{label:'recorded', val:new Date(ftpHistory[0].recorded_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})},
+       {label:'entries', val:ftpHistory.length}]);
+  }
+  container.appendChild(kpiGrid);
+
+  // ── FTP progression chart ─────────────────────────────────────────────────
+  if (ftpHistory.length >= 1) {
+    const ftpSec = document.createElement('div'); ftpSec.className = 'stats-section';
+    ftpSec.innerHTML = '<div class="stats-section-title">FTP progression</div>';
+    const ftpWrap = document.createElement('div'); ftpWrap.className = 'stats-pace-chart';
+    ftpWrap.appendChild(buildFTPProgressionSVG(ftpHistory));
+    ftpSec.appendChild(ftpWrap);
+    container.appendChild(ftpSec);
+  }
+
+  // ── Ride table ────────────────────────────────────────────────────────────
+  const tblSec = document.createElement('div'); tblSec.className = 'stats-section';
+  tblSec.innerHTML = '<div class="stats-section-title">Recent rides</div>';
+  const tbl = document.createElement('div');
+  tbl.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:grid;grid-template-columns:80px 1fr 60px 60px 60px 80px;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.07);';
+  hdr.innerHTML = ['Date','Name','Time','Watts','HR','Zone/Eff'].map(h =>
+    '<div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4b5563;">' + h + '</div>'
+  ).join('');
+  tbl.appendChild(hdr);
+
+  [...rides].reverse().slice(0,20).forEach((r,i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:80px 1fr 60px 60px 60px 80px;gap:8px;padding:10px 14px;' +
+      (i % 2 === 0 ? '' : 'background:rgba(255,255,255,0.02);') +
+      'border-bottom:1px solid rgba(255,255,255,0.04);';
+    const dt   = new Date(r.dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const time = r.moving_time ? formatDuration(r.moving_time) : '—';
+    const watts = r.average_watts ? Math.round(r.average_watts) + 'W' : '—';
+    const hr    = r.average_heartrate ? Math.round(r.average_heartrate) + '' : '—';
+    const zone  = ftp && r.average_watts ? ridePowerZone(r.average_watts, ftp) : null;
+    const eff   = rideEfficiency(r.average_watts, r.average_heartrate, ftp);
+    const zoneStr = zone ? zone.label.split(' ')[0] : (eff ? eff.icon : '—');
+    const zoneColor = zone ? zone.color : (eff ? eff.color : '#6b7280');
+    row.innerHTML =
+      '<div style="font-size:11px;color:#6b7280;">' + dt + '</div>' +
+      '<div style="font-size:11px;color:#d1d5db;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name||'Ride') + '</div>' +
+      '<div style="font-size:11px;color:#9ca3af;">' + time + '</div>' +
+      '<div style="font-size:11px;color:#9ca3af;">' + watts + '</div>' +
+      '<div style="font-size:11px;color:#9ca3af;">' + hr + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:' + zoneColor + ';">' + zoneStr + '</div>';
+    tbl.appendChild(row);
+  });
+
+  tblSec.appendChild(tbl);
+  container.appendChild(tblSec);
+
+  // ── FTP improvement tips ──────────────────────────────────────────────────
+  const tipSec = document.createElement('div'); tipSec.className = 'stats-section';
+  tipSec.innerHTML = '<div class="stats-section-title">How to improve FTP</div>';
+  const tipCard = document.createElement('div');
+  tipCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+
+  const z2Rides   = ftp ? rides.filter(r => r.average_watts && rideIF(r.average_watts,ftp) >= 0.56 && rideIF(r.average_watts,ftp) < 0.76).length : 0;
+  const hardRides = ftp ? rides.filter(r => r.average_watts && rideIF(r.average_watts,ftp) >= 0.91).length : 0;
+  const z2Pct     = rides.length ? Math.round(z2Rides/rides.length*100) : 0;
+
+  const tips = [];
+  if (!ftp) {
+    tips.push({ icon:'⚡', title:'Set your FTP first', desc:'Tap the FTP button above to log your current FTP. This unlocks power zone analysis for every ride.' });
+  } else {
+    tips.push({ icon:'🔵', title:'Build your aerobic base with Z2 rides', desc:'Z2 (56–75% FTP) is the most effective zone for improving FTP over time. ' + (z2Pct >= 60 ? 'Good — ' + z2Pct + '% of your rides are Z2.' : 'Only ' + z2Pct + '% of your rides are in Z2. Aim for 2–3 long Z2 rides per week.') });
+    tips.push({ icon:'🔴', title:'Add one threshold interval session per week', desc:'20-minute efforts at 95–100% FTP (Z4) directly stress the threshold system. 2×20 or 3×15 at FTP are the gold standard.' });
+    tips.push({ icon:'📈', title:'Progressive overload', desc:'Increase Z2 ride duration by ~10% per week. Once you can hold 90+ minutes at Z2 comfortably, add a harder session.' });
+    if (hardRides === 0) {
+      tips.push({ icon:'⚠️', title:'No hard sessions detected', desc:'All your rides appear to be endurance or recovery pace. Adding 1 threshold or VO2max session per week will accelerate FTP gains.' });
+    }
+  }
+
+  tips.forEach(tip => {
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);';
+    el.innerHTML =
+      '<span style="font-size:18px;flex-shrink:0;">' + tip.icon + '</span>' +
+      '<div><div style="font-size:12px;font-weight:700;color:#d1d5db;margin-bottom:3px;">' + tip.title + '</div>' +
+      '<div style="font-size:11px;color:#6b7280;line-height:1.5;">' + tip.desc + '</div></div>';
+    tipCard.appendChild(el);
+  });
+
+  tipSec.appendChild(tipCard);
+  container.appendChild(tipSec);
+}
+
+// FTP progression SVG (same style as LT chart, blue instead of orange)
+function buildFTPProgressionSVG(entries) {
+  const revEntries = [...entries].reverse();
+  const W = 600, H = 110, pad = 40;
+  const watts = revEntries.map(e => e.watts);
+  const minW = Math.min(...watts) - 10, maxW = Math.max(...watts) + 10;
+  const xStep = revEntries.length > 1 ? (W - pad*2) / (revEntries.length-1) : 0;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.cssText = `width:100%;height:${H}px;`;
+
+  [0,0.5,1].forEach(t => {
+    const w = Math.round(maxW - t*(maxW-minW));
+    const y = pad + t*(H-pad*2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',pad); line.setAttribute('x2',W-pad);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(255,255,255,0.06)'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',pad-4); txt.setAttribute('y',y+4);
+    txt.setAttribute('fill','#4b5563'); txt.setAttribute('font-size','9'); txt.setAttribute('text-anchor','end');
+    txt.textContent = w+'W'; svg.appendChild(txt);
+  });
+
+  const pts = revEntries.map((e,i) => ({
+    x: pad + i*xStep,
+    y: pad + (1-(e.watts-minW)/(maxW-minW)) * (H-pad*2),
+    e
+  }));
+
+  if (pts.length >= 2) {
+    const areaD = pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ') +
+      ` L${pts[pts.length-1].x},${H-pad} L${pts[0].x},${H-pad} Z`;
+    const area = document.createElementNS('http://www.w3.org/2000/svg','path');
+    area.setAttribute('d',areaD); area.setAttribute('fill','rgba(110,184,240,0.08)');
+    svg.appendChild(area);
+    const lineD = pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+    const lp = document.createElementNS('http://www.w3.org/2000/svg','path');
+    lp.setAttribute('d',lineD); lp.setAttribute('stroke','#6eb8f0');
+    lp.setAttribute('stroke-width','2'); lp.setAttribute('fill','none');
+    lp.setAttribute('stroke-linecap','round'); svg.appendChild(lp);
+  } else {
+    const ref = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ref.setAttribute('x1',pad); ref.setAttribute('x2',W-pad);
+    ref.setAttribute('y1',pts[0]?.y||H/2); ref.setAttribute('y2',pts[0]?.y||H/2);
+    ref.setAttribute('stroke','rgba(110,184,240,0.25)'); ref.setAttribute('stroke-width','1');
+    ref.setAttribute('stroke-dasharray','4,4'); svg.appendChild(ref);
+  }
+
+  pts.forEach(p => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','4');
+    c.setAttribute('fill','#6eb8f0'); c.setAttribute('stroke','#0e0f11'); c.setAttribute('stroke-width','1.5');
+    svg.appendChild(c);
+    const val = document.createElementNS('http://www.w3.org/2000/svg','text');
+    val.setAttribute('x',p.x); val.setAttribute('y',p.y-7);
+    val.setAttribute('fill','#6eb8f0'); val.setAttribute('font-size','9');
+    val.setAttribute('text-anchor','middle'); val.setAttribute('font-weight','700');
+    val.textContent = p.e.watts+'W'; svg.appendChild(val);
+    const dt = new Date(p.e.recorded_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',p.x); lbl.setAttribute('y',H-4);
+    lbl.setAttribute('fill','#4b5563'); lbl.setAttribute('font-size','8'); lbl.setAttribute('text-anchor','middle');
+    lbl.textContent = dt; svg.appendChild(lbl);
+  });
+  return svg;
 }
 
 // ── RACE TIME ESTIMATE ─────────────────────────────────────────────────────
