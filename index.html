@@ -1362,7 +1362,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.9</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8571,6 +8571,10 @@ function renderCyclingStats() {
     ftpSec.innerHTML = '<div class="stats-section-title">FTP progression</div>';
     const ftpWrap = document.createElement('div'); ftpWrap.className = 'stats-pace-chart';
     ftpWrap.appendChild(buildFTPProgressionSVG(ftpHistory));
+    const ftpInfo = document.createElement('div');
+    ftpInfo.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
+    ftpInfo.textContent = 'Your Functional Threshold Power — the highest power you can sustain for about an hour. Improve it with weekly threshold intervals (2x20min or 3x15min at FTP) plus consistent Z2 endurance riding. Re-test every 4-6 weeks to track progress.';
+    ftpWrap.appendChild(ftpInfo);
     ftpSec.appendChild(ftpWrap);
     container.appendChild(ftpSec);
   }
@@ -8594,6 +8598,10 @@ function renderCyclingStats() {
         hint.textContent = 'Analyse more rides to see the trend. Lower percent over time means improving aerobic durability.';
         decWrap.appendChild(hint);
       }
+      const decInfo = document.createElement('div');
+      decInfo.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
+      decInfo.textContent = 'Compares your power-to-heart-rate ratio in the first half of a ride versus the second half. A rising number means your heart works harder for the same power as the ride goes on -- a sign of fatigue or a weak aerobic base. Improve it with more long, steady Z2 rides; under 5% is considered good aerobic durability.';
+      decWrap.appendChild(decInfo);
       decSec.appendChild(decWrap);
       container.appendChild(decSec);
     }
@@ -8607,6 +8615,10 @@ function renderCyclingStats() {
       npSec.innerHTML = '<div class="stats-section-title">Normalised power trend</div>';
       const npWrap = document.createElement('div'); npWrap.className = 'stats-pace-chart';
       npWrap.appendChild(buildNPTrendSVG(npRides));
+      const npInfo = document.createElement('div');
+      npInfo.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
+      npInfo.textContent = 'Normalised Power smooths out the spikes and dips of variable riding (like intervals) to estimate the steady effort that would have felt equivalent. An upward trend over time means you are sustaining higher real fitness, even if average power on any single ride looks similar.';
+      npWrap.appendChild(npInfo);
       npSec.appendChild(npWrap);
       container.appendChild(npSec);
     }
@@ -8614,6 +8626,7 @@ function renderCyclingStats() {
     console.warn('[cycling charts] trend chart error (non-fatal):', e);
   }
 
+  console.log('[cycling] reached ride table section, rides:', rides.length);
   const tblSec = document.createElement('div'); tblSec.className = 'stats-section';
   tblSec.innerHTML = '<div class="stats-section-title">Recent rides</div>';
   const tbl = document.createElement('div');
