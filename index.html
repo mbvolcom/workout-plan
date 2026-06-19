@@ -1349,7 +1349,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.6</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.7</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8626,6 +8626,43 @@ function renderCyclingStats() {
             <span style="font-size:12px;font-weight:700;color:${decouplingColor};">${analysed.decoupling_pct!=null?analysed.decoupling_pct+'%':'\u2014'} \u00b7 ${decouplingLabel}</span>
           </div>
         </div>`;
+
+      // Stream charts (Strava-style) -- render from in-memory cache if available
+      const streamData = rideStreamCache[r.id];
+      if (streamData) {
+        const chartsWrap = document.createElement('div');
+        chartsWrap.style.cssText = 'background:#0e0f11;border-radius:10px;padding:12px;margin-top:8px;';
+        const chartTitle = document.createElement('div');
+        chartTitle.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;margin-bottom:10px;';
+        chartTitle.textContent = 'Ride charts';
+        chartsWrap.appendChild(chartTitle);
+
+        const powerChart = buildRideStreamChart(streamData.watts, streamData.distance, '#c9a8f0', 'W', 'Power');
+        if (powerChart) chartsWrap.appendChild(powerChart);
+        const hrChart = buildRideStreamChart(streamData.hr, streamData.distance, '#f08080', 'bpm', 'Heart Rate');
+        if (hrChart) chartsWrap.appendChild(hrChart);
+        const cadChart = buildRideStreamChart(streamData.cadence, streamData.distance, '#f0a8d8', 'rpm', 'Cadence');
+        if (cadChart) chartsWrap.appendChild(cadChart);
+
+        detail.appendChild(chartsWrap);
+      } else {
+        const refetchBtn = document.createElement('button');
+        refetchBtn.textContent = '\ud83d\udcca Load ride charts';
+        refetchBtn.style.cssText = 'width:100%;padding:9px;margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#9ca3af;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;';
+        refetchBtn.addEventListener('click', async e => {
+          e.stopPropagation();
+          refetchBtn.textContent = 'Loading\u2026'; refetchBtn.disabled = true;
+          try {
+            const token = await getStravaToken();
+            const sres = await fetch(`https://www.strava.com/api/v3/activities/${r.id}/streams?keys=watts,heartrate,cadence,distance&key_by_type=true`,
+              { headers: { 'Authorization': 'Bearer ' + token } });
+            const s = sres.ok ? await sres.json() : {};
+            rideStreamCache[r.id] = { watts: s.watts?.data||null, hr: s.heartrate?.data||null, cadence: s.cadence?.data||null, distance: s.distance?.data||null };
+            renderStats();
+          } catch(err) { refetchBtn.textContent = 'Failed \u2014 retry'; refetchBtn.disabled = false; }
+        });
+        detail.appendChild(refetchBtn);
+      }
     } else {
       const btn = document.createElement('button');
       btn.className = 'ride-analyse-btn';
