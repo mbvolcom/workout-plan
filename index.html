@@ -1362,7 +1362,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.4</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -12077,9 +12077,23 @@ function renderMobileMonth() {
   mc.appendChild(hint);
 }
 
-// Init mobile view on load and on resize/orientation change
-window.addEventListener('resize', ()=>{ if(isMobilePortrait()) { initMobileView(); } });
-window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ if(isMobilePortrait()) initMobileView(); }, 100); });
+// Init mobile view on load and on resize/orientation change.
+// Also re-render desktop weeks when transitioning OUT of mobile portrait,
+// so any edits made on mobile are reflected immediately in the desktop view
+// (and vice versa) without needing a manual refresh.
+let _wasMobilePortrait = isMobilePortrait();
+function handleViewportChange() {
+  const isMobileNow = isMobilePortrait();
+  if (isMobileNow) {
+    initMobileView();
+  } else if (_wasMobilePortrait && !isMobileNow) {
+    // Just switched from mobile portrait to desktop/landscape — rebuild desktop weeks
+    WEEKS.forEach((_, wi) => renderWeek(wi));
+  }
+  _wasMobilePortrait = isMobileNow;
+}
+window.addEventListener('resize', handleViewportChange);
+window.addEventListener('orientationchange', () => { setTimeout(handleViewportChange, 100); });
 let calMode = 'race'; // 'race' or 'month'
 let showPastWeeks = false;
 
