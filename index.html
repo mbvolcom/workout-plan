@@ -1349,7 +1349,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.6</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8508,9 +8508,13 @@ function renderCyclingStats() {
     return;
   }
 
-  if (Object.keys(rideAnalysisCache).length === 0 && !window._rideAnalysisLoading) {
+  if (!window._rideAnalysisCacheLoaded && !window._rideAnalysisLoading) {
     window._rideAnalysisLoading = true;
-    loadRideAnalysisCache().then(() => { window._rideAnalysisLoading = false; renderStats(); });
+    loadRideAnalysisCache().then(() => {
+      window._rideAnalysisLoading = false;
+      window._rideAnalysisCacheLoaded = true; // only ever load once per session
+      renderStats();
+    });
   }
 
   const totalSecs   = rides.reduce((a,r) => a + (r.moving_time||0), 0);
