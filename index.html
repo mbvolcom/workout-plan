@@ -1348,7 +1348,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8328,6 +8328,111 @@ async function saveFTP() {
 }
 
 // ── CYCLING STATS ──────────────────────────────────────────────────────────
+// ── RIDE ANALYSIS (deep stream-based stats, cached in Supabase) ─────────────
+let rideAnalysisCache = {}; // keyed by activity_id
+
+async function loadRideAnalysisCache() {
+  try {
+    const res = await fetch(SUPA_BASE + 'ride_analysis?select=*', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    const rows = await res.json();
+    rideAnalysisCache = {};
+    rows.forEach(r => { rideAnalysisCache[r.activity_id] = r; });
+  } catch(e) { console.warn('[ride analysis] load failed:', e); }
+}
+
+function computePowerZoneSecs(wattsStream, ftp) {
+  if (!ftp || !wattsStream || !wattsStream.length) return null;
+  const zones = { z1:0, z2:0, z3:0, z4:0, z5:0, z6:0 };
+  wattsStream.forEach(w => {
+    const pct = w / ftp;
+    if (pct < 0.56) zones.z1++;
+    else if (pct < 0.76) zones.z2++;
+    else if (pct < 0.91) zones.z3++;
+    else if (pct < 1.06) zones.z4++;
+    else if (pct < 1.21) zones.z5++;
+    else zones.z6++;
+  });
+  return zones; // counts in seconds (1 sample/sec typical)
+}
+
+function computeDecoupling(wattsStream, hrStream) {
+  // Compares power:HR ratio in first half vs second half of the ride
+  // Positive % = HR drifted up relative to power (aerobic fatigue indicator)
+  if (!wattsStream || !hrStream || wattsStream.length < 60) return null;
+  const n = Math.min(wattsStream.length, hrStream.length);
+  const half = Math.floor(n / 2);
+  const avg = arr => arr.reduce((a,b)=>a+b,0) / arr.length;
+  const w1 = avg(wattsStream.slice(0, half).filter(Boolean));
+  const h1 = avg(hrStream.slice(0, half).filter(Boolean));
+  const w2 = avg(wattsStream.slice(half, n).filter(Boolean));
+  const h2 = avg(hrStream.slice(half, n).filter(Boolean));
+  if (!w1 || !h1 || !w2 || !h2) return null;
+  const ratio1 = w1 / h1;
+  const ratio2 = w2 / h2;
+  const decoupling = ((ratio1 - ratio2) / ratio1) * 100;
+  return Math.round(decoupling * 10) / 10;
+}
+
+async function analyseRide(activity, rowEl) {
+  rowEl.querySelector('.ride-analyse-btn').textContent = 'Analysing…';
+  try {
+    const token = await getStravaToken();
+    if (!token) throw new Error('No Strava token');
+
+    // Fetch detailed activity for weighted_average_watts, kilojoules
+    const detailRes = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const detail = await detailRes.json();
+
+    // Fetch streams for decoupling + zone breakdown
+    const streamRes = await fetch(
+      `https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=watts,heartrate,cadence&key_by_type=true`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    const streams = streamRes.ok ? await streamRes.json() : {};
+    const wattsStream = streams.watts?.data || null;
+    const hrStream    = streams.heartrate?.data || null;
+    const cadStream   = streams.cadence?.data || null;
+
+    const ftp = latestFTP();
+    const zoneSecs = computePowerZoneSecs(wattsStream, ftp);
+    const decoupling = computeDecoupling(wattsStream, hrStream);
+    const avgCadence = cadStream && cadStream.length
+      ? Math.round(cadStream.filter(Boolean).reduce((a,b)=>a+b,0) / cadStream.filter(Boolean).length)
+      : null;
+
+    const row = {
+      activity_id: activity.id,
+      activity_name: activity.name,
+      activity_date: activity.dateStr,
+      avg_watts: detail.average_watts ? Math.round(detail.average_watts) : null,
+      max_watts: detail.max_watts ? Math.round(detail.max_watts) : null,
+      weighted_avg_watts: detail.weighted_average_watts ? Math.round(detail.weighted_average_watts) : null,
+      kilojoules: detail.kilojoules || null,
+      avg_hr: detail.average_heartrate ? Math.round(detail.average_heartrate) : null,
+      max_hr: detail.max_heartrate ? Math.round(detail.max_heartrate) : null,
+      avg_cadence: avgCadence,
+      decoupling_pct: decoupling,
+      power_zone_secs: zoneSecs,
+      analysed_at: new Date().toISOString()
+    };
+
+    await fetch(SUPA_BASE + 'ride_analysis?on_conflict=activity_id', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(row)
+    });
+
+    rideAnalysisCache[activity.id] = row;
+    renderStats(); // re-render to show the analysed data
+  } catch(e) {
+    console.error('[ride analysis] failed:', e);
+    rowEl.querySelector('.ride-analyse-btn').textContent = 'Failed — retry';
+  }
+}
+
 function getCyclingActivities() {
   // Collect all Ride/VirtualRide activities from stravaActivities
   const rides = [];
@@ -8381,6 +8486,11 @@ function renderCyclingStats() {
     return;
   }
 
+  if (Object.keys(rideAnalysisCache).length === 0 && !window._rideAnalysisLoading) {
+    window._rideAnalysisLoading = true;
+    loadRideAnalysisCache().then(() => { window._rideAnalysisLoading = false; renderStats(); });
+  }
+
   const totalSecs   = rides.reduce((a,r) => a + (r.moving_time||0), 0);
   const totalKm     = rides.reduce((a,r) => a + (r.distance||0)/1000, 0);
   const totalKJ     = rides.reduce((a,r) => a + (r.kilojoules||r.calories||0), 0);
@@ -8432,10 +8542,11 @@ function renderCyclingStats() {
   tbl.appendChild(hdr);
 
   [...rides].reverse().slice(0,20).forEach((r,i) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = (i % 2 === 0 ? '' : 'background:rgba(255,255,255,0.02);') + 'border-bottom:1px solid rgba(255,255,255,0.04);';
+
     const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:80px 1fr 60px 60px 60px 80px;gap:8px;padding:10px 14px;' +
-      (i % 2 === 0 ? '' : 'background:rgba(255,255,255,0.02);') +
-      'border-bottom:1px solid rgba(255,255,255,0.04);';
+    row.style.cssText = 'display:grid;grid-template-columns:80px 1fr 60px 60px 60px 80px;gap:8px;padding:10px 14px;cursor:pointer;';
     const dt   = new Date(r.dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     const time = r.moving_time ? formatDuration(r.moving_time) : '—';
     const watts = r.average_watts ? Math.round(r.average_watts) + 'W' : '—';
@@ -8451,7 +8562,62 @@ function renderCyclingStats() {
       '<div style="font-size:11px;color:#9ca3af;">' + watts + '</div>' +
       '<div style="font-size:11px;color:#9ca3af;">' + hr + '</div>' +
       '<div style="font-size:11px;font-weight:700;color:' + zoneColor + ';">' + zoneStr + '</div>';
-    tbl.appendChild(row);
+
+    const analysed = rideAnalysisCache[r.id];
+    const detail = document.createElement('div');
+    detail.style.cssText = 'display:none;padding:0 14px 14px;';
+
+    if (analysed) {
+      const zones = analysed.power_zone_secs;
+      const totalZoneSecs = zones ? Object.values(zones).reduce((a,b)=>a+b,0) : 0;
+      const zoneBarHtml = zones && totalZoneSecs > 0 ? `
+        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin:8px 0;">
+          ${['z1','z2','z3','z4','z5','z6'].map((z,zi) => {
+            const pct = (zones[z]/totalZoneSecs*100);
+            const colors = ['#6b7280','#6eb8f0','#c8f06e','#FFA726','#f06e6e','#f06e6e'];
+            return pct > 0 ? `<div style="width:${pct}%;background:${colors[zi]};" title="Z${zi+1}: ${Math.round(pct)}%"></div>` : '';
+          }).join('')}
+        </div>` : '';
+
+      const decouplingColor = analysed.decoupling_pct == null ? '#6b7280'
+        : analysed.decoupling_pct <= 5 ? '#c8f06e'
+        : analysed.decoupling_pct <= 10 ? '#FFA726' : '#f06e6e';
+      const decouplingLabel = analysed.decoupling_pct == null ? 'No data'
+        : analysed.decoupling_pct <= 5 ? 'Good aerobic durability'
+        : analysed.decoupling_pct <= 10 ? 'Moderate drift' : 'Significant drift';
+
+      detail.innerHTML = `
+        <div style="background:#0e0f11;border-radius:10px;padding:12px;margin-top:4px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px;">
+            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">NP</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.weighted_avg_watts||'—'}W</div></div>
+            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">Work</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.kilojoules?Math.round(analysed.kilojoules):'—'}kJ</div></div>
+            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">Cadence</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.avg_cadence||'—'}rpm</div></div>
+          </div>
+          ${zoneBarHtml}
+          <div style="font-size:10px;color:#4b5563;margin-bottom:6px;">Power zone distribution (Z1→Z6)</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:11px;color:#9ca3af;">Aerobic decoupling</span>
+            <span style="font-size:12px;font-weight:700;color:${decouplingColor};">${analysed.decoupling_pct!=null?analysed.decoupling_pct+'%':'—'} · ${decouplingLabel}</span>
+          </div>
+        </div>`;
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'ride-analyse-btn';
+      btn.textContent = '🔍 Analyse ride (fetch full data from Strava)';
+      btn.style.cssText = 'width:100%;padding:10px;margin-top:4px;background:rgba(110,184,240,0.1);border:1px solid rgba(110,184,240,0.3);border-radius:8px;color:#6eb8f0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;';
+      btn.addEventListener('click', e => { e.stopPropagation(); analyseRide(r, wrap); });
+      detail.appendChild(btn);
+    }
+
+    let expanded = false;
+    row.addEventListener('click', () => {
+      expanded = !expanded;
+      detail.style.display = expanded ? 'block' : 'none';
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(detail);
+    tbl.appendChild(wrap);
   });
 
   tblSec.appendChild(tbl);
