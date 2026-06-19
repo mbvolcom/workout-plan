@@ -1362,7 +1362,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.16.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8108,6 +8108,248 @@ function renderStats() {
   // Sterk Gutt stats moved to dedicated app
   renderRunningStats();
   renderIntervalStats(); // appended at bottom of running tab
+  renderLongRunFatigue(); // appended after interval history
+}
+
+// ── LONG RUN FATIGUE INDEX ───────────────────────────────────────────────────
+let longRunFatigueCache = {}; // keyed by activity_id, loaded from Supabase
+
+async function loadLongRunFatigueCache() {
+  try {
+    const res = await fetch(SUPA_BASE + 'long_run_fatigue?select=*', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    const rows = await res.json();
+    longRunFatigueCache = {};
+    rows.forEach(r => { longRunFatigueCache[r.activity_id] = r; });
+  } catch(e) { console.warn('[fatigue] load failed:', e); }
+}
+
+function getAllLongRuns() {
+  // Find all Strava run activities matched to a 'long' prefix day, across all weeks
+  const longRuns = [];
+  WEEKS.forEach((w, wi) => {
+    const s = ats(wi);
+    const [y,m,d] = WEEK_MONDAYS[wi];
+    DAYS.forEach((_, di) => {
+      const runVal = s.runs[di];
+      const prefix = runVal ? runVal.split(':')[0] : '';
+      if (prefix !== 'long') return;
+      const acts = getStravaForDay(wi, di, 'runs');
+      if (acts) acts.forEach(a => {
+        const dt = new Date(y, m-1, d+di);
+        const dateStr = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+        longRuns.push({ ...a, dateStr });
+      });
+    });
+  });
+  longRuns.sort((a,b) => new Date(a.dateStr) - new Date(b.dateStr));
+  return longRuns;
+}
+
+async function analyseLongRunFatigue(activity, btnEl) {
+  btnEl.textContent = 'Analysing\u2026'; btnEl.disabled = true;
+  try {
+    const token = await getStravaToken();
+    if (!token) throw new Error('No Strava token');
+    const res = await fetch('https://www.strava.com/api/v3/activities/' + activity.id, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const full = await res.json();
+    const splits = full.splits_metric;
+    if (!splits || splits.length < 3) {
+      btnEl.textContent = 'Not enough split data';
+      return;
+    }
+    const third = Math.floor(splits.length / 3);
+    const firstThird = splits.slice(0, third);
+    const lastThird = splits.slice(-third);
+    const paceOf = arr => {
+      const totalDist = arr.reduce((a,s)=>a+s.distance,0);
+      const totalTime = arr.reduce((a,s)=>a+s.moving_time,0);
+      return totalDist > 0 ? totalTime / totalDist * 1000 : null; // sec/km
+    };
+    const firstPace = paceOf(firstThird);
+    const lastPace = paceOf(lastThird);
+    if (!firstPace || !lastPace) { btnEl.textContent = 'No pace data'; return; }
+    const fatiguePct = Math.round(((lastPace - firstPace) / firstPace) * 1000) / 10;
+
+    const row = {
+      activity_id: activity.id,
+      activity_date: activity.dateStr,
+      activity_name: activity.name,
+      first_third_pace_secs: Math.round(firstPace),
+      last_third_pace_secs: Math.round(lastPace),
+      fatigue_pct: fatiguePct,
+      total_km: Math.round((activity.distance||0)/100)/10,
+      analysed_at: new Date().toISOString()
+    };
+
+    await fetch(SUPA_BASE + 'long_run_fatigue?on_conflict=activity_id', {
+      method: 'POST',
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(row)
+    });
+
+    longRunFatigueCache[activity.id] = row;
+    renderStats();
+  } catch(e) {
+    console.error('[fatigue] analysis failed:', e);
+    btnEl.textContent = 'Failed \u2014 retry'; btnEl.disabled = false;
+  }
+}
+
+function fatigueColor(pct) {
+  if (pct == null) return '#6b7280';
+  if (pct <= 10) return '#c8f06e';
+  if (pct <= 15) return '#FFA726';
+  return '#f06e6e';
+}
+
+function fatigueLabel(pct) {
+  if (pct == null) return 'No data';
+  if (pct <= 0) return 'Negative split \u2014 excellent pacing';
+  if (pct <= 10) return 'Well paced';
+  if (pct <= 15) return 'Moderate fade';
+  return 'Significant fade';
+}
+
+async function renderLongRunFatigue() {
+  const container = document.getElementById('stats-content');
+
+  const sectionHdr = document.createElement('div');
+  sectionHdr.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;';
+  sectionHdr.textContent = '\ud83c\udfc3 Long run fatigue index';
+  container.appendChild(sectionHdr);
+
+  const infoLine = document.createElement('div');
+  infoLine.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;padding:0 20px 12px;';
+  infoLine.textContent = 'Compares your pace in the first third of a long run to the last third. A well-executed long run typically slows 5-10% as fatigue builds; beyond 15% suggests starting too fast.';
+  container.appendChild(infoLine);
+
+  if (Object.keys(longRunFatigueCache).length === 0 && !window._fatigueCacheLoaded) {
+    await loadLongRunFatigueCache();
+    window._fatigueCacheLoaded = true;
+  }
+
+  const longRuns = getAllLongRuns();
+  if (!longRuns.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:0 20px 20px;color:#4b5563;font-size:13px;';
+    empty.textContent = 'No long runs with Strava data found yet.';
+    container.appendChild(empty);
+    return;
+  }
+
+  // Trend chart if 2+ analysed
+  const analysed = longRuns
+    .map(r => ({ r, f: longRunFatigueCache[r.id] }))
+    .filter(x => x.f)
+    .sort((a,b) => new Date(a.r.dateStr) - new Date(b.r.dateStr));
+
+  if (analysed.length >= 2) {
+    const chartWrap = document.createElement('div');
+    chartWrap.className = 'stats-pace-chart';
+    chartWrap.style.margin = '0 20px 16px';
+    chartWrap.appendChild(buildFatigueTrendSVG(analysed));
+    container.appendChild(chartWrap);
+  }
+
+  // List of long runs, newest first
+  [...longRuns].reverse().forEach(r => {
+    const f = longRunFatigueCache[r.id];
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;margin:0 20px 8px;padding:12px 14px;';
+
+    const dt = new Date(r.dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const km = ((r.distance||0)/1000).toFixed(1);
+
+    if (f) {
+      const color = fatigueColor(f.fatigue_pct);
+      card.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<div><div style="font-size:12px;font-weight:600;color:#d1d5db;">' + (r.name||'Long run') + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + ' \u00b7 ' + km + 'km</div></div>' +
+          '<div style="text-align:right;"><div style="font-size:16px;font-weight:800;color:' + color + ';">' + (f.fatigue_pct>0?'+':'') + f.fatigue_pct + '%</div>' +
+          '<div style="font-size:10px;color:' + color + ';">' + fatigueLabel(f.fatigue_pct) + '</div></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);font-size:11px;color:#9ca3af;">' +
+          '<span>First third: ' + secsToMinSec(f.first_third_pace_secs) + '/km</span>' +
+          '<span>Last third: ' + secsToMinSec(f.last_third_pace_secs) + '/km</span>' +
+        '</div>';
+    } else {
+      const infoDiv = document.createElement('div');
+      infoDiv.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+      infoDiv.innerHTML =
+        '<div><div style="font-size:12px;font-weight:600;color:#d1d5db;">' + (r.name||'Long run') + '</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + ' \u00b7 ' + km + 'km</div></div>';
+      card.appendChild(infoDiv);
+      const btn = document.createElement('button');
+      btn.textContent = '\ud83d\udd0d Analyse pacing';
+      btn.style.cssText = 'width:100%;padding:8px;background:rgba(252,76,2,0.1);border:1px solid rgba(252,76,2,0.3);border-radius:8px;color:#FC4C02;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;';
+      btn.addEventListener('click', () => analyseLongRunFatigue(r, btn));
+      card.appendChild(btn);
+    }
+    container.appendChild(card);
+  });
+}
+
+function buildFatigueTrendSVG(analysed) {
+  const W = 600, H = 110, pad = 36;
+  const vals = analysed.map(a => a.f.fatigue_pct);
+  const minV = Math.min(0, Math.min(...vals) - 3);
+  const maxV = Math.max(20, Math.max(...vals) + 3);
+  const xStep = analysed.length > 1 ? (W - pad*2) / (analysed.length-1) : 0;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.style.cssText = 'width:100%;height:' + H + 'px;';
+
+  [0,0.5,1].forEach(t => {
+    const v = Math.round(maxV - t*(maxV-minV));
+    const y = pad + t*(H-pad*2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',pad); line.setAttribute('x2',W-pad);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(255,255,255,0.06)'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',pad-4); txt.setAttribute('y',y+4);
+    txt.setAttribute('fill','#4b5563'); txt.setAttribute('font-size','9'); txt.setAttribute('text-anchor','end');
+    txt.textContent = v+'%'; svg.appendChild(txt);
+  });
+
+  const pts = analysed.map((a,i) => ({
+    x: pad + i*xStep,
+    y: pad + (1-(a.f.fatigue_pct-minV)/(maxV-minV)) * (H-pad*2),
+    a
+  }));
+
+  if (pts.length >= 2) {
+    const lineD = pts.map((p,i)=> (i===0?'M':'L') + p.x + ',' + p.y).join(' ');
+    const lp = document.createElementNS('http://www.w3.org/2000/svg','path');
+    lp.setAttribute('d',lineD); lp.setAttribute('stroke','#c8f06e');
+    lp.setAttribute('stroke-width','2'); lp.setAttribute('fill','none');
+    lp.setAttribute('stroke-linecap','round'); svg.appendChild(lp);
+  }
+
+  pts.forEach(p => {
+    const color = fatigueColor(p.a.f.fatigue_pct);
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','4');
+    c.setAttribute('fill',color); c.setAttribute('stroke','#0e0f11'); c.setAttribute('stroke-width','1.5');
+    svg.appendChild(c);
+    const val = document.createElementNS('http://www.w3.org/2000/svg','text');
+    val.setAttribute('x',p.x); val.setAttribute('y',p.y-7);
+    val.setAttribute('fill',color); val.setAttribute('font-size','9');
+    val.setAttribute('text-anchor','middle'); val.setAttribute('font-weight','700');
+    val.textContent = (p.a.f.fatigue_pct>0?'+':'')+p.a.f.fatigue_pct+'%'; svg.appendChild(val);
+    const dt = new Date(p.a.r.dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',p.x); lbl.setAttribute('y',H-4);
+    lbl.setAttribute('fill','#4b5563'); lbl.setAttribute('font-size','8'); lbl.setAttribute('text-anchor','middle');
+    lbl.textContent = dt; svg.appendChild(lbl);
+  });
+  return svg;
 }
 
 async function renderIntervalStats() {
@@ -9762,6 +10004,13 @@ function renderRunningStats() {
   try { weeks = buildStatsWeeks(); }
   catch(e) { container.innerHTML=`<div style="color:#f06e6e;padding:20px;font-size:12px;">Error building stats: ${e.message}</div>`; console.error(e); return; }
 
+  // "Active plan" should only show weeks that are actually part of the plan
+  // (i.e. have planned km > 0) — exclude empty buffer/placeholder weeks.
+  // "All time" keeps every week, including ones beyond the active plan.
+  if (statsScope === 'plan') {
+    weeks = weeks.filter(wk => wk.plannedKm > 0);
+  }
+
   // ── KPIs ──────────────────────────────────────────────────────────────────
   const totalPlannedKm    = weeks.reduce((a,wk)=>a+wk.plannedKm,0);
   const totalActualKm     = weeks.reduce((a,wk)=>a+wk.actualKm,0);
@@ -9864,6 +10113,35 @@ function renderRunningStats() {
   // Total training card
   buildTotalTrainingCard(kpiGrid, weeks, true);
   container.appendChild(kpiGrid);
+
+  // ── PACE VS HR TREND ──────────────────────────────────────────────────────
+  try {
+    const pvhPoints = weeks
+      .filter(wk => wk.paceRuns.length > 0)
+      .map(wk => ({
+        label: wk.shortLabel,
+        pace: (wk.paceRuns.reduce((a,b)=>a+b,0)/wk.paceRuns.length) * 60, // sec/km
+        hr: wk.hrRuns.length ? wk.hrRuns.reduce((a,b)=>a+b,0)/wk.hrRuns.length : null
+      }));
+    if (pvhPoints.length >= 2) {
+      const pvhSection = document.createElement('div'); pvhSection.className = 'stats-section';
+      pvhSection.innerHTML = '<div class="stats-section-title">Pace vs heart rate trend</div>';
+      const pvhWrap = document.createElement('div'); pvhWrap.className = 'stats-pace-chart';
+      pvhWrap.appendChild(buildPaceHRTrendSVG(pvhPoints));
+      const pvhLegend = document.createElement('div');
+      pvhLegend.style.cssText = 'display:flex;gap:16px;margin-top:8px;font-size:10px;';
+      pvhLegend.innerHTML =
+        '<span style="color:#FC4C02;">─ Easy pace</span>' +
+        '<span style="color:#f08080;">┄ Avg HR</span>';
+      pvhWrap.appendChild(pvhLegend);
+      const pvhInfo = document.createElement('div');
+      pvhInfo.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
+      pvhInfo.textContent = 'Tracks your easy run pace alongside average heart rate, week by week. If pace gets faster while HR stays flat or drops, that is a clear sign your aerobic fitness is improving -- independent of how fast you happened to run that particular week.';
+      pvhWrap.appendChild(pvhInfo);
+      pvhSection.appendChild(pvhWrap);
+      container.appendChild(pvhSection);
+    }
+  } catch(e) { console.warn('[pace vs hr] chart error:', e); }
 
   // ── RACE TIME ESTIMATE ────────────────────────────────────────────────────
   const estSection = document.createElement('div'); estSection.className = 'stats-section';
@@ -11086,7 +11364,7 @@ function buildStatsWeeks() {
     let plannedKm=0, actualKm=0, plannedRuns=0, doneRuns=0, totalSecs=0, longestRun=0;
     let easyRuns=0, qualityRuns=0, longRuns=0;
     let runSecs=0, rideSecs=0, swimSecs=0, strSecs=0;
-    const paceRuns=[], days=[];
+    const paceRuns=[], hrRuns=[], days=[];
 
     DAYS.forEach((_,di) => {
       const dt = new Date(y,m-1,d+di);
@@ -11114,7 +11392,10 @@ function buildStatsWeeks() {
           actualKm+=(a.distance||0)/1000;
           totalSecs+=a.moving_time||0;
           if(a.distance>longestRun) longestRun=a.distance;
-          if(a.distance&&a.moving_time&&(prefix==='easy'||prefix==='easy-pm')) paceRuns.push(a.moving_time/a.distance*1000/60);
+          if(a.distance&&a.moving_time&&(prefix==='easy'||prefix==='easy-pm')) {
+            paceRuns.push(a.moving_time/a.distance*1000/60);
+            if (a.average_heartrate) hrRuns.push(a.average_heartrate);
+          }
         });
         if (prefix==='long')                            longRuns++;
         else if (prefix==='quality'||prefix==='kinder') qualityRuns++;
@@ -11137,7 +11418,7 @@ function buildStatsWeeks() {
       phase: w.phase || lastPhase(wi),
       dates:w.dates, plannedKm, actualKm,
       plannedSessions: plannedRuns, doneSessions: doneRuns,
-      totalSecs, longestRun, paceRuns, days, isCurrent,
+      totalSecs, longestRun, paceRuns, hrRuns, days, isCurrent,
       easyRuns, qualityRuns, longRuns,
       runSecs, rideSecs, swimSecs, strSecs,
       month: `${MONTH_NAMES[m-1]} ${y}`,
@@ -11307,6 +11588,97 @@ function buildEstimateHistorySVG(history) {
     lbl.setAttribute('fill', '#4b5563'); lbl.setAttribute('font-size', '8'); lbl.setAttribute('text-anchor', 'middle');
     lbl.textContent = dt;
     svg.appendChild(lbl);
+  });
+
+  return svg;
+}
+
+function buildPaceHRTrendSVG(points) {
+  // points: [{ label, pace (sec/km), hr }]
+  const W = 600, H = 130, pad = { l: 42, r: 42, t: 12, b: 22 };
+  const innerW = W - pad.l - pad.r, innerH = H - pad.t - pad.b;
+  const xStep = points.length > 1 ? innerW / (points.length - 1) : 0;
+
+  const paces = points.map(p => p.pace);
+  const hrs   = points.filter(p => p.hr).map(p => p.hr);
+  const minPace = Math.min(...paces) - 10, maxPace = Math.max(...paces) + 10;
+  const minHR = hrs.length ? Math.min(...hrs) - 5 : 100;
+  const maxHR = hrs.length ? Math.max(...hrs) + 5 : 180;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.cssText = `width:100%;height:${H}px;`;
+
+  // Gridlines
+  [0, 0.5, 1].forEach(t => {
+    const y = pad.t + t * innerH;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', pad.l); line.setAttribute('x2', W - pad.r);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'rgba(255,255,255,0.06)'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+  });
+
+  // Pace line (left axis, orange) — inverted since faster pace = lower number = higher on chart visually
+  const pacePts = points.map((p,i) => ({
+    x: pad.l + i*xStep,
+    y: pad.t + (1 - (maxPace - p.pace) / (maxPace - minPace)) * innerH,
+    p
+  }));
+  const paceLineD = pacePts.map((pt,i) => `${i===0?'M':'L'}${pt.x},${pt.y}`).join(' ');
+  const paceLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  paceLine.setAttribute('d', paceLineD); paceLine.setAttribute('stroke', '#FC4C02');
+  paceLine.setAttribute('stroke-width', '2'); paceLine.setAttribute('fill', 'none');
+  paceLine.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(paceLine);
+  pacePts.forEach(pt => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.setAttribute('r', '3.5');
+    c.setAttribute('fill', '#FC4C02'); c.setAttribute('stroke', '#0e0f11'); c.setAttribute('stroke-width', '1.2');
+    svg.appendChild(c);
+  });
+
+  // HR line (right axis, red) — only for points that have HR data
+  const hrPtsRaw = points.map((p,i) => p.hr ? { x: pad.l + i*xStep, y: pad.t + (1 - (p.hr - minHR) / (maxHR - minHR)) * innerH, p } : null);
+  const hrPts = hrPtsRaw.filter(Boolean);
+  if (hrPts.length >= 2) {
+    const hrLineD = hrPts.map((pt,i) => `${i===0?'M':'L'}${pt.x},${pt.y}`).join(' ');
+    const hrLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    hrLine.setAttribute('d', hrLineD); hrLine.setAttribute('stroke', '#f08080');
+    hrLine.setAttribute('stroke-width', '2'); hrLine.setAttribute('fill', 'none');
+    hrLine.setAttribute('stroke-linecap', 'round'); hrLine.setAttribute('stroke-dasharray', '4,3');
+    svg.appendChild(hrLine);
+  }
+  hrPts.forEach(pt => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.setAttribute('r', '3.5');
+    c.setAttribute('fill', '#f08080'); c.setAttribute('stroke', '#0e0f11'); c.setAttribute('stroke-width', '1.2');
+    svg.appendChild(c);
+  });
+
+  // X-axis week labels
+  points.forEach((p,i) => {
+    const x = pad.l + i*xStep;
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', x); txt.setAttribute('y', H - 4);
+    txt.setAttribute('fill', '#4b5563'); txt.setAttribute('font-size', '8'); txt.setAttribute('text-anchor', 'middle');
+    txt.textContent = p.label; svg.appendChild(txt);
+  });
+
+  // Y-axis labels — pace (left, orange) and HR (right, red)
+  [0, 0.5, 1].forEach(t => {
+    const y = pad.t + t * innerH;
+    const paceVal = Math.round(maxPace - t * (maxPace - minPace));
+    const paceTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    paceTxt.setAttribute('x', pad.l - 4); paceTxt.setAttribute('y', y + 3);
+    paceTxt.setAttribute('fill', '#FC4C02'); paceTxt.setAttribute('font-size', '8'); paceTxt.setAttribute('text-anchor', 'end');
+    paceTxt.textContent = secsToMinSec(paceVal); svg.appendChild(paceTxt);
+
+    const hrVal = Math.round(maxHR - t * (maxHR - minHR));
+    const hrTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    hrTxt.setAttribute('x', W - pad.r + 4); hrTxt.setAttribute('y', y + 3);
+    hrTxt.setAttribute('fill', '#f08080'); hrTxt.setAttribute('font-size', '8'); hrTxt.setAttribute('text-anchor', 'start');
+    hrTxt.textContent = hrVal + 'bpm'; svg.appendChild(hrTxt);
   });
 
   return svg;
