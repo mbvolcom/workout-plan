@@ -1362,7 +1362,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8373,7 +8373,8 @@ async function saveFTP() {
 
 // ── CYCLING STATS ──────────────────────────────────────────────────────────
 // ── RIDE ANALYSIS (deep stream-based stats, cached in Supabase) ─────────────
-let rideAnalysisCache = {}; // keyed by activity_id
+let rideAnalysisCache = {}; // keyed by activity_id, persisted in Supabase
+let rideStreamCache = {}; // keyed by activity_id, in-memory only (cleared on reload)
 
 async function loadRideAnalysisCache() {
   try {
@@ -8383,6 +8384,76 @@ async function loadRideAnalysisCache() {
     rideAnalysisCache = {};
     rows.forEach(r => { rideAnalysisCache[r.activity_id] = r; });
   } catch(e) { console.warn('[ride analysis] load failed:', e); }
+}
+
+// Strava-style filled area chart for a single stream (power/hr/cadence vs distance)
+function buildRideStreamChart(stream, distStream, color, unit, label) {
+  if (!stream || !stream.length) return null;
+  const W = 600, H = 90, pad = { l: 36, r: 8, t: 8, b: 18 };
+  const innerW = W - pad.l - pad.r, innerH = H - pad.t - pad.b;
+
+  const hasDist = distStream && distStream.length === stream.length;
+  const maxDist = hasDist ? distStream[distStream.length - 1] / 1000 : stream.length;
+
+  const targetPoints = 150;
+  const step = Math.max(1, Math.floor(stream.length / targetPoints));
+  const pts = [];
+  for (let i = 0; i < stream.length; i += step) {
+    const val = stream[i];
+    if (val == null) continue;
+    const x = hasDist ? (distStream[i] / 1000 / maxDist) * innerW : (i / stream.length) * innerW;
+    pts.push({ x: pad.l + x, val });
+  }
+  if (pts.length < 2) return null;
+
+  const maxVal = Math.max(...pts.map(p => p.val)) * 1.1;
+  const minVal = 0;
+
+  pts.forEach(p => { p.y = pad.t + innerH - ((p.val - minVal) / (maxVal - minVal)) * innerH; });
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.cssText = `width:100%;height:${H}px;display:block;`;
+
+  [0.5, 1].forEach(t => {
+    const y = pad.t + innerH * (1 - t);
+    const v = Math.round(maxVal * t);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', pad.l); line.setAttribute('x2', W - pad.r);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', 'rgba(255,255,255,0.06)'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', pad.l - 4); txt.setAttribute('y', y + 3);
+    txt.setAttribute('fill', '#4b5563'); txt.setAttribute('font-size', '8'); txt.setAttribute('text-anchor', 'end');
+    txt.textContent = v; svg.appendChild(txt);
+  });
+
+  const areaD = pts.map((p,i) => `${i===0?'M':'L'}${p.x},${p.y}`).join(' ') +
+    ` L${pts[pts.length-1].x},${pad.t+innerH} L${pts[0].x},${pad.t+innerH} Z`;
+  const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  area.setAttribute('d', areaD); area.setAttribute('fill', color); area.setAttribute('opacity', '0.85');
+  svg.appendChild(area);
+
+  if (hasDist) {
+    [0.25, 0.5, 0.75, 1].forEach(t => {
+      const x = pad.l + innerW * t;
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', x); txt.setAttribute('y', H - 4);
+      txt.setAttribute('fill', '#4b5563'); txt.setAttribute('font-size', '8'); txt.setAttribute('text-anchor', 'middle');
+      txt.textContent = Math.round(maxDist * t) + 'km';
+      svg.appendChild(txt);
+    });
+  }
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:10px;';
+  const lbl = document.createElement('div');
+  lbl.style.cssText = 'font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;margin-bottom:4px;';
+  lbl.textContent = label + ' (' + unit + ')';
+  wrap.appendChild(lbl);
+  wrap.appendChild(svg);
+  return wrap;
 }
 
 function computePowerZoneSecs(wattsStream, ftp) {
@@ -8430,15 +8501,19 @@ async function analyseRide(activity, rowEl) {
     });
     const detail = await detailRes.json();
 
-    // Fetch streams for decoupling + zone breakdown
+    // Fetch streams for decoupling + zone breakdown + charts
     const streamRes = await fetch(
-      `https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=watts,heartrate,cadence&key_by_type=true`,
+      `https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=watts,heartrate,cadence,distance&key_by_type=true`,
       { headers: { 'Authorization': 'Bearer ' + token } }
     );
     const streams = streamRes.ok ? await streamRes.json() : {};
     const wattsStream = streams.watts?.data || null;
     const hrStream    = streams.heartrate?.data || null;
     const cadStream   = streams.cadence?.data || null;
+    const distStream  = streams.distance?.data || null;
+
+    // Cache raw streams in memory for chart rendering this session
+    rideStreamCache[activity.id] = { watts: wattsStream, hr: hrStream, cadence: cadStream, distance: distStream };
 
     const ftp = latestFTP();
     const zoneSecs = computePowerZoneSecs(wattsStream, ftp);
