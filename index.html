@@ -968,6 +968,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #stats-back:hover { color:#f0ede8; border-color:rgba(255,255,255,0.3); }
 #stats-title { font-size:16px; font-weight:700; color:#f0ede8; flex:1; }
 #stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; margin-bottom:4px; display:inline-flex; }
+.stats-sport-btn.active { background:#f0ede8; color:#0e0f11 !important; }
 #lt-pace-input:focus { border-color:rgba(252,76,2,0.6); box-shadow:0 0 0 3px rgba(252,76,2,0.12); }
 .race-est-card { background:linear-gradient(135deg,#1a1d22 0%,#16181c 100%); border:1px solid rgba(252,76,2,0.25); border-radius:16px; padding:20px; margin:0 0 0; }
 .race-est-headline { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#FC4C02; margin-bottom:12px; }
@@ -1348,7 +1349,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1517,15 +1518,27 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div id="stats-title">Statistics</div>
       <div id="stats-tab-toggle" style="display:none;"></div>
     </div>
+
+    <!-- Sport selector: Running vs Cycling -->
+    <div style="padding:10px 20px 0;">
+      <div id="stats-sport-toggle" style="display:flex;gap:2px;background:rgba(255,255,255,0.05);border-radius:8px;padding:2px;">
+        <button class="stats-sport-btn active" data-sport="running" onclick="setStatsSport('running')" style="flex:1;padding:7px 10px;border:none;background:none;color:#9ca3af;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🏃 Running</button>
+        <button class="stats-sport-btn" data-sport="cycling" onclick="setStatsSport('cycling')" style="flex:1;padding:7px 10px;border:none;background:none;color:#9ca3af;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🚴 Cycling</button>
+      </div>
+    </div>
+
     <div id="stats-running-header" style="padding:10px 20px 0;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div id="stats-scope-toggle">
           <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
           <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
           <button class="stats-scope-btn" data-scope="week" onclick="setStatsScope('week')">Week</button>
-          <button class="stats-scope-btn" data-scope="cycling" onclick="setStatsScope('cycling')">🚴 Cycling</button>
         </div>
         <button id="lt-input-btn" onclick="openLTModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(252,76,2,0.4);background:rgba(252,76,2,0.1);color:#FC4C02;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">LT Pace</button>
+      </div>
+    </div>
+    <div id="stats-cycling-header" style="padding:10px 20px 0;display:none;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <button id="ftp-input-btn" onclick="openFTPModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(110,184,240,0.4);background:rgba(110,184,240,0.1);color:#6eb8f0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">FTP</button>
       </div>
     </div>
@@ -7916,6 +7929,7 @@ function renderStrLoggedBody(dateStr) {
 }
 let statsScope = 'plan';
 let statsTab   = 'running';
+let statsSport = 'running'; // 'running' | 'cycling'
 let statsWeekIdx = -1; // -1 = use current week
 
 function openStatsPage() {
@@ -7937,6 +7951,14 @@ function openStatsPage() {
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
 }
+function setStatsSport(sport) {
+  statsSport = sport;
+  document.querySelectorAll('.stats-sport-btn').forEach(b => b.classList.toggle('active', b.dataset.sport === sport));
+  document.getElementById('stats-running-header').style.display = sport === 'running' ? 'block' : 'none';
+  document.getElementById('stats-cycling-header').style.display = sport === 'cycling' ? 'block' : 'none';
+  renderStats();
+}
+
 function setStatsScope(scope) {
   statsScope = scope;
   if (scope === 'week') statsWeekIdx = -1; // reset to current week
@@ -8059,7 +8081,7 @@ function latestLTPaceSecs() {
 
 function renderStats() {
   statsTab = 'running';
-  if (statsScope === 'cycling') { renderCyclingStats(); return; }
+  if (statsSport === 'cycling') { renderCyclingStats(); return; }
   if (statsScope === 'week') { renderWeekStats(); return; }
   // Sterk Gutt stats moved to dedicated app
   renderRunningStats();
@@ -8323,7 +8345,7 @@ async function saveFTP() {
     if (!res.ok) { alert('Save failed — check console.'); return; }
     await loadFTPHistory();
     closeFTPModal();
-    if (statsScope === 'cycling') renderStats();
+    if (statsSport === 'cycling') renderStats();
   } catch(e) { alert('Network error: ' + e.message); }
 }
 
@@ -8527,41 +8549,41 @@ function renderCyclingStats() {
     container.appendChild(ftpSec);
   }
 
-  // ── Ride table ────────────────────────────────────────────────────────────
+  // ── Ride list (mobile-friendly cards, not a grid table) ───────────────────
   const tblSec = document.createElement('div'); tblSec.className = 'stats-section';
   tblSec.innerHTML = '<div class="stats-section-title">Recent rides</div>';
   const tbl = document.createElement('div');
-  tbl.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+  tbl.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
 
-  // Header
-  const hdr = document.createElement('div');
-  hdr.style.cssText = 'display:grid;grid-template-columns:80px 1fr 60px 60px 60px 80px;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.07);';
-  hdr.innerHTML = ['Date','Name','Time','Watts','HR','Zone/Eff'].map(h =>
-    '<div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4b5563;">' + h + '</div>'
-  ).join('');
-  tbl.appendChild(hdr);
-
-  [...rides].reverse().slice(0,20).forEach((r,i) => {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = (i % 2 === 0 ? '' : 'background:rgba(255,255,255,0.02);') + 'border-bottom:1px solid rgba(255,255,255,0.04);';
+  [...rides].reverse().slice(0,20).forEach((r) => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden;cursor:pointer;';
 
     const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:80px 1fr 60px 60px 60px 80px;gap:8px;padding:10px 14px;cursor:pointer;';
-    const dt   = new Date(r.dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    const time = r.moving_time ? formatDuration(r.moving_time) : '—';
-    const watts = r.average_watts ? Math.round(r.average_watts) + 'W' : '—';
-    const hr    = r.average_heartrate ? Math.round(r.average_heartrate) + '' : '—';
+    row.style.cssText = 'padding:12px 14px;display:flex;align-items:center;gap:10px;';
+
+    const dt    = new Date(r.dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const time  = r.moving_time ? formatDuration(r.moving_time) : '\u2014';
+    const watts = r.average_watts ? Math.round(r.average_watts) + 'W' : '\u2014';
+    const hr    = r.average_heartrate ? Math.round(r.average_heartrate) + ' bpm' : '\u2014';
     const zone  = ftp && r.average_watts ? ridePowerZone(r.average_watts, ftp) : null;
     const eff   = rideEfficiency(r.average_watts, r.average_heartrate, ftp);
-    const zoneStr = zone ? zone.label.split(' ')[0] : (eff ? eff.icon : '—');
+    const zoneStr = zone ? zone.label : (eff ? eff.icon + ' ' + eff.label : '\u2014');
     const zoneColor = zone ? zone.color : (eff ? eff.color : '#6b7280');
+    const analysedFlag = rideAnalysisCache[r.id] ? ' \u00b7 \ud83d\udd0d' : '';
+
     row.innerHTML =
-      '<div style="font-size:11px;color:#6b7280;">' + dt + '</div>' +
-      '<div style="font-size:11px;color:#d1d5db;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name||'Ride') + '</div>' +
-      '<div style="font-size:11px;color:#9ca3af;">' + time + '</div>' +
-      '<div style="font-size:11px;color:#9ca3af;">' + watts + '</div>' +
-      '<div style="font-size:11px;color:#9ca3af;">' + hr + '</div>' +
-      '<div style="font-size:11px;font-weight:700;color:' + zoneColor + ';">' + zoneStr + '</div>';
+      '<div style="flex-shrink:0;width:44px;">' +
+        '<div style="font-size:10px;color:#6b7280;">' + dt + '</div>' +
+      '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:12px;color:#d1d5db;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (r.name||'Ride') + analysedFlag + '</div>' +
+        '<div style="font-size:10px;color:#6b7280;margin-top:2px;">' + time + ' \u00b7 ' + watts + ' \u00b7 ' + hr + '</div>' +
+      '</div>' +
+      '<div style="flex-shrink:0;text-align:right;">' +
+        '<div style="font-size:10px;font-weight:700;color:' + zoneColor + ';white-space:nowrap;">' + zoneStr + '</div>' +
+        '<div style="font-size:14px;color:#4b5563;margin-top:2px;">\u203a</div>' +
+      '</div>';
 
     const analysed = rideAnalysisCache[r.id];
     const detail = document.createElement('div');
@@ -8589,23 +8611,23 @@ function renderCyclingStats() {
       detail.innerHTML = `
         <div style="background:#0e0f11;border-radius:10px;padding:12px;margin-top:4px;">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px;">
-            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">NP</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.weighted_avg_watts||'—'}W</div></div>
-            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">Work</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.kilojoules?Math.round(analysed.kilojoules):'—'}kJ</div></div>
-            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">Cadence</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.avg_cadence||'—'}rpm</div></div>
+            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">NP</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.weighted_avg_watts||'\u2014'}W</div></div>
+            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">Work</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.kilojoules?Math.round(analysed.kilojoules):'\u2014'}kJ</div></div>
+            <div><div style="font-size:9px;color:#4b5563;text-transform:uppercase;">Cadence</div><div style="font-size:13px;font-weight:700;color:#d1d5db;">${analysed.avg_cadence||'\u2014'}rpm</div></div>
           </div>
           ${zoneBarHtml}
-          <div style="font-size:10px;color:#4b5563;margin-bottom:6px;">Power zone distribution (Z1→Z6)</div>
+          <div style="font-size:10px;color:#4b5563;margin-bottom:6px;">Power zone distribution (Z1\u2192Z6)</div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid rgba(255,255,255,0.05);">
             <span style="font-size:11px;color:#9ca3af;">Aerobic decoupling</span>
-            <span style="font-size:12px;font-weight:700;color:${decouplingColor};">${analysed.decoupling_pct!=null?analysed.decoupling_pct+'%':'—'} · ${decouplingLabel}</span>
+            <span style="font-size:12px;font-weight:700;color:${decouplingColor};">${analysed.decoupling_pct!=null?analysed.decoupling_pct+'%':'\u2014'} \u00b7 ${decouplingLabel}</span>
           </div>
         </div>`;
     } else {
       const btn = document.createElement('button');
       btn.className = 'ride-analyse-btn';
-      btn.textContent = '🔍 Analyse ride (fetch full data from Strava)';
+      btn.textContent = '\ud83d\udd0d Analyse ride (fetch full data from Strava)';
       btn.style.cssText = 'width:100%;padding:10px;margin-top:4px;background:rgba(110,184,240,0.1);border:1px solid rgba(110,184,240,0.3);border-radius:8px;color:#6eb8f0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;';
-      btn.addEventListener('click', e => { e.stopPropagation(); analyseRide(r, wrap); });
+      btn.addEventListener('click', e => { e.stopPropagation(); analyseRide(r, card); });
       detail.appendChild(btn);
     }
 
@@ -8615,9 +8637,9 @@ function renderCyclingStats() {
       detail.style.display = expanded ? 'block' : 'none';
     });
 
-    wrap.appendChild(row);
-    wrap.appendChild(detail);
-    tbl.appendChild(wrap);
+    card.appendChild(row);
+    card.appendChild(detail);
+    tbl.appendChild(card);
   });
 
   tblSec.appendChild(tbl);
