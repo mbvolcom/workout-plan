@@ -1362,7 +1362,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.15.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8522,6 +8522,15 @@ function rideEfficiency(avgWatts, avgHR, ftp) {
 function renderCyclingStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
+  try {
+    renderCyclingStatsInner(container);
+  } catch(e) {
+    console.error('[cycling stats] render failed:', e);
+    container.innerHTML += '<div style="padding:20px;color:#f06e6e;font-size:12px;">Something went wrong rendering cycling stats: ' + e.message + '</div>';
+  }
+}
+
+function renderCyclingStatsInner(container) {
   const rides = getCyclingActivities();
   const ftp = latestFTP();
 
@@ -8535,7 +8544,12 @@ function renderCyclingStats() {
     loadRideAnalysisCache().then(() => {
       window._rideAnalysisLoading = false;
       window._rideAnalysisCacheLoaded = true; // only ever load once per session
-      renderStats();
+      // Only re-render if the cycling tab is still the one showing,
+      // and only if we actually got new analysed rides (avoids a pointless
+      // re-render racing with the user's tap that could wipe the view)
+      if (statsSport === 'cycling' && Object.keys(rideAnalysisCache).length > 0) {
+        renderStats();
+      }
     });
   }
 
@@ -8626,7 +8640,6 @@ function renderCyclingStats() {
     console.warn('[cycling charts] trend chart error (non-fatal):', e);
   }
 
-  console.log('[cycling] reached ride table section, rides:', rides.length);
   const tblSec = document.createElement('div'); tblSec.className = 'stats-section';
   tblSec.innerHTML = '<div class="stats-section-title">Recent rides</div>';
   const tbl = document.createElement('div');
