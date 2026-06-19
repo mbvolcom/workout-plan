@@ -1362,7 +1362,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.16.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.16.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8107,8 +8107,9 @@ function renderStats() {
   if (statsScope === 'week') { renderWeekStats(); return; }
   // Sterk Gutt stats moved to dedicated app
   renderRunningStats();
-  renderIntervalStats(); // appended at bottom of running tab
-  renderLongRunFatigue(); // appended after interval history
+  // Run sequentially so the fatigue section always lands AFTER interval
+  // history finishes appending its DOM, instead of racing and interleaving.
+  renderIntervalStats().then(() => renderLongRunFatigue());
 }
 
 // ── LONG RUN FATIGUE INDEX ───────────────────────────────────────────────────
