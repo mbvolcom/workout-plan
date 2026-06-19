@@ -1349,7 +1349,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.7</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.14.8</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8554,6 +8554,40 @@ function renderCyclingStats() {
   }
 
   // ── Ride list (mobile-friendly cards, not a grid table) ───────────────────
+  // Aerobic decoupling trend (from analysed rides)
+  const analysedRides = Object.values(rideAnalysisCache)
+    .filter(r => r.decoupling_pct != null)
+    .sort((a,b) => new Date(a.activity_date) - new Date(b.activity_date));
+
+  if (analysedRides.length >= 1) {
+    const decSec = document.createElement('div'); decSec.className = 'stats-section';
+    decSec.innerHTML = '<div class="stats-section-title">Aerobic decoupling trend</div>';
+    const decWrap = document.createElement('div'); decWrap.className = 'stats-pace-chart';
+    decWrap.appendChild(buildDecouplingTrendSVG(analysedRides));
+    if (analysedRides.length === 1) {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'font-size:10px;color:#4b5563;margin-top:6px;text-align:center;';
+      hint.textContent = 'Analyse more rides to see the trend. Lower percent over time means improving aerobic durability.';
+      decWrap.appendChild(hint);
+    }
+    decSec.appendChild(decWrap);
+    container.appendChild(decSec);
+  }
+
+  // Normalised power trend (from analysed rides)
+  const npRides = Object.values(rideAnalysisCache)
+    .filter(r => r.weighted_avg_watts != null)
+    .sort((a,b) => new Date(a.activity_date) - new Date(b.activity_date));
+
+  if (npRides.length >= 2) {
+    const npSec = document.createElement('div'); npSec.className = 'stats-section';
+    npSec.innerHTML = '<div class="stats-section-title">Normalised power trend</div>';
+    const npWrap = document.createElement('div'); npWrap.className = 'stats-pace-chart';
+    npWrap.appendChild(buildNPTrendSVG(npRides));
+    npSec.appendChild(npWrap);
+    container.appendChild(npSec);
+  }
+
   const tblSec = document.createElement('div'); tblSec.className = 'stats-section';
   tblSec.innerHTML = '<div class="stats-section-title">Recent rides</div>';
   const tbl = document.createElement('div');
@@ -8723,6 +8757,141 @@ function renderCyclingStats() {
 }
 
 // FTP progression SVG (same style as LT chart, blue instead of orange)
+function buildDecouplingTrendSVG(rides) {
+  const W = 600, H = 110, pad = 40;
+  const vals = rides.map(r => r.decoupling_pct);
+  const minV = Math.min(0, Math.min(...vals) - 2);
+  const maxV = Math.max(15, Math.max(...vals) + 2);
+  const xStep = rides.length > 1 ? (W - pad*2) / (rides.length-1) : 0;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.cssText = `width:100%;height:${H}px;`;
+
+  // Reference zones: green under 5%, amber 5-10%, red above
+  const zoneY = v => pad + (1-(v-minV)/(maxV-minV)) * (H-pad*2);
+  [
+    {from:0, to:5, color:'rgba(200,240,110,0.06)'},
+    {from:5, to:10, color:'rgba(255,167,38,0.06)'},
+    {from:10, to:maxV, color:'rgba(240,110,110,0.06)'}
+  ].forEach(z => {
+    const y1 = zoneY(Math.min(z.to,maxV)), y2 = zoneY(Math.max(z.from,minV));
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',pad); rect.setAttribute('y',y1);
+    rect.setAttribute('width',W-pad*2); rect.setAttribute('height',Math.max(0,y2-y1));
+    rect.setAttribute('fill',z.color);
+    svg.appendChild(rect);
+  });
+
+  [0,0.5,1].forEach(t => {
+    const v = Math.round(maxV - t*(maxV-minV));
+    const y = pad + t*(H-pad*2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',pad); line.setAttribute('x2',W-pad);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(255,255,255,0.06)'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',pad-4); txt.setAttribute('y',y+4);
+    txt.setAttribute('fill','#4b5563'); txt.setAttribute('font-size','9'); txt.setAttribute('text-anchor','end');
+    txt.textContent = v+'%'; svg.appendChild(txt);
+  });
+
+  const pts = rides.map((r,i) => ({
+    x: pad + i*xStep,
+    y: pad + (1-(r.decoupling_pct-minV)/(maxV-minV)) * (H-pad*2),
+    r
+  }));
+
+  if (pts.length >= 2) {
+    const lineD = pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+    const lp = document.createElementNS('http://www.w3.org/2000/svg','path');
+    lp.setAttribute('d',lineD); lp.setAttribute('stroke','#c8f06e');
+    lp.setAttribute('stroke-width','2'); lp.setAttribute('fill','none');
+    lp.setAttribute('stroke-linecap','round'); svg.appendChild(lp);
+  }
+
+  pts.forEach(p => {
+    const color = p.r.decoupling_pct <= 5 ? '#c8f06e' : p.r.decoupling_pct <= 10 ? '#FFA726' : '#f06e6e';
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','4');
+    c.setAttribute('fill',color); c.setAttribute('stroke','#0e0f11'); c.setAttribute('stroke-width','1.5');
+    svg.appendChild(c);
+    const val = document.createElementNS('http://www.w3.org/2000/svg','text');
+    val.setAttribute('x',p.x); val.setAttribute('y',p.y-7);
+    val.setAttribute('fill',color); val.setAttribute('font-size','9');
+    val.setAttribute('text-anchor','middle'); val.setAttribute('font-weight','700');
+    val.textContent = p.r.decoupling_pct+'%'; svg.appendChild(val);
+    const dt = new Date(p.r.activity_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',p.x); lbl.setAttribute('y',H-4);
+    lbl.setAttribute('fill','#4b5563'); lbl.setAttribute('font-size','8'); lbl.setAttribute('text-anchor','middle');
+    lbl.textContent = dt; svg.appendChild(lbl);
+  });
+  return svg;
+}
+
+function buildNPTrendSVG(rides) {
+  const W = 600, H = 110, pad = 40;
+  const watts = rides.map(r => r.weighted_avg_watts);
+  const minW = Math.min(...watts) - 10, maxW = Math.max(...watts) + 10;
+  const xStep = rides.length > 1 ? (W - pad*2) / (rides.length-1) : 0;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.cssText = `width:100%;height:${H}px;`;
+
+  [0,0.5,1].forEach(t => {
+    const w = Math.round(maxW - t*(maxW-minW));
+    const y = pad + t*(H-pad*2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',pad); line.setAttribute('x2',W-pad);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(255,255,255,0.06)'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',pad-4); txt.setAttribute('y',y+4);
+    txt.setAttribute('fill','#4b5563'); txt.setAttribute('font-size','9'); txt.setAttribute('text-anchor','end');
+    txt.textContent = w+'W'; svg.appendChild(txt);
+  });
+
+  const pts = rides.map((r,i) => ({
+    x: pad + i*xStep,
+    y: pad + (1-(r.weighted_avg_watts-minW)/(maxW-minW)) * (H-pad*2),
+    r
+  }));
+
+  const areaD = pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ') +
+    ` L${pts[pts.length-1].x},${H-pad} L${pts[0].x},${H-pad} Z`;
+  const area = document.createElementNS('http://www.w3.org/2000/svg','path');
+  area.setAttribute('d',areaD); area.setAttribute('fill','rgba(201,168,240,0.08)');
+  svg.appendChild(area);
+
+  const lineD = pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+  const lp = document.createElementNS('http://www.w3.org/2000/svg','path');
+  lp.setAttribute('d',lineD); lp.setAttribute('stroke','#c9a8f0');
+  lp.setAttribute('stroke-width','2'); lp.setAttribute('fill','none');
+  lp.setAttribute('stroke-linecap','round'); svg.appendChild(lp);
+
+  pts.forEach(p => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','4');
+    c.setAttribute('fill','#c9a8f0'); c.setAttribute('stroke','#0e0f11'); c.setAttribute('stroke-width','1.5');
+    svg.appendChild(c);
+    const val = document.createElementNS('http://www.w3.org/2000/svg','text');
+    val.setAttribute('x',p.x); val.setAttribute('y',p.y-7);
+    val.setAttribute('fill','#c9a8f0'); val.setAttribute('font-size','9');
+    val.setAttribute('text-anchor','middle'); val.setAttribute('font-weight','700');
+    val.textContent = p.r.weighted_avg_watts+'W'; svg.appendChild(val);
+    const dt = new Date(p.r.activity_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',p.x); lbl.setAttribute('y',H-4);
+    lbl.setAttribute('fill','#4b5563'); lbl.setAttribute('font-size','8'); lbl.setAttribute('text-anchor','middle');
+    lbl.textContent = dt; svg.appendChild(lbl);
+  });
+  return svg;
+}
+
 function buildFTPProgressionSVG(entries) {
   const revEntries = [...entries].reverse();
   const W = 600, H = 110, pad = 40;
