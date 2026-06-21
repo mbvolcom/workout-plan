@@ -1252,7 +1252,9 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .todo-pill.today-pill.active { background:#26A69A; border-color:#26A69A; color:#fff; }
 .todo-add-btn { padding:10px 16px; background:var(--text); color:var(--bg); border:none; border-radius:10px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
 
-.mob-mode-btn { flex:1; background:none; border:none; padding:8px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:7px; font-family:inherit; transition:all 0.15s; }
+.mob-mode-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:none; border:none; padding:7px 4px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:7px; font-family:inherit; transition:all 0.15s; }
+.mob-mode-icon { font-size:16px; line-height:1; }
+.mob-mode-label { font-size:10px; line-height:1; white-space:nowrap; }
 .mob-mode-btn.active { background:var(--text); color:var(--bg); }
 .mob-week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:8px; }
 .mob-week-nav-btn { background:var(--surface); border:1px solid var(--border-mid); border-radius:10px; width:40px; height:40px; font-size:18px; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:inherit; }
@@ -1362,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.17.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.17.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -4887,7 +4889,7 @@ async function loadNotes() {
 async function createNote() {
   const tempId = 'tmp_' + Date.now();
   const note = {
-    id: tempId, title: 'New note', lines: [],
+    id: tempId, title: '', lines: [],
     author: activeProfile || 'marius', pinned: false, archived: false,
     created_at: new Date().toISOString(), updated_at: new Date().toISOString()
   };
@@ -4910,15 +4912,25 @@ async function createNote() {
   } catch(e) { console.error('[notes] create error:', e); }
 }
 
-async function saveNote(id, fields) {
+// Saves to local state + Supabase WITHOUT re-rendering the DOM.
+// Use this while a text input/textarea might be focused, so typing never
+// gets interrupted or closes the keyboard.
+async function saveNoteSilent(id, fields) {
   notesList = notesList.map(n => n.id === id ? { ...n, ...fields, updated_at: new Date().toISOString() } : n);
-  refreshNotesView();
   try {
     await fetch(SUPA_BASE + 'notes?id=eq.' + id, {
       method: 'PATCH', headers: SUPA_HDR,
       body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() })
     });
   } catch(e) { console.warn('[notes] save failed:', e); }
+}
+
+// Saves AND refreshes the note list (title/date/preview, checkbox strike-through,
+// pin/archive position etc). Safe to call for actions that don't involve an
+// active text field -- checkbox taps, pin, archive, delete, add line, etc.
+async function saveNote(id, fields) {
+  await saveNoteSilent(id, fields);
+  refreshNotesListOnly();
 }
 
 async function deleteNote(id) {
@@ -5066,7 +5078,15 @@ function buildNoteCard(note) {
     let titleTimer;
     titleInput.addEventListener('input', () => {
       clearTimeout(titleTimer);
-      titleTimer = setTimeout(() => saveNote(note.id, { title: titleInput.value }), 500);
+      // Silent save while typing -- never touches the DOM, so the keyboard
+      // and cursor position are completely undisturbed.
+      titleTimer = setTimeout(() => saveNoteSilent(note.id, { title: titleInput.value }), 500);
+    });
+    // Once the user is done (taps away / keyboard closes), refresh the list
+    // so the updated title shows correctly in the collapsed card header.
+    titleInput.addEventListener('blur', () => {
+      clearTimeout(titleTimer);
+      saveNoteSilent(note.id, { title: titleInput.value }).then(refreshNotesListOnly);
     });
     body.appendChild(titleInput);
 
@@ -5156,7 +5176,14 @@ function buildNoteLine(note, line, li) {
   let lineTimer;
   textArea.addEventListener('input', () => {
     clearTimeout(lineTimer);
-    lineTimer = setTimeout(() => updateNoteLineText(note.id, li, textArea.value), 500);
+    // Silent save while typing -- keeps focus and keyboard exactly as-is.
+    lineTimer = setTimeout(() => updateNoteLineTextSilent(note.id, li, textArea.value), 500);
+  });
+  // Refresh the list view once the user taps away, so the collapsed-card
+  // preview text and checkbox strike-through styling stay correct.
+  textArea.addEventListener('blur', () => {
+    clearTimeout(lineTimer);
+    updateNoteLineTextSilent(note.id, li, textArea.value).then(refreshNotesListOnly);
   });
 
   const delLineBtn = document.createElement('button');
@@ -5176,6 +5203,14 @@ function addNoteLine(noteId, isCheckbox) {
   saveNote(noteId, { lines: newLines });
   // Re-expand and refresh so the new empty line is focusable
   _notesExpanded[noteId] = true;
+}
+
+function updateNoteLineTextSilent(noteId, lineIdx, text) {
+  const note = notesList.find(n => n.id === noteId);
+  if (!note) return Promise.resolve();
+  const newLines = [...note.lines];
+  newLines[lineIdx] = { ...newLines[lineIdx], text };
+  return saveNoteSilent(noteId, { lines: newLines });
 }
 
 function updateNoteLineText(noteId, lineIdx, text) {
@@ -12125,10 +12160,10 @@ function initMobTabBar() {
   bar.dataset.init = '1';
   const modeBar = document.createElement('div');
   modeBar.className = 'mob-mode-bar';
-  [['race','🏃 Plan'],['shop','🛒 Shop'],['todo','✅ Tasks'],['clean','🧹 Clean'],['notes','📝 Notes']].forEach(([mode, label]) => {
+  [['race','🏃','Plan'],['shop','🛒','Shop'],['todo','✅','Tasks'],['clean','🧹','Clean'],['notes','📝','Notes']].forEach(([mode, icon, label]) => {
     const btn = document.createElement('button');
     btn.className = 'mob-mode-btn' + (mobMode === mode ? ' active' : '');
-    btn.textContent = label;
+    btn.innerHTML = '<span class="mob-mode-icon">' + icon + '</span><span class="mob-mode-label">' + label + '</span>';
     btn.dataset.mode = mode;
     btn.addEventListener('click', () => {
       mobMode = mode;
