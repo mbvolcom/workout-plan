@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.4</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -7178,34 +7178,77 @@ function buildActionCard(action) {
     apply.addEventListener('click', async () => {
       apply.textContent='Saving…'; apply.disabled=true;
       try {
+        // SAFETY CHECK: confirm with the user exactly where this will land
+        // before touching anything, since a wrong placement can silently
+        // overwrite an existing plan's weeks.
+        const startDateCheck = new Date(action.start_date);
+        startDateCheck.setHours(0,0,0,0);
+        const startDowCheck = startDateCheck.getDay();
+        const daysSinceMondayCheck = (startDowCheck + 6) % 7;
+        const alignedStartCheck = new Date(startDateCheck);
+        alignedStartCheck.setDate(startDateCheck.getDate() - daysSinceMondayCheck);
+        let previewWi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() >= alignedStartCheck.getTime());
+        if (previewWi === -1) previewWi = WEEK_MONDAYS.length;
+        const existingAtTarget = WEEKS[previewWi];
+        const willOverwrite = existingAtTarget && (
+          (existingAtTarget.km && existingAtTarget.km > 0) ||
+          (state[previewWi] && state[previewWi].runs && state[previewWi].runs.some(Boolean))
+        );
+        if (willOverwrite) {
+          const proceed = confirm(
+            'Week ' + (previewWi+1) + ' (' + (existingAtTarget.num||'') + ', ' + (existingAtTarget.dates||'') + ') ' +
+            'already has training data in it. Importing this plan here will OVERWRITE it.\n\n' +
+            'Click OK only if you are sure this is the correct week to start "' + action.race_name + '".'
+          );
+          if (!proceed) { apply.textContent='⬆ Save to Supabase'; apply.disabled=false; return; }
+        }
+
         // 1. Save the plan template to the 'plans' table (race name, date, week
         //    metadata) so it shows up in the plan switcher.
         const r=await fetch(SUPA_BASE+'plans',{method:'POST',headers:{...SUPA_HDR,'Prefer':'return=representation'},body:JSON.stringify({name:action.race_name,race_name:action.race_name,race_date:action.race_date,goal:action.goal,start_date:action.start_date,weeks:action.weeks})});
         if(!r.ok) throw new Error(await r.text());
         await loadAllPlans();
 
-        // 2. Seed the LIVE editable calendar (WEEKS/state/cross) directly.
-        //    applyWeekPlan() deliberately never overwrites runs/str/cross for
-        //    plans-sourced data (to protect manual edits on existing plans),
-        //    so for a brand-new import we have to populate the actual
-        //    session pills ourselves here -- otherwise the plan exists in
-        //    Supabase but the calendar stays empty.
+        // 2. Seed the LIVE editable calendar (WEEKS/state/cross) directly,
+        //    at the date-aligned position -- NEVER at index 0. This plan's
+        //    weeks must land on the calendar weeks matching its own
+        //    start_date, never simply overwriting whatever already
+        //    occupies the early weeks of the calendar.
         const startDate = new Date(action.start_date);
+        startDate.setHours(0,0,0,0);
         const importedWeeks = action.weeks || [];
 
-        while (WEEKS.length < importedWeeks.length) {
+        const startDow = startDate.getDay(); // 0=Sun..6=Sat
+        const daysSinceMonday = (startDow + 6) % 7;
+        const alignedStart = new Date(startDate);
+        alignedStart.setDate(startDate.getDate() - daysSinceMonday);
+
+        let startWi = WEEK_MONDAYS.findIndex(([y,m,d]) => {
+          const dt = new Date(y, m-1, d);
+          return dt.getTime() === alignedStart.getTime();
+        });
+        if (startWi === -1) {
+          startWi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y, m-1, d).getTime() >= alignedStart.getTime());
+          if (startWi === -1) startWi = WEEK_MONDAYS.length; // append after everything
+        }
+
+        const neededLength = startWi + importedWeeks.length;
+        while (WEEKS.length < neededLength) {
           const i = WEEKS.length;
+          const monday = new Date(alignedStart);
+          monday.setDate(alignedStart.getDate() + (i - startWi) * 7);
           WEEKS.push({ phase:null, num:'Week '+(i+1), dates:'', km:0, moved:false, wife:Array(7).fill('') });
           state.push({ runs:Array(7).fill(null), str:Array(7).fill(null), str2:Array(7).fill(null), cross:Array(7).fill(null), wife:Array(7).fill(''), kinder:Array(7).fill(null) });
           wifeState.push(Array(7).fill(''));
           kinderState.push(Array(7).fill(null));
-          WEEK_MONDAYS.push([2026,1,1]);
+          WEEK_MONDAYS.push([monday.getFullYear(), monday.getMonth()+1, monday.getDate()]);
         }
 
-        importedWeeks.forEach((w, wi) => {
+        importedWeeks.forEach((w, idx) => {
+          const wi = startWi + idx;
           if (wi >= WEEKS.length) return;
-          const monday = new Date(startDate);
-          monday.setDate(startDate.getDate() + wi * 7);
+          const monday = new Date(alignedStart);
+          monday.setDate(alignedStart.getDate() + idx * 7);
           WEEK_MONDAYS[wi] = [monday.getFullYear(), monday.getMonth()+1, monday.getDate()];
 
           WEEKS[wi].phase = w.phase ?? WEEKS[wi].phase;
@@ -7218,14 +7261,16 @@ function buildActionCard(action) {
           if (Array.isArray(w.cross) && w.cross.length === 7) state[wi].cross = [...w.cross];
         });
 
-        // Re-render every imported week and persist via the normal autosave path
-        importedWeeks.forEach((_, wi) => { if (wi < WEEKS.length) renderWeek(wi); });
+        // Re-render every imported week (at its correct position) and
+        // persist via the normal autosave path.
+        importedWeeks.forEach((_, idx) => { const wi = startWi + idx; if (wi < WEEKS.length) renderWeek(wi); });
         if (typeof triggerAutosave === 'function') triggerAutosave();
         if (typeof isMobilePortrait === 'function' && isMobilePortrait()) renderMobileView();
 
         apply.textContent='✓ Saved!';
-        addClaudeMessage('assistant',`Plan "${action.race_name}" has been imported -- ${importedWeeks.length} weeks of sessions are now on your calendar starting ${action.start_date}. You can switch plans any time via the 🏃 Race button.`);
-      } catch(e){apply.textContent='Failed'; console.error(e);}
+        const monthName = alignedStart.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+        addClaudeMessage('assistant',`Plan "${action.race_name}" has been imported -- ${importedWeeks.length} weeks of sessions are now on your calendar starting ${monthName} (week ${startWi+1} in your calendar).`);
+      } catch(e){apply.textContent='Failed'; console.error(e); addClaudeMessage('assistant', '⚠️ Import failed: ' + e.message);}
     });
     const dismiss=document.createElement('button'); dismiss.className='claude-action-dismiss'; dismiss.textContent='Dismiss';
     dismiss.addEventListener('click',()=>card.remove());
