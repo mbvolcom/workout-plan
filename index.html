@@ -1252,7 +1252,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .todo-pill.today-pill.active { background:#26A69A; border-color:#26A69A; color:#fff; }
 .todo-add-btn { padding:10px 16px; background:var(--text); color:var(--bg); border:none; border-radius:10px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
 
-.mob-mode-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:none; border:none; padding:7px 4px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:7px; font-family:inherit; transition:all 0.15s; }
+.mob-mode-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; background:none; border:none; padding:9px 4px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:7px; font-family:inherit; transition:all 0.15s; }
 .mob-mode-icon { font-size:16px; line-height:1; }
 .mob-mode-label { font-size:10px; line-height:1; white-space:nowrap; }
 .mob-mode-btn.active { background:var(--text); color:var(--bg); }
@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.17.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.17.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -4294,7 +4294,13 @@ function renderTodoView(container) {
     await addTodoItem(text, assignee, filterDayRef, mobWeekIndex);
     inp.value = '';
     addBtn.disabled = false;
-    refreshTodoList(listWrap, todayISOStr, filterDayRef, wrap);
+    // Re-read the live DOM elements rather than relying on closures that
+    // might be stale if the week or filter changed while the save was
+    // in flight -- guarantees the newly added task is always visible
+    // immediately, without needing to leave and re-enter the tab.
+    const freshListWrap = document.getElementById('todo-list-wrap') || listWrap;
+    const freshWrap = freshListWrap ? freshListWrap.parentElement : wrap;
+    refreshTodoList(freshListWrap, todayISOStr, window._todoFilterDay || filterDayRef, freshWrap);
   }
 
   addBtn.addEventListener('click', doAdd);
