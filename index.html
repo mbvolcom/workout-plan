@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8438,7 +8438,11 @@ function openStatsPage() {
   const needsStrava = Object.keys(stravaActivities).length === 0;
   const stravaPromise = needsStrava ? fetchStravaActivities() : Promise.resolve();
 
-  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), stravaPromise]).then(() => renderStats());
+  // Load long run fatigue cache here too -- the readiness score's long-run
+  // coverage factor depends on it, and renders before renderLongRunFatigue()
+  // would otherwise load it on its own.
+  const fatiguePromise = window._fatigueCacheLoaded ? Promise.resolve() : loadLongRunFatigueCache().then(() => { window._fatigueCacheLoaded = true; });
+  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, stravaPromise]).then(() => renderStats());
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
@@ -9950,20 +9954,33 @@ function computeMarathonReadiness(plan, weeks, ltSecs) {
   const factors = {};
 
   // ── Factor 1: Long run coverage (25%) ──────────────────────────────────
-  // For each past week with a scheduled long run, compare actual vs planned distance
+  // For each past week with a scheduled long run, compare actual vs planned distance.
+  // IMPORTANT: a week's long run is credited if EITHER (a) today's calendar
+  // label for that day is "long", OR (b) any run that week already has a
+  // saved long-run fatigue analysis -- so a later plan edit/restore that
+  // shifts which day "long" sits on can never erase credit for a run you
+  // already did and explicitly analysed as a long run.
   let longRunScore = 0, longRunSessions = 0;
   const today_t = today.getTime();
   weeks.forEach(wk => {
     const [y,m,d] = WEEK_MONDAYS[wk.wi];
+    let weekHandled = false;
     DAYS.forEach((_, di) => {
+      if (weekHandled) return;
       const runVal = (ats(wk.wi)).runs[di];
       const prefix = runVal ? runVal.split(':')[0] : '';
-      if (prefix !== 'long') return;
       const dt = new Date(y, m-1, d+di);
+      const acts = getStravaForDay(wk.wi, di, 'runs');
+
+      const isLabelledLong = prefix === 'long';
+      const isAlreadyAnalysedLong = !!(acts && acts.some(a => typeof longRunFatigueCache !== 'undefined' && longRunFatigueCache[a.id]));
+
+      if (!isLabelledLong && !isAlreadyAnalysedLong) return;
       if (dt > today) return; // future scheduled long runs don't count yet
+      weekHandled = true; // only count one long-run credit per week
+
       longRunSessions++;
       const plannedKm = runTargets[`${wk.wi}-${di}`] || 0;
-      const acts = getStravaForDay(wk.wi, di, 'runs');
       const actualKm = acts ? acts.reduce((a,act) => a + (act.distance||0)/1000, 0) : 0;
       // Recency weight: runs in last 6 weeks count double
       const weeksAgo = (today_t - dt.getTime()) / (7 * 86400000);
