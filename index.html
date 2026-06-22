@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -7090,7 +7090,7 @@ Be concise and friendly. Marius is training for a marathon. Always confirm befor
       headers: { ...SUPA_HDR },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
+        max_tokens: 8000, // large plans (10-15+ weeks of structured JSON) need much more room than a typical chat reply
         system: systemPrompt,
         messages: claudeHistory,
       })
@@ -7113,9 +7113,11 @@ Be concise and friendly. Marius is training for a marathon. Always confirm befor
 
     removeTypingIndicator();
 
-    // Parse for structured actions
-    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)```/);
-    const plainText = responseText.replace(/```json[\s\S]*?```/g, '').trim();
+    // Parse for structured actions. Use a GREEDY match (not *?) so that if
+    // the response happens to contain more than one code fence, we grab the
+    // full outermost block rather than stopping at the first ``` we see.
+    const jsonMatch = responseText.match(/```json\s*([\s\S]*)```/);
+    const plainText = responseText.replace(/```json[\s\S]*```/, '').trim();
 
     if (jsonMatch) {
       try {
@@ -7123,7 +7125,12 @@ Be concise and friendly. Marius is training for a marathon. Always confirm befor
         const extra = buildActionCard(action);
         addClaudeMessage('assistant', plainText, extra);
       } catch(e) {
-        addClaudeMessage('assistant', responseText);
+        // JSON present but malformed/truncated -- this usually means the
+        // response got cut off (hit max_tokens) partway through a large
+        // plan. Surface that clearly instead of just dumping raw text with
+        // no explanation and no button.
+        console.error('[claude] Failed to parse action JSON:', e, jsonMatch[1]?.slice(-200));
+        addClaudeMessage('assistant', plainText + '\n\n\u26a0\ufe0f The structured data in this response could not be parsed (it may have been cut off if the plan is long). Try asking Claude to "continue" or "resend the JSON only", or break the import into smaller chunks (e.g. first 8 weeks, then the rest).');
       }
     } else {
       addClaudeMessage('assistant', responseText);
