@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8596,10 +8596,13 @@ async function loadLongRunFatigueCache() {
 }
 
 function getAllLongRuns() {
-  // Find all Strava run activities matched to a 'long' prefix day.
-  // Respects the same scope/date-range filter as the rest of the running
-  // stats page, so the fatigue index never mixes data outside the
-  // currently selected window.
+  // Find all Strava run activities matched to a 'long' prefix day, PLUS any
+  // activity that already has a saved fatigue analysis -- even if the
+  // calendar's day label has since shifted away from "long" for that day
+  // (e.g. after restoring/editing a plan). Once you've explicitly analysed
+  // a run as a long run, that decision should stick regardless of later
+  // calendar edits -- the pacing data doesn't change just because a label
+  // moved.
   let weeksToScan;
   try {
     let allW = buildStatsWeeks();
@@ -8614,6 +8617,8 @@ function getAllLongRuns() {
   }
 
   const longRuns = [];
+  const seenIds = new Set();
+
   WEEKS.forEach((w, wi) => {
     if (weeksToScan && !weeksToScan.has(wi)) return;
     const s = ats(wi);
@@ -8621,11 +8626,16 @@ function getAllLongRuns() {
     DAYS.forEach((_, di) => {
       const runVal = s.runs[di];
       const prefix = runVal ? runVal.split(':')[0] : '';
-      if (prefix !== 'long') return;
       const acts = getStravaForDay(wi, di, 'runs');
-      if (acts) acts.forEach(a => {
-        const dt = new Date(y, m-1, d+di);
-        const dateStr = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      if (!acts) return;
+      const dt = new Date(y, m-1, d+di);
+      const dateStr = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      acts.forEach(a => {
+        const isLabelledLong = prefix === 'long';
+        const isAlreadyAnalysed = !!longRunFatigueCache[a.id];
+        if (!isLabelledLong && !isAlreadyAnalysed) return;
+        if (seenIds.has(a.id)) return;
+        seenIds.add(a.id);
         longRuns.push({ ...a, dateStr });
       });
     });
