@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.18.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -7015,17 +7015,61 @@ WHEN MAKING CALENDAR CHANGES, output a JSON block like this after your explanati
 }
 \`\`\`
 
-WHEN EXTRACTING A TRAINING PLAN from a file, output:
+WHEN EXTRACTING A TRAINING PLAN from a file, output a COMPLETE plan_import block.
+This is the ONLY format the app understands -- a plain-text summary of the plan is not
+enough, it must be this exact structure or the import will silently do nothing.
+
 \`\`\`json
 {
   "type": "plan_import",
-  "race_name": "Bergen Marathon 2027",
-  "race_date": "2027-09-19",
-  "goal": "3:20",
-  "start_date": "2027-04-01",
-  "weeks": [ ... ]
+  "race_name": "LT Improvement and Injury Management",
+  "race_date": "2026-12-27",
+  "goal": "",
+  "start_date": "2026-09-14",
+  "weeks": [
+    {
+      "num": "Week 1",
+      "phase": "Reconnect",
+      "dates": "14-20 Sep",
+      "km": 35,
+      "runs": [null, "quality:LT reps 6x2min", null, "easy:Easy 10km", null, null, "long:Long run 16km"],
+      "str": ["upper:Strength Day 1", null, "lower:Strength Day 2", null, "upper:Strength Day 3", null, null],
+      "cross": [null, null, "cross:Sweet spot bike 40min", null, null, "cross:Easy spin 30min", null]
+    }
+  ]
 }
 \`\`\`
+
+CRITICAL RULES for plan_import:
+- "weeks" must have ONE entry per week in the plan, in chronological order. Never skip,
+  merge, or summarise weeks -- a 15-week plan needs exactly 15 entries.
+- Each week's "runs", "str", "cross" arrays are EXACTLY 7 elements, index 0=Monday
+  through index 6=Sunday, matching the day each session falls on in the source plan.
+  Use null for rest days or days with no session in that row.
+- Day values are always the string "prefix:Label" -- never plain text, never an object.
+  PILL FORMAT for runs: 'easy:Label', 'easy-pm:Label' (afternoon easy), 'quality:Label'
+  (intervals/tempo/threshold work), 'long:Label' (long run), 'kinder:Label' (any run
+  combined with childcare), 'race:Label' (race day).
+  PILL FORMAT for str: 'upper:Label', 'lower:Label' (pick whichever the session targets).
+  PILL FORMAT for cross: always 'cross:Label' (cycling, swimming, any cross-training).
+- Put the pace target, distance, and rep structure directly in the Label text so it is
+  visible on the pill, e.g. "quality:LT reps 6x2min @4:55-5:05" or "long:Long run 16km
+  easy@5:20-5:50". Keep labels concise but informative -- this is what shows on the
+  calendar pill itself.
+- "km" is the week's total planned distance as a plain number (no units).
+- "phase" is the training block name if the plan has one (e.g. "Reconnect", "Build",
+  "Taper"), otherwise null.
+- If the source plan has optional/bonus sessions (e.g. "optional sweet spot bike"),
+  still include them in the relevant day slot -- the app has no separate concept of
+  optional vs required, so just include everything that was prescribed for that day.
+- If a single day has multiple sessions in the same row (e.g. strength AND a bike
+  session on Wednesday), strength goes in "str" and the bike goes in "cross" -- they
+  are separate rows, so this is fine; only collapse multiple items into one label if
+  they are genuinely the same row.
+- If goal time isn't stated in the source, use an empty string for "goal", not a guess.
+- After outputting this block, briefly tell the user how many weeks were extracted and
+  ask them to review the action card before saving -- nothing is written to the
+  calendar until they explicitly tap "Save to Supabase".
 
 WHEN EXTRACTING WIFE'S SHIFTS from a file, output:
 \`\`\`json
@@ -7127,11 +7171,53 @@ function buildActionCard(action) {
     apply.addEventListener('click', async () => {
       apply.textContent='Saving…'; apply.disabled=true;
       try {
+        // 1. Save the plan template to the 'plans' table (race name, date, week
+        //    metadata) so it shows up in the plan switcher.
         const r=await fetch(SUPA_BASE+'plans',{method:'POST',headers:{...SUPA_HDR,'Prefer':'return=representation'},body:JSON.stringify({name:action.race_name,race_name:action.race_name,race_date:action.race_date,goal:action.goal,start_date:action.start_date,weeks:action.weeks})});
         if(!r.ok) throw new Error(await r.text());
         await loadAllPlans();
+
+        // 2. Seed the LIVE editable calendar (WEEKS/state/cross) directly.
+        //    applyWeekPlan() deliberately never overwrites runs/str/cross for
+        //    plans-sourced data (to protect manual edits on existing plans),
+        //    so for a brand-new import we have to populate the actual
+        //    session pills ourselves here -- otherwise the plan exists in
+        //    Supabase but the calendar stays empty.
+        const startDate = new Date(action.start_date);
+        const importedWeeks = action.weeks || [];
+
+        while (WEEKS.length < importedWeeks.length) {
+          const i = WEEKS.length;
+          WEEKS.push({ phase:null, num:'Week '+(i+1), dates:'', km:0, moved:false, wife:Array(7).fill('') });
+          state.push({ runs:Array(7).fill(null), str:Array(7).fill(null), str2:Array(7).fill(null), cross:Array(7).fill(null), wife:Array(7).fill(''), kinder:Array(7).fill(null) });
+          wifeState.push(Array(7).fill(''));
+          kinderState.push(Array(7).fill(null));
+          WEEK_MONDAYS.push([2026,1,1]);
+        }
+
+        importedWeeks.forEach((w, wi) => {
+          if (wi >= WEEKS.length) return;
+          const monday = new Date(startDate);
+          monday.setDate(startDate.getDate() + wi * 7);
+          WEEK_MONDAYS[wi] = [monday.getFullYear(), monday.getMonth()+1, monday.getDate()];
+
+          WEEKS[wi].phase = w.phase ?? WEEKS[wi].phase;
+          WEEKS[wi].num   = w.num   ?? WEEKS[wi].num;
+          WEEKS[wi].dates = w.dates ?? WEEKS[wi].dates;
+          WEEKS[wi].km    = w.km    ?? WEEKS[wi].km;
+
+          if (Array.isArray(w.runs)  && w.runs.length === 7)  state[wi].runs  = [...w.runs];
+          if (Array.isArray(w.str)   && w.str.length === 7)   state[wi].str   = [...w.str];
+          if (Array.isArray(w.cross) && w.cross.length === 7) state[wi].cross = [...w.cross];
+        });
+
+        // Re-render every imported week and persist via the normal autosave path
+        importedWeeks.forEach((_, wi) => { if (wi < WEEKS.length) renderWeek(wi); });
+        if (typeof triggerAutosave === 'function') triggerAutosave();
+        if (typeof isMobilePortrait === 'function' && isMobilePortrait()) renderMobileView();
+
         apply.textContent='✓ Saved!';
-        addClaudeMessage('assistant',`Plan "${action.race_name}" has been saved to Supabase. You can switch to it via the 🏃 Race button.`);
+        addClaudeMessage('assistant',`Plan "${action.race_name}" has been imported -- ${importedWeeks.length} weeks of sessions are now on your calendar starting ${action.start_date}. You can switch plans any time via the 🏃 Race button.`);
       } catch(e){apply.textContent='Failed'; console.error(e);}
     });
     const dismiss=document.createElement('button'); dismiss.className='claude-action-dismiss'; dismiss.textContent='Dismiss';
