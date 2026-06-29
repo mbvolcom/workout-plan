@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.20.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.21.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9533,56 +9533,196 @@ function trendArrow(recent, older) {
   return diff < 0 ? '\u2193' : '\u2191';
 }
 
+// ── Health stats time filter ─────────────────────────────────────────────────
+// 'week' = current calendar week (Mon-Sun), 'month' = current calendar
+// month, 'year' = current calendar year, 'all' = everything.
+let healthFilterMode = 'all';
+
+function getCalendarWeekRange(d) {
+  const day = new Date(d); day.setHours(0,0,0,0);
+  const dow = day.getDay(); // 0=Sun..6=Sat
+  const daysSinceMonday = (dow + 6) % 7;
+  const monday = new Date(day); monday.setDate(day.getDate() - daysSinceMonday);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  return [monday, sunday];
+}
+
+function applyHealthFilter(rows) {
+  if (healthFilterMode === 'all') return rows;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  if (healthFilterMode === 'week') {
+    const [monday, sunday] = getCalendarWeekRange(today);
+    return rows.filter(r => {
+      const d = new Date(r.metric_date);
+      return d >= monday && d <= sunday;
+    });
+  }
+  if (healthFilterMode === 'month') {
+    return rows.filter(r => {
+      const d = new Date(r.metric_date);
+      return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+    });
+  }
+  if (healthFilterMode === 'year') {
+    return rows.filter(r => new Date(r.metric_date).getFullYear() === today.getFullYear());
+  }
+  return rows;
+}
+
+function renderHealthFilterBar(container) {
+  const bar = document.createElement('div');
+  bar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;padding:0 20px 16px;';
+  [
+    ['week', 'This week'],
+    ['month', 'This month'],
+    ['year', 'This year'],
+    ['all', 'All time'],
+  ].forEach(([mode, label]) => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    const isActive = healthFilterMode === mode;
+    btn.style.cssText = 'padding:6px 12px;border-radius:14px;border:1px solid ' + (isActive ? 'rgba(240,110,110,0.5)' : 'rgba(255,255,255,0.1)') + ';' +
+      'background:' + (isActive ? 'rgba(240,110,110,0.12)' : 'none') + ';color:' + (isActive ? '#f06e6e' : '#9ca3af') + ';' +
+      'font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;';
+    btn.addEventListener('click', () => {
+      healthFilterMode = mode;
+      renderHealthStats();
+    });
+    bar.appendChild(btn);
+  });
+  container.appendChild(bar);
+}
+
 function renderHealthStats() {
   const container = document.getElementById('stats-content');
-  container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">Loading health data\u2026</div>';
+  container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">Loading health data&hellip;</div>';
 
-  loadGarminMetrics().then(rows => {
-    garminMetricsCache = rows;
+  const dataPromise = garminMetricsCache ? Promise.resolve(garminMetricsCache) : loadGarminMetrics();
+
+  dataPromise.then(allRows => {
+    garminMetricsCache = allRows;
     container.innerHTML = '';
 
-    if (!rows.length) {
-      container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">No Garmin health data synced yet. Once the daily sync is running, resting heart rate, steps, and HRV will show up here.</div>';
+    renderHealthFilterBar(container);
+
+    if (!allRows.length) {
+      container.innerHTML += '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">No Garmin health data synced yet. Once the daily sync is running, resting heart rate, steps, and HRV will show up here.</div>';
       return;
     }
 
-    const last14 = rows.slice(-14);
-    const prev14 = rows.slice(-28, -14);
-    const last7 = rows.slice(-7);
+    const rows = applyHealthFilter(allRows);
+
+    if (!rows.length) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.style.cssText = 'padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;';
+      emptyMsg.textContent = 'No data for this period yet.';
+      container.appendChild(emptyMsg);
+      return;
+    }
+
+    // Comparison window for the trend arrow: previous equivalent period,
+    // computed from the FULL dataset (not the filtered one) so "this week
+    // vs last week" etc still works even when zoomed in.
+    let comparisonPrior = [];
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (healthFilterMode === 'week') {
+      const [monday] = getCalendarWeekRange(today);
+      const priorMonday = new Date(monday); priorMonday.setDate(monday.getDate() - 7);
+      const priorSunday = new Date(monday); priorSunday.setDate(monday.getDate() - 1);
+      comparisonPrior = allRows.filter(r => { const d = new Date(r.metric_date); return d >= priorMonday && d <= priorSunday; });
+    } else if (healthFilterMode === 'month') {
+      const priorMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      comparisonPrior = allRows.filter(r => { const d = new Date(r.metric_date); return d.getFullYear() === priorMonth.getFullYear() && d.getMonth() === priorMonth.getMonth(); });
+    } else if (healthFilterMode === 'year') {
+      comparisonPrior = allRows.filter(r => new Date(r.metric_date).getFullYear() === today.getFullYear() - 1);
+    } else {
+      // 'all' -- compare last 14 days vs the 14 days before that, same as before
+      comparisonPrior = allRows.slice(-28, -14);
+    }
+    const currentForCompare = healthFilterMode === 'all' ? allRows.slice(-14) : rows;
 
     const latestRhr = [...rows].reverse().find(r => r.resting_hr != null)?.resting_hr ?? null;
-    const avgRhrRecent = avgOf(last14, 'resting_hr');
-    const avgRhrPrior = avgOf(prev14, 'resting_hr');
+    const avgRhrRecent = avgOf(currentForCompare, 'resting_hr');
+    const avgRhrPrior = avgOf(comparisonPrior, 'resting_hr');
     const rhrArrow = trendArrow(avgRhrRecent, avgRhrPrior);
 
-    const avgStepsWeek = avgOf(last7, 'steps');
+    const avgSteps = avgOf(rows, 'steps');
     const latestBodyBattery = [...rows].reverse().find(r => r.body_battery_max != null);
 
-    // ── KPI cards ─────────────────────────────────────────────────────────────
+    // Personal records (always computed from full history, not the filter)
+    const maxStepsRow = [...allRows].filter(r => r.steps != null).sort((a,b) => b.steps - a.steps)[0];
+    const minRhrRow = [...allRows].filter(r => r.resting_hr != null).sort((a,b) => a.resting_hr - b.resting_hr)[0];
+
+    // KPI cards
     const kpiGrid = document.createElement('div'); kpiGrid.className = 'stats-kpi-grid';
 
+    const periodLabel = healthFilterMode === 'week' ? 'this week'
+      : healthFilterMode === 'month' ? 'this month'
+      : healthFilterMode === 'year' ? 'this year' : 'last 14 days';
+
     buildStatsKpiCard(kpiGrid,
-      latestRhr != null ? latestRhr + ' bpm' : '\u2014', 'health', 'Resting heart rate',
-      [
-        { label: '14-day avg', val: avgRhrRecent != null ? Math.round(avgRhrRecent) + ' bpm ' + rhrArrow : '\u2014' },
-      ]
+      latestRhr != null ? latestRhr + ' bpm' : '&mdash;', 'health', 'Resting heart rate',
+      [{ label: periodLabel + ' avg', val: avgRhrRecent != null ? Math.round(avgRhrRecent) + ' bpm ' + rhrArrow : '&mdash;' }]
     );
 
     buildStatsKpiCard(kpiGrid,
-      avgStepsWeek != null ? Math.round(avgStepsWeek).toLocaleString() : '\u2014', 'accent', 'Avg daily steps',
-      [{ label: 'last 7 days', val: last7.filter(r => r.steps != null).length + ' days logged' }]
+      avgSteps != null ? Math.round(avgSteps).toLocaleString() : '&mdash;', 'accent', 'Avg daily steps',
+      [{ label: periodLabel, val: rows.filter(r => r.steps != null).length + ' days logged' }]
     );
 
     if (latestBodyBattery) {
       buildStatsKpiCard(kpiGrid,
         latestBodyBattery.body_battery_max + '%', 'gold', 'Body battery (latest)',
-        [{ label: 'low', val: (latestBodyBattery.body_battery_min ?? '\u2014') + '%' }]
+        [{ label: 'low', val: (latestBodyBattery.body_battery_min ?? '&mdash;') + '%' }]
       );
     }
 
     container.appendChild(kpiGrid);
 
-    // ── Resting HR trend ──────────────────────────────────────────────────────
+    // Personal records
+    if (maxStepsRow || minRhrRow) {
+      const sec = document.createElement('div'); sec.className = 'stats-section';
+      sec.innerHTML = '<div class="stats-section-title">Personal records</div>';
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;';
+      if (maxStepsRow) {
+        const card = document.createElement('div');
+        card.style.cssText = 'flex:1;min-width:140px;background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
+        const dt = new Date(maxStepsRow.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        card.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Highest step day</div>' +
+          '<div style="font-size:18px;font-weight:800;color:#c8f06e;">' + maxStepsRow.steps.toLocaleString() + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + '</div>';
+        wrap.appendChild(card);
+      }
+      if (minRhrRow) {
+        const card = document.createElement('div');
+        card.style.cssText = 'flex:1;min-width:140px;background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
+        const dt = new Date(minRhrRow.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        card.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Lowest resting HR</div>' +
+          '<div style="font-size:18px;font-weight:800;color:#f06e6e;">' + minRhrRow.resting_hr + ' bpm</div>' +
+          '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + '</div>';
+        wrap.appendChild(card);
+      }
+      sec.appendChild(wrap);
+      container.appendChild(sec);
+    }
+
+    // Body battery depletion (avg max-min per day)
+    const bbRows = rows.filter(r => r.body_battery_max != null && r.body_battery_min != null);
+    if (bbRows.length >= 2) {
+      const avgDepletion = bbRows.reduce((a,r) => a + (r.body_battery_max - r.body_battery_min), 0) / bbRows.length;
+      const sec = document.createElement('div'); sec.className = 'stats-section';
+      sec.innerHTML = '<div class="stats-section-title">Body battery depletion</div>';
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;';
+      wrap.innerHTML = '<div style="font-size:24px;font-weight:800;color:#f0c060;">' + Math.round(avgDepletion) + ' pts/day</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.5;">Average drop from daily high to daily low, ' + periodLabel + '. A consistently large drop alongside hard training days can be a sign you are not recovering between sessions.</div>';
+      sec.appendChild(wrap);
+      container.appendChild(sec);
+    }
+
+    // Resting HR trend
     const rhrRows = rows.filter(r => r.resting_hr != null);
     if (rhrRows.length >= 2) {
       const sec = document.createElement('div'); sec.className = 'stats-section';
@@ -9597,7 +9737,7 @@ function renderHealthStats() {
       container.appendChild(sec);
     }
 
-    // ── Steps trend ───────────────────────────────────────────────────────────
+    // Steps trend
     const stepRows = rows.filter(r => r.steps != null);
     if (stepRows.length >= 2) {
       const sec = document.createElement('div'); sec.className = 'stats-section';
@@ -9608,7 +9748,7 @@ function renderHealthStats() {
       container.appendChild(sec);
     }
 
-    // ── HRV trend (secondary, de-emphasised) ─────────────────────────────────
+    // HRV trend (secondary, de-emphasised)
     const hrvRows = rows.filter(r => r.hrv_avg != null);
     if (hrvRows.length >= 2) {
       const sec = document.createElement('div'); sec.className = 'stats-section';
