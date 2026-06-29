@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.6</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.20.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1539,6 +1539,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div id="stats-sport-toggle" style="display:flex;gap:2px;background:rgba(255,255,255,0.05);border-radius:8px;padding:2px;">
         <button class="stats-sport-btn active" data-sport="running" onclick="setStatsSport('running')" style="flex:1;padding:7px 10px;border:none;background:none;color:#9ca3af;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🏃 Running</button>
         <button class="stats-sport-btn" data-sport="cycling" onclick="setStatsSport('cycling')" style="flex:1;padding:7px 10px;border:none;background:none;color:#9ca3af;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🚴 Cycling</button>
+        <button class="stats-sport-btn" data-sport="health" onclick="setStatsSport('health')" style="flex:1;padding:7px 10px;border:none;background:none;color:#9ca3af;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">❤️ Health</button>
       </div>
     </div>
 
@@ -8610,7 +8611,8 @@ function openStatsPage() {
   // coverage factor depends on it, and renders before renderLongRunFatigue()
   // would otherwise load it on its own.
   const fatiguePromise = window._fatigueCacheLoaded ? Promise.resolve() : loadLongRunFatigueCache().then(() => { window._fatigueCacheLoaded = true; });
-  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, stravaPromise]).then(() => renderStats());
+  const garminPromise = garminMetricsCache ? Promise.resolve() : loadGarminMetrics().then(rows => { garminMetricsCache = rows; });
+  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, garminPromise, stravaPromise]).then(() => renderStats());
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
@@ -8746,6 +8748,7 @@ function latestLTPaceSecs() {
 function renderStats() {
   statsTab = 'running';
   if (statsSport === 'cycling') { renderCyclingStats(); return; }
+  if (statsSport === 'health') { renderHealthStats(); return; }
   if (statsScope === 'week') { renderWeekStats(); return; }
   // Sterk Gutt stats moved to dedicated app
   renderRunningStats();
@@ -9506,6 +9509,194 @@ function rideEfficiency(avgWatts, avgHR, ftp) {
   return { label: 'Struggling', color: '#f06e6e', icon: '🔴' };
 }
 
+// ── HEALTH STATS ──────────────────────────────────────────────────────────
+let garminMetricsCache = null; // loaded once per session
+
+async function loadGarminMetrics() {
+  try {
+    const res = await fetch(SUPA_BASE + 'garmin_daily_metrics?select=*&order=metric_date.asc&limit=180', { headers: SUPA_HDR });
+    if (!res.ok) { console.warn('[health] load failed:', res.status); return []; }
+    return await res.json();
+  } catch(e) { console.warn('[health] load error:', e); return []; }
+}
+
+function avgOf(arr, key) {
+  const vals = arr.map(r => r[key]).filter(v => v != null);
+  if (!vals.length) return null;
+  return vals.reduce((a,b) => a+b, 0) / vals.length;
+}
+
+function trendArrow(recent, older) {
+  if (recent == null || older == null) return '';
+  const diff = recent - older;
+  if (Math.abs(diff) < 1) return '\u2192'; // flat
+  return diff < 0 ? '\u2193' : '\u2191';
+}
+
+function renderHealthStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">Loading health data\u2026</div>';
+
+  loadGarminMetrics().then(rows => {
+    garminMetricsCache = rows;
+    container.innerHTML = '';
+
+    if (!rows.length) {
+      container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">No Garmin health data synced yet. Once the daily sync is running, resting heart rate, steps, and HRV will show up here.</div>';
+      return;
+    }
+
+    const last14 = rows.slice(-14);
+    const prev14 = rows.slice(-28, -14);
+    const last7 = rows.slice(-7);
+
+    const latestRhr = [...rows].reverse().find(r => r.resting_hr != null)?.resting_hr ?? null;
+    const avgRhrRecent = avgOf(last14, 'resting_hr');
+    const avgRhrPrior = avgOf(prev14, 'resting_hr');
+    const rhrArrow = trendArrow(avgRhrRecent, avgRhrPrior);
+
+    const avgStepsWeek = avgOf(last7, 'steps');
+    const latestBodyBattery = [...rows].reverse().find(r => r.body_battery_max != null);
+
+    // ── KPI cards ─────────────────────────────────────────────────────────────
+    const kpiGrid = document.createElement('div'); kpiGrid.className = 'stats-kpi-grid';
+
+    buildStatsKpiCard(kpiGrid,
+      latestRhr != null ? latestRhr + ' bpm' : '\u2014', 'health', 'Resting heart rate',
+      [
+        { label: '14-day avg', val: avgRhrRecent != null ? Math.round(avgRhrRecent) + ' bpm ' + rhrArrow : '\u2014' },
+      ]
+    );
+
+    buildStatsKpiCard(kpiGrid,
+      avgStepsWeek != null ? Math.round(avgStepsWeek).toLocaleString() : '\u2014', 'accent', 'Avg daily steps',
+      [{ label: 'last 7 days', val: last7.filter(r => r.steps != null).length + ' days logged' }]
+    );
+
+    if (latestBodyBattery) {
+      buildStatsKpiCard(kpiGrid,
+        latestBodyBattery.body_battery_max + '%', 'gold', 'Body battery (latest)',
+        [{ label: 'low', val: (latestBodyBattery.body_battery_min ?? '\u2014') + '%' }]
+      );
+    }
+
+    container.appendChild(kpiGrid);
+
+    // ── Resting HR trend ──────────────────────────────────────────────────────
+    const rhrRows = rows.filter(r => r.resting_hr != null);
+    if (rhrRows.length >= 2) {
+      const sec = document.createElement('div'); sec.className = 'stats-section';
+      sec.innerHTML = '<div class="stats-section-title">Resting heart rate trend</div>';
+      const wrap = document.createElement('div'); wrap.className = 'stats-pace-chart';
+      wrap.appendChild(buildHealthTrendSVG(rhrRows, 'resting_hr', '#f06e6e', 'bpm', false));
+      const info = document.createElement('div');
+      info.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
+      info.textContent = 'A downward trend over time usually reflects improving cardiovascular fitness. A sudden spike can be an early sign of illness, overtraining, or poor recovery -- worth backing off if it persists for more than a couple of days.';
+      wrap.appendChild(info);
+      sec.appendChild(wrap);
+      container.appendChild(sec);
+    }
+
+    // ── Steps trend ───────────────────────────────────────────────────────────
+    const stepRows = rows.filter(r => r.steps != null);
+    if (stepRows.length >= 2) {
+      const sec = document.createElement('div'); sec.className = 'stats-section';
+      sec.innerHTML = '<div class="stats-section-title">Daily steps</div>';
+      const wrap = document.createElement('div'); wrap.className = 'stats-pace-chart';
+      wrap.appendChild(buildHealthTrendSVG(stepRows, 'steps', '#c8f06e', '', true));
+      sec.appendChild(wrap);
+      container.appendChild(sec);
+    }
+
+    // ── HRV trend (secondary, de-emphasised) ─────────────────────────────────
+    const hrvRows = rows.filter(r => r.hrv_avg != null);
+    if (hrvRows.length >= 2) {
+      const sec = document.createElement('div'); sec.className = 'stats-section';
+      sec.innerHTML = '<div class="stats-section-title">HRV (heart rate variability)</div>';
+      const wrap = document.createElement('div'); wrap.className = 'stats-pace-chart';
+      wrap.style.opacity = '0.85';
+      wrap.appendChild(buildHealthTrendSVG(hrvRows, 'hrv_avg', '#9ca3af', 'ms', false));
+      const info = document.createElement('div');
+      info.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
+      info.textContent = 'HRV is most meaningful as a trend over 1-2+ weeks, not as a single day\u2019s reading -- wrist-based HRV is noisier than chest-strap data and varies night to night for reasons unrelated to training (sleep quality, alcohol, illness). Treat single-day swings with caution.';
+      wrap.appendChild(info);
+      sec.appendChild(wrap);
+      container.appendChild(sec);
+    }
+  });
+}
+
+function buildHealthTrendSVG(rows, key, color, unit, isBar) {
+  const W = 600, H = 110, pad = 36;
+  const vals = rows.map(r => r[key]);
+  const minV = Math.min(...vals) * 0.95;
+  const maxV = Math.max(...vals) * 1.05;
+  const xStep = rows.length > 1 ? (W - pad*2) / (rows.length-1) : 0;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.style.cssText = 'width:100%;height:' + H + 'px;';
+
+  [0,0.5,1].forEach(t => {
+    const v = Math.round(maxV - t*(maxV-minV));
+    const y = pad + t*(H-pad*2);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',pad); line.setAttribute('x2',W-pad);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(255,255,255,0.06)'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',pad-4); txt.setAttribute('y',y+4);
+    txt.setAttribute('fill','#4b5563'); txt.setAttribute('font-size','9'); txt.setAttribute('text-anchor','end');
+    txt.textContent = (key === 'steps' ? Math.round(v/1000)+'k' : v + (unit?(' '+unit):''));
+    svg.appendChild(txt);
+  });
+
+  const pts = rows.map((r,i) => ({
+    x: pad + i*xStep,
+    y: pad + (1-(r[key]-minV)/(maxV-minV)) * (H-pad*2),
+    r
+  }));
+
+  if (isBar) {
+    const barW = Math.max(2, xStep * 0.6);
+    pts.forEach(p => {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', p.x - barW/2); rect.setAttribute('y', p.y);
+      rect.setAttribute('width', barW); rect.setAttribute('height', (H-pad) - p.y);
+      rect.setAttribute('fill', color); rect.setAttribute('opacity', '0.75');
+      rect.setAttribute('rx', '2');
+      svg.appendChild(rect);
+    });
+  } else {
+    const lineD = pts.map((p,i)=> (i===0?'M':'L') + p.x + ',' + p.y).join(' ');
+    const lp = document.createElementNS('http://www.w3.org/2000/svg','path');
+    lp.setAttribute('d',lineD); lp.setAttribute('stroke',color);
+    lp.setAttribute('stroke-width','2'); lp.setAttribute('fill','none');
+    lp.setAttribute('stroke-linecap','round'); svg.appendChild(lp);
+    pts.forEach(p => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','3');
+      c.setAttribute('fill',color); c.setAttribute('stroke','#0e0f11'); c.setAttribute('stroke-width','1.2');
+      svg.appendChild(c);
+    });
+  }
+
+  // X-axis date labels -- show every Nth to avoid crowding
+  const labelStep = Math.max(1, Math.ceil(rows.length / 6));
+  rows.forEach((r, i) => {
+    if (i % labelStep !== 0 && i !== rows.length - 1) return;
+    const x = pad + i*xStep;
+    const dt = new Date(r.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',x); lbl.setAttribute('y',H-4);
+    lbl.setAttribute('fill','#4b5563'); lbl.setAttribute('font-size','8'); lbl.setAttribute('text-anchor','middle');
+    lbl.textContent = dt; svg.appendChild(lbl);
+  });
+
+  return svg;
+}
+
 function renderCyclingStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
@@ -10200,6 +10391,12 @@ function computeMarathonReadiness(plan, weeks, ltSecs) {
   factors.consistency = { score: consistencyScore, weight: 20, label: 'Training consistency' };
 
   // ── Factor 4: Recent health (15%) ───────────────────────────────────────
+  // Blends flagged sick/injury days with resting HR trend when Garmin data
+  // is available. Resting HR is weighted more heavily than sick-day flags
+  // alone, since it's a more reliable day-to-day signal -- a flagged sick
+  // day is binary and easy to forget to log, while resting HR drifts
+  // gradually and catches overtraining/illness even when nothing was
+  // explicitly logged.
   let recentSickDays = 0;
   const fourWeeksAgo = new Date(today_t - 28 * 86400000);
   weeks.forEach(wk => {
@@ -10209,10 +10406,29 @@ function computeMarathonReadiness(plan, weeks, ltSecs) {
       if (f && (f.type === 'sick' || f.type === 'injured_run')) recentSickDays++;
     });
   });
-  const healthScore = recentSickDays === 0 ? 100
+  const sickFlagScore = recentSickDays === 0 ? 100
     : recentSickDays <= 2 ? 75
     : recentSickDays <= 5 ? 50
     : recentSickDays <= 10 ? 25 : 0;
+
+  let healthScore = sickFlagScore;
+  if (Array.isArray(garminMetricsCache) && garminMetricsCache.length >= 14) {
+    const rhrRows = garminMetricsCache.filter(r => r.resting_hr != null);
+    if (rhrRows.length >= 10) {
+      const recent7 = rhrRows.slice(-7).map(r => r.resting_hr);
+      const prior14 = rhrRows.slice(-21, -7).map(r => r.resting_hr);
+      if (recent7.length && prior14.length) {
+        const avgRecent = recent7.reduce((a,b)=>a+b,0) / recent7.length;
+        const avgPrior = prior14.reduce((a,b)=>a+b,0) / prior14.length;
+        const rhrDelta = avgRecent - avgPrior; // positive = RHR rising = worse
+        // +1 bpm rise ~ -10 score points, capped at +/-5 bpm swing
+        const clampedDelta = Math.max(-5, Math.min(5, rhrDelta));
+        const rhrScore = Math.max(0, Math.min(100, 100 - clampedDelta * 10));
+        // Weight resting HR more heavily (65%) than sick-day flags (35%)
+        healthScore = Math.round(rhrScore * 0.65 + sickFlagScore * 0.35);
+      }
+    }
+  }
   factors.health = { score: healthScore, weight: 15, label: 'Recent health' };
 
   // ── Factor 5: Phase & taper timing (10%) ────────────────────────────────
@@ -10260,7 +10476,7 @@ const READY_FACTOR_INFO = [
   { name: 'Training consistency', weight: '20%',
     desc: 'The percentage of past weeks where you hit at least 80% of that week\'s planned distance. Consistency over time is one of the strongest predictors of marathon performance.' },
   { name: 'Recent health', weight: '15%',
-    desc: 'Counts sick or injury days flagged in the last 4 weeks. Zero days scores 100%, with the score dropping as more days are flagged. Recent health matters more than health earlier in the plan.' },
+    desc: 'Blends sick/injury days flagged in the last 4 weeks with your resting heart rate trend from Garmin (when available) -- a rising resting HR over the past week vs the prior two weeks lowers the score, since it often signals fatigue or illness before you would think to log it yourself. Resting HR is weighted more heavily than flags alone once enough Garmin data exists.' },
   { name: 'Phase timing', weight: '10%',
     desc: 'Checks whether your training matches where you are in the plan: building volume early on, and reducing it appropriately during taper in the final 1-3 weeks before race day.' },
   { name: 'Volume completed', weight: '10%',
