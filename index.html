@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.19.6</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -3516,7 +3516,71 @@ const SUPA_HDR  = { 'Content-Type':'application/json', 'apikey':SUPA_KEY, 'Autho
 // ── SAVE USER STATE ────────────────────────────────────────────────────────
 let _autosaveTimer = null;
 
+// Guards against autosave pushing a stale localStorage snapshot back to
+// Supabase before the authoritative cloud state has finished loading.
+let _cloudStateLoaded = false;
+
+// ── DATA HEALTH CHECK ────────────────────────────────────────────────────────
+// Compares the localStorage snapshot against the freshly-loaded Supabase
+// (cloud) state on every app load. Purely diagnostic -- never changes which
+// data wins (cloud always wins, same as before), only surfaces a visible
+// warning if they disagree on something substantial, so a silent divergence
+// is caught the moment it happens instead of being discovered much later.
+function weeksRoughlyMatch(a, b) {
+  // Treat two weeks as "matching" if their non-null run/str/cross entries
+  // are identical. Returns true if they match closely enough to ignore.
+  if (!a || !b) return a === b;
+  const compareRow = (rowA, rowB) => {
+    if (!rowA && !rowB) return true;
+    if (!rowA || !rowB) return false;
+    return rowA.length === rowB.length && rowA.every((v, i) => v === rowB[i]);
+  };
+  return compareRow(a.runs, b.runs) && compareRow(a.str, b.str) && compareRow(a.cross, b.cross);
+}
+
+function checkDataHealth(localState, cloudState) {
+  if (!Array.isArray(localState) || !Array.isArray(cloudState)) return;
+  const maxLen = Math.max(localState.length, cloudState.length);
+  const mismatchedWeeks = [];
+  for (let wi = 0; wi < maxLen; wi++) {
+    const a = localState[wi];
+    const b = cloudState[wi];
+    if (!weeksRoughlyMatch(a, b)) mismatchedWeeks.push(wi);
+  }
+  if (mismatchedWeeks.length === 0) {
+    console.log('[health check] Local and cloud data match for all weeks.');
+    return;
+  }
+  console.warn('[health check] Local/cloud mismatch on weeks:', mismatchedWeeks);
+  showDataHealthBanner(mismatchedWeeks);
+}
+
+function showDataHealthBanner(mismatchedWeeks) {
+  if (document.getElementById('data-health-banner')) return; // already showing
+  const banner = document.createElement('div');
+  banner.id = 'data-health-banner';
+  banner.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);' +
+    'background:#1a1d22;border:1px solid rgba(255,167,38,0.4);border-radius:12px;' +
+    'padding:12px 16px;z-index:9998;max-width:340px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+  const weekLabel = mismatchedWeeks.length === 1
+    ? 'Week ' + (mismatchedWeeks[0] + 1)
+    : mismatchedWeeks.length + ' weeks';
+  banner.innerHTML =
+    '<div style="font-size:12px;font-weight:600;color:#f0ede8;margin-bottom:4px;">⚠️ Data check</div>' +
+    '<div style="font-size:11px;color:#9ca3af;margin-bottom:10px;">' +
+      'Your device had different training data saved locally than what\u2019s on the server for ' + weekLabel + '. ' +
+      'The server version is now showing (this is usually the safe choice). If something looks wrong, let me know which week.' +
+    '</div>' +
+    '<button id="data-health-dismiss" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);border:none;border-radius:8px;color:#9ca3af;font-size:12px;cursor:pointer;font-family:inherit;">Got it</button>';
+  document.body.appendChild(banner);
+  document.getElementById('data-health-dismiss').addEventListener('click', () => banner.remove());
+}
+
 function triggerAutosave() {
+  if (!_cloudStateLoaded) {
+    console.warn('[autosave] Skipped -- cloud state has not finished loading yet.');
+    return;
+  }
   clearTimeout(_autosaveTimer);
   showAutosaveStatus('pending');
   _autosaveTimer = setTimeout(() => saveState(), 1200);
@@ -3736,9 +3800,26 @@ if (_local) applyState(JSON.parse(_local));
   // 3. Load user state from Supabase (drag/drop edits etc)
   const cloud = await loadCloudState();
   if (cloud) {
+    // Data health check: compare what we just applied from localStorage
+    // (the "fast path") against what the cloud actually says, BEFORE we
+    // overwrite local with cloud. This is read-only -- it never changes
+    // which data wins, it only surfaces a warning if they meaningfully
+    // disagree, so a silent divergence (like the one that caused real
+    // data loss previously) gets caught immediately instead of being
+    // discovered hours later.
+    try {
+      if (_local) {
+        const localParsed = JSON.parse(_local);
+        checkDataHealth(localParsed, cloud);
+      }
+    } catch(e) { console.warn('[health check] failed to compare local vs cloud:', e); }
+
     applyState(cloud);
     localStorage.setItem('training-cal-2026', JSON.stringify(cloud));
   }
+  // Cloud state has now been fetched and applied (or confirmed empty) --
+  // autosave is safe to run from this point on.
+  _cloudStateLoaded = true;
 
   // 3. Build and render (suppress autosave during initial load)
   _renderWeekDepth++;
@@ -5155,9 +5236,14 @@ function buildNoteCard(note) {
 function buildNoteLine(note, line, li) {
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:4px 0;';
+  // Stable identifiers so toggleNoteCheckbox can update this exact row's
+  // checkbox + text styling in place, without rebuilding the whole list.
+  row.dataset.noteId = note.id;
+  row.dataset.lineIdx = li;
 
   if (line.isCheckbox) {
     const checkbox = document.createElement('button');
+    checkbox.className = 'note-line-checkbox';
     checkbox.textContent = line.checked ? '\u2611' : '\u2610';
     checkbox.style.cssText = 'background:none;border:none;font-size:16px;cursor:pointer;flex-shrink:0;color:' + (line.checked ? '#26A69A' : 'var(--muted)') + ';padding:2px 0;';
     checkbox.addEventListener('click', () => toggleNoteCheckbox(note.id, li));
@@ -5169,6 +5255,7 @@ function buildNoteLine(note, line, li) {
   }
 
   const textArea = document.createElement('textarea');
+  textArea.className = 'note-line-text';
   textArea.value = line.text || '';
   textArea.rows = 1;
   textArea.placeholder = line.isCheckbox ? 'Checklist item' : 'Write something\u2026';
@@ -5232,8 +5319,33 @@ function toggleNoteCheckbox(noteId, lineIdx) {
   const note = notesList.find(n => n.id === noteId);
   if (!note) return;
   const newLines = [...note.lines];
-  newLines[lineIdx] = { ...newLines[lineIdx], checked: !newLines[lineIdx].checked };
-  saveNote(noteId, { lines: newLines });
+  const newChecked = !newLines[lineIdx].checked;
+  newLines[lineIdx] = { ...newLines[lineIdx], checked: newChecked };
+
+  // Update local state + Supabase silently (no DOM rebuild)...
+  saveNoteSilent(noteId, { lines: newLines });
+
+  // ...then update just THIS row's checkbox + text styling directly,
+  // instead of refreshNotesListOnly() rebuilding the entire notes list.
+  // This avoids the flicker/scroll-jump of a full rebuild for what is
+  // visually a tiny, localised change.
+  const row = document.querySelector('[data-note-id="' + noteId + '"][data-line-idx="' + lineIdx + '"]');
+  if (row) {
+    const checkboxBtn = row.querySelector('.note-line-checkbox');
+    const textEl = row.querySelector('.note-line-text');
+    if (checkboxBtn) {
+      checkboxBtn.textContent = newChecked ? '\u2611' : '\u2610';
+      checkboxBtn.style.color = newChecked ? '#26A69A' : 'var(--muted)';
+    }
+    if (textEl) {
+      textEl.style.color = newChecked ? 'var(--muted2)' : 'var(--text)';
+      textEl.style.textDecoration = newChecked ? 'line-through' : 'none';
+    }
+  } else {
+    // Couldn't find the row for some reason -- fall back to a full
+    // refresh so the change is never silently lost from view.
+    refreshNotesListOnly();
+  }
 }
 
 function deleteNoteLine(noteId, lineIdx) {
@@ -8136,21 +8248,32 @@ function resetGcalGuests() {
 }
 
 function showGCalReauthBanner() {
-  // Show a banner on the page prompting re-authentication
+  // Show a banner on the page prompting re-authentication.
+  // NOTE: there is no live re-auth endpoint -- the Google refresh token is
+  // hardcoded in the gcal-create-event Edge Function, so a fresh one has to
+  // be generated manually via Google's OAuth Playground and pasted into
+  // that function's source. This banner gives the exact steps instead of
+  // linking to a non-existent auto-reconnect URL.
   let banner = document.getElementById('gcal-reauth-banner');
   if (banner) return; // already shown
   banner = document.createElement('div');
   banner.id = 'gcal-reauth-banner';
   banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
     'background:#1a1d22;border:1px solid rgba(252,76,2,0.4);border-radius:12px;' +
-    'padding:12px 16px;z-index:9999;max-width:320px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+    'padding:14px 16px;z-index:9999;max-width:340px;width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
   banner.innerHTML =
-    '<div style="font-size:12px;font-weight:600;color:#f0ede8;margin-bottom:6px;">📅 Google Calendar disconnected</div>' +
-    '<div style="font-size:11px;color:#6b7280;margin-bottom:10px;">Your Google session has expired. Re-connect to restore calendar sync.</div>' +
-    '<div style="display:flex;gap:8px;">' +
-      '<a href="' + SUPA_FN + 'gcal-auth" style="flex:1;padding:9px;background:#FC4C02;color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-align:center;text-decoration:none;">Re-connect Google</a>' +
-      '<button style="padding:9px 12px;background:rgba(255,255,255,0.06);border:none;border-radius:8px;color:#9ca3af;font-size:12px;cursor:pointer;font-family:inherit;">Dismiss</button>' +
-    '</div>';
+    '<div style="font-size:12px;font-weight:600;color:#f0ede8;margin-bottom:6px;">\ud83d\udcc5 Google Calendar disconnected</div>' +
+    '<div style="font-size:11px;color:#9ca3af;margin-bottom:10px;line-height:1.5;">' +
+      'Your Google session has expired. To fix this permanently, publish your OAuth app in ' +
+      '<a href="https://console.cloud.google.com" target="_blank" style="color:#FC4C02;text-decoration:underline;">Google Cloud Console</a> ' +
+      '\u2192 OAuth consent screen \u2192 Publish App. This removes the 7-day token limit for good.' +
+    '</div>' +
+    '<div style="font-size:11px;color:#9ca3af;margin-bottom:10px;line-height:1.5;">' +
+      'To reconnect right now: generate a new refresh token via ' +
+      '<a href="https://developers.google.com/oauthplayground/" target="_blank" style="color:#FC4C02;text-decoration:underline;">OAuth Playground</a>, ' +
+      'then update it in the gcal-create-event Edge Function in your Supabase dashboard.' +
+    '</div>' +
+    '<button style="width:100%;padding:9px;background:rgba(255,255,255,0.06);border:none;border-radius:8px;color:#9ca3af;font-size:12px;cursor:pointer;font-family:inherit;">Dismiss</button>';
   document.body.appendChild(banner);
   banner.querySelector('button').addEventListener('click', () => banner.remove());
 }
