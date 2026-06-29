@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.21.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9128,6 +9128,13 @@ async function renderIntervalStats() {
       }, 80);
     }
 
+    // Training direction card -- synthesises pace trend, within-session
+    // fade pattern, recent volume, and training phase into a specific
+    // recommendation, rather than a generic "run faster" suggestion.
+    try {
+      renderTrainingDirection(container, sessionsWithPace, rows);
+    } catch(e) { console.warn('[training direction] error:', e); }
+
     // ── Session list ─────────────────────────────────────────────────────────
     const listTitle = document.createElement('div');
     listTitle.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:16px 20px 8px;';
@@ -9678,6 +9685,17 @@ function renderHealthStats() {
       );
     }
 
+    // 10k+ steps days, as a % of all days with step data in this period
+    const stepDaysAll = rows.filter(r => r.steps != null);
+    if (stepDaysAll.length) {
+      const tenKDays = stepDaysAll.filter(r => r.steps >= 10000).length;
+      const tenKPct = Math.round((tenKDays / stepDaysAll.length) * 100);
+      buildStatsKpiCard(kpiGrid,
+        tenKPct + '%', 'accent', '10k+ steps days',
+        [{ label: periodLabel, val: tenKDays + ' / ' + stepDaysAll.length + ' days' }]
+      );
+    }
+
     container.appendChild(kpiGrid);
 
     // Personal records
@@ -9737,9 +9755,24 @@ function renderHealthStats() {
       container.appendChild(sec);
     }
 
-    // Steps trend
+    // Steps by day of week -- only shown for the "This week" filter,
+    // since the day-name x-axis only makes sense within a single week.
+    if (healthFilterMode === 'week') {
+      const sec = document.createElement('div'); sec.className = 'stats-section';
+      sec.innerHTML = '<div class="stats-section-title">Steps per day this week</div>';
+      const wrap = document.createElement('div'); wrap.className = 'stats-pace-chart';
+      wrap.appendChild(buildStepsByDayOfWeekSVG(rows));
+      const info = document.createElement('div');
+      info.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
+      info.innerHTML = 'Green bars are days at or above 10,000 steps. Dashed line marks the 10k reference.';
+      wrap.appendChild(info);
+      sec.appendChild(wrap);
+      container.appendChild(sec);
+    }
+
+    // Steps trend (full period -- date-based x-axis, shown for month/year/all)
     const stepRows = rows.filter(r => r.steps != null);
-    if (stepRows.length >= 2) {
+    if (healthFilterMode !== 'week' && stepRows.length >= 2) {
       const sec = document.createElement('div'); sec.className = 'stats-section';
       sec.innerHTML = '<div class="stats-section-title">Daily steps</div>';
       const wrap = document.createElement('div'); wrap.className = 'stats-pace-chart';
@@ -9837,6 +9870,95 @@ function buildHealthTrendSVG(rows, key, color, unit, isBar) {
   return svg;
 }
 
+// Bar chart for the "This week" filter -- labels each bar with the day
+// name (Mon/Tue/.../Sun) instead of a date, since within a single week
+// the day-of-week is more useful at a glance than the date itself.
+function buildStepsByDayOfWeekSVG(rows) {
+  const W = 600, H = 130, pad = 36;
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  // Build a Mon-Sun array, filling in 0 for any day with no data yet
+  // (e.g. the rest of the current week that hasn't happened).
+  const [weekStart] = getCalendarWeekRange(new Date());
+  const byDay = dayNames.map((name, i) => {
+    const d = new Date(weekStart); d.setDate(weekStart.getDate() + i);
+    const iso = d.toISOString().slice(0,10);
+    const match = rows.find(r => r.metric_date === iso);
+    return { name, date: d, steps: match ? match.steps : null };
+  });
+
+  const maxV = Math.max(10000, ...byDay.map(d => d.steps || 0)) * 1.05;
+  const xStep = (W - pad*2) / (byDay.length - 1);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.style.cssText = 'width:100%;height:' + H + 'px;';
+
+  // Gridlines + a marker line at 10,000 steps for quick reference
+  [0,0.5,1].forEach(t => {
+    const v = Math.round(maxV - t*maxV);
+    const y = pad + t*(H-pad*2-14);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',pad); line.setAttribute('x2',W-pad);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(255,255,255,0.06)'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',pad-4); txt.setAttribute('y',y+4);
+    txt.setAttribute('fill','#4b5563'); txt.setAttribute('font-size','9'); txt.setAttribute('text-anchor','end');
+    txt.textContent = Math.round(v/1000)+'k'; svg.appendChild(txt);
+  });
+
+  // 10k reference line
+  const tenKY = pad + (1 - 10000/maxV) * (H-pad*2-14);
+  const refLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+  refLine.setAttribute('x1',pad); refLine.setAttribute('x2',W-pad);
+  refLine.setAttribute('y1',tenKY); refLine.setAttribute('y2',tenKY);
+  refLine.setAttribute('stroke','rgba(200,240,110,0.3)'); refLine.setAttribute('stroke-width','1');
+  refLine.setAttribute('stroke-dasharray','4,3');
+  svg.appendChild(refLine);
+
+  const barW = Math.max(8, xStep * 0.55);
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  byDay.forEach((d, i) => {
+    const x = pad + i*xStep;
+    const isFuture = d.date > today;
+    if (d.steps != null) {
+      const barH = (d.steps/maxV) * (H-pad*2-14);
+      const y = pad + (H-pad*2-14) - barH;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', x - barW/2); rect.setAttribute('y', y);
+      rect.setAttribute('width', barW); rect.setAttribute('height', barH);
+      rect.setAttribute('fill', d.steps >= 10000 ? '#c8f06e' : '#6eb8f0');
+      rect.setAttribute('opacity', '0.85'); rect.setAttribute('rx', '3');
+      svg.appendChild(rect);
+
+      const valTxt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      valTxt.setAttribute('x', x); valTxt.setAttribute('y', y - 5);
+      valTxt.setAttribute('fill', '#9ca3af'); valTxt.setAttribute('font-size', '8'); valTxt.setAttribute('text-anchor', 'middle');
+      valTxt.textContent = (d.steps/1000).toFixed(1) + 'k';
+      svg.appendChild(valTxt);
+    } else if (!isFuture) {
+      // No data for a past day -- show a faint placeholder
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx', x); dot.setAttribute('cy', H-pad-14+ (H-pad*2-14)); dot.setAttribute('r','2');
+      dot.setAttribute('fill', '#4b5563');
+      svg.appendChild(dot);
+    }
+
+    const dayLbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    dayLbl.setAttribute('x', x); dayLbl.setAttribute('y', H-4);
+    dayLbl.setAttribute('fill', isFuture ? '#374151' : '#9ca3af');
+    dayLbl.setAttribute('font-size', '10'); dayLbl.setAttribute('font-weight', '600');
+    dayLbl.setAttribute('text-anchor', 'middle');
+    dayLbl.textContent = d.name;
+    svg.appendChild(dayLbl);
+  });
+
+  return svg;
+}
+
 function renderCyclingStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
@@ -9895,6 +10017,12 @@ function renderCyclingStatsInner(container) {
       [{label:'recorded', val:new Date(ftpHistory[0].recorded_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})},
        {label:'entries', val:ftpHistory.length}]);
   }
+  try {
+    if (rides.length) {
+      const rideDates = rides.map(r => new Date(r.dateStr)).sort((a,b) => a-b);
+      addTenKStepsCard(kpiGrid, rideDates[0], rideDates[rideDates.length-1], 'this period');
+    }
+  } catch(e) { console.warn('[10k card] error:', e); }
   container.appendChild(kpiGrid);
 
   // ── FTP progression chart ─────────────────────────────────────────────────
@@ -10706,6 +10834,140 @@ function renderMarathonReadiness(container, weeks) {
   container.appendChild(section);
 }
 
+// ── TRAINING DIRECTION ────────────────────────────────────────────────────────
+// Synthesises recent interval pace trend, within-session fade pattern,
+// recent training volume, and current plan phase into one specific
+// recommendation -- rather than separate numbers the user has to interpret
+// themselves. Deliberately willing to say "hold steady" or "back off" when
+// the signals point that way, not just "you're improving."
+function computeTrainingDirection(sessionsWithPace, rawRows) {
+  const recent = sessionsWithPace.slice(-6); // last ~6 analysed sessions
+  if (recent.length < 2) return null;
+
+  // ── Signal 1: pace trend across recent sessions ───────────────────────────
+  // Compare the most recent half vs the earlier half of the recent window.
+  const mid = Math.floor(recent.length / 2);
+  const earlier = recent.slice(0, mid);
+  const later = recent.slice(mid);
+  const avgPace = arr => arr.reduce((a,s) => a + s.vwPace, 0) / arr.length;
+  const earlierPace = avgPace(earlier);
+  const laterPace = avgPace(later);
+  const paceDeltaSecs = laterPace - earlierPace; // negative = getting faster
+  const paceTrend = paceDeltaSecs <= -2 ? 'improving'
+    : paceDeltaSecs >= 2 ? 'declining'
+    : 'flat';
+
+  // ── Signal 2: within-session fade pattern ─────────────────────────────────
+  // For the most recent few sessions, compare first-half vs second-half
+  // rep pace within each session. Consistent fading across sessions
+  // suggests volume/recovery is the limiter, not pace itself.
+  const fadeRatios = [];
+  rawRows.slice(0, 4).forEach(r => {
+    const ivs = (r.intervals||[]).map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+    if (ivs.length < 4) return;
+    const halfPt = Math.floor(ivs.length / 2);
+    const firstHalf = ivs.slice(0, halfPt);
+    const secondHalf = ivs.slice(halfPt);
+    const avgFirst = firstHalf.reduce((a,b)=>a+b,0) / firstHalf.length;
+    const avgSecond = secondHalf.reduce((a,b)=>a+b,0) / secondHalf.length;
+    fadeRatios.push((avgSecond - avgFirst) / avgFirst); // positive = fading
+  });
+  const avgFade = fadeRatios.length ? fadeRatios.reduce((a,b)=>a+b,0) / fadeRatios.length : null;
+  const fadePattern = avgFade == null ? 'unknown'
+    : avgFade > 0.025 ? 'fading'
+    : avgFade < -0.01 ? 'negative-split'
+    : 'consistent';
+
+  // ── Signal 3: recent volume trend (quality km per session) ───────────────
+  const recentVol = recent.map(s => s.totalKm);
+  const avgVolEarly = recentVol.slice(0, Math.ceil(recentVol.length/2)).reduce((a,b)=>a+b,0) / Math.ceil(recentVol.length/2);
+  const avgVolLate = recentVol.slice(Math.ceil(recentVol.length/2)).reduce((a,b)=>a+b,0) / Math.floor(recentVol.length/2 || 1);
+  const volTrend = avgVolLate > avgVolEarly * 1.1 ? 'increasing'
+    : avgVolLate < avgVolEarly * 0.9 ? 'decreasing'
+    : 'steady';
+
+  // ── Signal 4: training phase (reuse the same plan-phase logic as race guidance) ──
+  let phase = 'build', weeksLeft = null;
+  try {
+    const plan = getActivePlan ? getActivePlan() : null;
+    if (plan && plan.race_date) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const raceDt = new Date(plan.race_date);
+      const daysLeft = Math.max(0, Math.floor((raceDt - today) / 86400000));
+      weeksLeft = Math.floor(daysLeft / 7);
+      phase = weeksLeft <= 3 ? 'taper' : weeksLeft <= 8 ? 'sharp' : 'build';
+    }
+  } catch(e) {}
+
+  // ── Synthesise into one recommendation ────────────────────────────────────
+  let headline, detail, action, urgency = 'normal';
+
+  if (phase === 'taper') {
+    headline = 'Hold what you have';
+    detail = 'You are in the taper window' + (weeksLeft != null ? ' (' + weeksLeft + ' week' + (weeksLeft !== 1 ? 's' : '') + ' to race)' : '') + '. This is not the time to chase a faster interval pace or add volume -- the fitness is already built. Keep sessions short and sharp, same pace as recent weeks.';
+    action = 'Maintain current pace, reduce rep count or session length.';
+  } else if (fadePattern === 'fading' && volTrend !== 'decreasing') {
+    headline = 'Recovery is the limiter right now';
+    detail = 'Your reps have been fading noticeably within sessions (later reps meaningfully slower than early ones) while volume has stayed level or increased. This pattern usually means the limiter is recovery, not threshold pace -- pushing pace harder right now is likely to just make the fade worse or risk injury.';
+    action = 'Hold current pace and volume for 1-2 weeks, prioritise recovery between sessions, then reassess.';
+    urgency = 'caution';
+  } else if (paceTrend === 'improving' && fadePattern !== 'fading') {
+    headline = 'You have room to extend';
+    detail = 'Your interval pace has improved over recent sessions (~' + Math.abs(Math.round(paceDeltaSecs)) + 's/km faster) while reps are holding up well within sessions (' + (fadePattern === 'negative-split' ? 'even finishing strong' : 'staying consistent') + '). That combination suggests you have adapted to the current demand.';
+    action = phase === 'sharp'
+      ? 'Extend rep duration or reduce recovery slightly, rather than chasing a faster pace this close to race day.'
+      : 'Extend rep duration or add one more rep next session, keeping pace where it is rather than pushing it faster yet.';
+  } else if (paceTrend === 'flat' && fadePattern === 'consistent') {
+    headline = 'Steady -- ready for a small step up';
+    detail = 'Pace has been flat across recent sessions but reps are holding up consistently with no fading. This is a stable platform -- you are not struggling, but you are also not being pushed enough to drive further adaptation.';
+    action = volTrend === 'increasing'
+      ? 'Volume is already trending up -- give it another 1-2 weeks before changing pace too.'
+      : 'Try a small pace increase (2-3 sec/km) on your next session and see how the reps hold up.';
+  } else if (paceTrend === 'declining') {
+    headline = 'Pace has slipped -- worth a closer look';
+    detail = 'Your interval pace has been slower in recent sessions than a few weeks ago. This can be normal during a high-volume block, after illness, or simply day-to-day variation -- but if it continues for another 2 sessions, it is worth checking recovery, sleep, and whether overall training load has crept up.';
+    action = 'Hold pace and volume steady for now rather than pushing through a slower patch.';
+    urgency = 'caution';
+  } else {
+    headline = 'Mixed signals -- hold steady';
+    detail = 'Recent sessions do not show a clear consistent pattern yet. A few more analysed sessions will give a clearer read.';
+    action = 'Keep doing what you are doing -- pace and volume both look reasonable for now.';
+  }
+
+  return { headline, detail, action, urgency, paceTrend, fadePattern, volTrend, phase, weeksLeft, paceDeltaSecs };
+}
+
+function renderTrainingDirection(container, sessionsWithPace, rawRows) {
+  const result = computeTrainingDirection(sessionsWithPace, rawRows);
+  if (!result) return;
+
+  const sec = document.createElement('div');
+  sec.style.cssText = 'padding:16px 20px 0;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
+  title.textContent = 'Training direction';
+  sec.appendChild(title);
+
+  const accentColor = result.urgency === 'caution' ? '#f0c060' : '#6eb8f0';
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#16181c;border:1px solid ' + (result.urgency === 'caution' ? 'rgba(240,192,96,0.25)' : 'rgba(110,184,240,0.2)') + ';border-radius:14px;padding:16px;';
+
+  card.innerHTML =
+    '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">' +
+      '<span style="font-size:18px;flex-shrink:0;">' + (result.urgency === 'caution' ? '\u26a0\ufe0f' : '\ud83d\udca1') + '</span>' +
+      '<div style="font-size:14px;font-weight:700;color:' + accentColor + ';line-height:1.3;">' + result.headline + '</div>' +
+    '</div>' +
+    '<div style="font-size:12px;color:#9ca3af;line-height:1.6;margin-bottom:12px;">' + result.detail + '</div>' +
+    '<div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">' +
+      '<span style="font-size:11px;color:#6b7280;flex-shrink:0;font-weight:600;">DO THIS:</span>' +
+      '<span style="font-size:11px;color:#d1d5db;line-height:1.5;">' + result.action + '</span>' +
+    '</div>';
+
+  sec.appendChild(card);
+  container.appendChild(sec);
+}
+
 function buildRaceGuidance(plan, est, weeks, ltSecs, longestRunM, raceKm, raceDate) {
   const today = new Date(); today.setHours(0,0,0,0);
   const raceDt = raceDate ? new Date(raceDate) : null;
@@ -11255,6 +11517,17 @@ function renderRunningStats() {
       [{label:'recorded', val: ltDate}, {label:'entries', val: ltHistory.length}]
     );
   }
+  // 10k+ steps days, scoped to this view's date range
+  try {
+    if (weeks.length) {
+      const [fy,fm,fd] = WEEK_MONDAYS[weeks[0].wi];
+      const [ly,lm,ld] = WEEK_MONDAYS[weeks[weeks.length-1].wi];
+      const rangeStart = new Date(fy, fm-1, fd);
+      const rangeEnd = new Date(ly, lm-1, ld+6);
+      addTenKStepsCard(kpiGrid, rangeStart, rangeEnd, statsScope === 'plan' ? 'this plan' : 'this period');
+    }
+  } catch(e) { console.warn('[10k card] error:', e); }
+
   // Cardio card
   buildCardioCard(kpiGrid, weeks, true);
   // Total training card
@@ -12236,6 +12509,26 @@ function buildTotalTrainingCard(container, weeks, showAvgPerWeek) {
   buildStatsKpiCard(container, secsToHoursMin(totalSecs), 'accent', 'Total training', secondaryItems);
 }
 
+// Adds a "10k+ steps days" KPI card scoped to a date range, using the
+// already-loaded garminMetricsCache. Silently does nothing if there's no
+// Garmin data yet, or if the cache hasn't loaded -- never breaks the rest
+// of the KPI grid.
+function addTenKStepsCard(kpiGrid, startDate, endDate, periodLabel) {
+  if (!Array.isArray(garminMetricsCache) || !garminMetricsCache.length) return;
+  const inRange = garminMetricsCache.filter(r => {
+    if (r.steps == null) return false;
+    const d = new Date(r.metric_date);
+    return (!startDate || d >= startDate) && (!endDate || d <= endDate);
+  });
+  if (!inRange.length) return;
+  const tenKDays = inRange.filter(r => r.steps >= 10000).length;
+  const pct = Math.round((tenKDays / inRange.length) * 100);
+  buildStatsKpiCard(kpiGrid,
+    pct + '%', 'accent', '10k+ steps days',
+    [{ label: periodLabel || 'this period', val: tenKDays + ' / ' + inRange.length + ' days' }]
+  );
+}
+
 function buildStatsKpiCard(grid, mainVal, cls, label, secondaryItems) {
   const card = document.createElement('div');
   card.className = 'stats-kpi';
@@ -12313,6 +12606,12 @@ function renderWeekStats() {
     [{label:'easy run pace', val: wk.doneSessions+' runs'}]);
   buildStatsKpiCard(kpiGrid, (weekSick+weekInj)||'—', 'health', 'Days impacted',
     [{label:'Sick', val:weekSick},{label:'Injured', val:weekInj}]);
+  try {
+    const [wy,wm,wd] = WEEK_MONDAYS[wk.wi];
+    const weekStart = new Date(wy, wm-1, wd);
+    const weekEnd = new Date(wy, wm-1, wd+6);
+    addTenKStepsCard(kpiGrid, weekStart, weekEnd, 'this week');
+  } catch(e) { console.warn('[10k card] error:', e); }
   buildCardioCard(kpiGrid, [wk], false);
   buildTotalTrainingCard(kpiGrid, [wk], false);
   container.appendChild(kpiGrid);
