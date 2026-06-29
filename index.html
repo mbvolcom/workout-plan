@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9688,7 +9688,7 @@ function renderHealthStats() {
     // 10k+ steps days, as a % of all days with step data in this period
     const stepDaysAll = rows.filter(r => r.steps != null);
     if (stepDaysAll.length) {
-      const tenKDays = stepDaysAll.filter(r => r.steps >= 10000).length;
+      const tenKDays = stepDaysAll.filter(r => r.steps >= 9000).length;
       const tenKPct = Math.round((tenKDays / stepDaysAll.length) * 100);
       buildStatsKpiCard(kpiGrid,
         tenKPct + '%', 'accent', '10k+ steps days',
@@ -9764,7 +9764,7 @@ function renderHealthStats() {
       wrap.appendChild(buildStepsByDayOfWeekSVG(rows));
       const info = document.createElement('div');
       info.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
-      info.innerHTML = 'Green bars are days at or above 10,000 steps. Dashed line marks the 10k reference.';
+      info.innerHTML = 'Green bars are days at or above 9,000 steps. Dashed line marks the threshold.';
       wrap.appendChild(info);
       sec.appendChild(wrap);
       container.appendChild(sec);
@@ -9910,7 +9910,7 @@ function buildStepsByDayOfWeekSVG(rows) {
   });
 
   // 10k reference line
-  const tenKY = pad + (1 - 10000/maxV) * (H-pad*2-14);
+  const tenKY = pad + (1 - 9000/maxV) * (H-pad*2-14);
   const refLine = document.createElementNS('http://www.w3.org/2000/svg','line');
   refLine.setAttribute('x1',pad); refLine.setAttribute('x2',W-pad);
   refLine.setAttribute('y1',tenKY); refLine.setAttribute('y2',tenKY);
@@ -9930,7 +9930,7 @@ function buildStepsByDayOfWeekSVG(rows) {
       const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
       rect.setAttribute('x', x - barW/2); rect.setAttribute('y', y);
       rect.setAttribute('width', barW); rect.setAttribute('height', barH);
-      rect.setAttribute('fill', d.steps >= 10000 ? '#c8f06e' : '#6eb8f0');
+      rect.setAttribute('fill', d.steps >= 9000 ? '#c8f06e' : '#6eb8f0');
       rect.setAttribute('opacity', '0.85'); rect.setAttribute('rx', '3');
       svg.appendChild(rect);
 
@@ -12521,7 +12521,7 @@ function addTenKStepsCard(kpiGrid, startDate, endDate, periodLabel) {
     return (!startDate || d >= startDate) && (!endDate || d <= endDate);
   });
   if (!inRange.length) return;
-  const tenKDays = inRange.filter(r => r.steps >= 10000).length;
+  const tenKDays = inRange.filter(r => r.steps >= 9000).length;
   const pct = Math.round((tenKDays / inRange.length) * 100);
   buildStatsKpiCard(kpiGrid,
     pct + '%', 'accent', '10k+ steps days',
