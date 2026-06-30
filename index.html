@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -11570,10 +11570,17 @@ function renderRunningStats() {
     DAYS.forEach((_,di)=>{
       const [y,m,d]=WEEK_MONDAYS[wk.wi];
       const runVal=(ats(wk.wi)).runs[di];
-      if(runVal&&runVal.split(':')[0]==='long'){
-        const acts=getStravaForDay(wk.wi,di,'runs');
-        if(acts) acts.forEach(a=>longActs.push((a.distance||0)/1000));
-      }
+      const prefix = runVal ? runVal.split(':')[0] : '';
+      const acts=getStravaForDay(wk.wi,di,'runs');
+      if(!acts) return;
+      // Same broadened classification as buildStatsWeeks: labelled "long",
+      // already analysed as a long run, or 18km+ on its own merit.
+      acts.forEach(a => {
+        const isLong = prefix === 'long' ||
+          (typeof longRunFatigueCache !== 'undefined' && longRunFatigueCache[a.id]) ||
+          (a.distance && a.distance >= 18000);
+        if (isLong) longActs.push((a.distance||0)/1000);
+      });
     });
     return longActs;
   });
@@ -12936,6 +12943,18 @@ function buildStatsWeeks() {
       // Also collect from Strava str row directly
       if (acts) {
         doneRuns++;
+        // A run counts as "long" if EITHER the day's calendar label says
+        // "long", OR it already has a saved fatigue analysis, OR the
+        // activity itself is at least 18km -- this last check matters
+        // because calendar labels can drift out of sync with what you
+        // actually ran (e.g. after a plan edit/restore shifts which day
+        // is labelled "long" for a given week), but an 18km+ run is
+        // unambiguously a long run regardless of what the pill says.
+        const dayHasLongRun = acts.some(a =>
+          prefix === 'long' ||
+          (typeof longRunFatigueCache !== 'undefined' && longRunFatigueCache[a.id]) ||
+          (a.distance && a.distance >= 18000)
+        );
         acts.forEach(a=>{
           actualKm+=(a.distance||0)/1000;
           totalSecs+=a.moving_time||0;
@@ -12949,7 +12968,7 @@ function buildStatsWeeks() {
           // covered in hard sessions, not just session count.
           if (prefix==='quality') qualityKm += (a.distance||0)/1000;
         });
-        if (prefix==='long')                            longRuns++;
+        if (dayHasLongRun)                              longRuns++;
         else if (prefix==='quality'||prefix==='kinder') qualityRuns++;
         else                                             easyRuns++;
       }
