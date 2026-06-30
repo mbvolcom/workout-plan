@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9544,6 +9544,42 @@ function trendArrow(recent, older) {
 // 'week' = current calendar week (Mon-Sun), 'month' = current calendar
 // month, 'year' = current calendar year, 'all' = everything.
 let healthFilterMode = 'all';
+// 0 = current week/month/year, -1 = one back, +1 = one forward (relative
+// to today). Reset to 0 whenever the filter mode itself changes.
+let healthFilterOffset = 0;
+
+// Returns the "anchor" date to use for the current filter, applying the
+// offset. E.g. mode='week', offset=-1 -> the Monday of last week.
+function getHealthFilterAnchorDate() {
+  const base = new Date(); base.setHours(0,0,0,0);
+  if (healthFilterMode === 'week') {
+    base.setDate(base.getDate() + healthFilterOffset * 7);
+  } else if (healthFilterMode === 'month') {
+    base.setMonth(base.getMonth() + healthFilterOffset);
+  } else if (healthFilterMode === 'year') {
+    base.setFullYear(base.getFullYear() + healthFilterOffset);
+  }
+  return base;
+}
+
+// Parses a "YYYY-MM-DD" string as a LOCAL date (midnight local time),
+// not UTC. Using `new Date("2026-06-30")` parses as UTC midnight, which
+// can silently shift to the previous/next day once converted to local
+// time depending on timezone -- this caused steps/health data to appear
+// on the wrong day of the week. Always use this for metric_date strings.
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// Formats a Date back to "YYYY-MM-DD" using LOCAL date components (not
+// toISOString, which converts to UTC and can shift the date).
+function formatLocalDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
 
 function getCalendarWeekRange(d) {
   const day = new Date(d); day.setHours(0,0,0,0);
@@ -9556,30 +9592,30 @@ function getCalendarWeekRange(d) {
 
 function applyHealthFilter(rows) {
   if (healthFilterMode === 'all') return rows;
-  const today = new Date(); today.setHours(0,0,0,0);
+  const anchor = getHealthFilterAnchorDate();
 
   if (healthFilterMode === 'week') {
-    const [monday, sunday] = getCalendarWeekRange(today);
+    const [monday, sunday] = getCalendarWeekRange(anchor);
     return rows.filter(r => {
-      const d = new Date(r.metric_date);
+      const d = parseLocalDate(r.metric_date);
       return d >= monday && d <= sunday;
     });
   }
   if (healthFilterMode === 'month') {
     return rows.filter(r => {
-      const d = new Date(r.metric_date);
-      return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+      const d = parseLocalDate(r.metric_date);
+      return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth();
     });
   }
   if (healthFilterMode === 'year') {
-    return rows.filter(r => new Date(r.metric_date).getFullYear() === today.getFullYear());
+    return rows.filter(r => parseLocalDate(r.metric_date).getFullYear() === anchor.getFullYear());
   }
   return rows;
 }
 
 function renderHealthFilterBar(container) {
   const bar = document.createElement('div');
-  bar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;padding:14px 20px 16px;';
+  bar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;padding:14px 20px 0;';
   [
     ['week', 'This week'],
     ['month', 'This month'],
@@ -9594,11 +9630,68 @@ function renderHealthFilterBar(container) {
       'font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;';
     btn.addEventListener('click', () => {
       healthFilterMode = mode;
+      healthFilterOffset = 0; // reset to current period when switching modes
       renderHealthStats();
     });
     bar.appendChild(btn);
   });
   container.appendChild(bar);
+
+  // Back/forward navigation -- only relevant for week/month/year, not "all time"
+  if (healthFilterMode !== 'all') {
+    const navRow = document.createElement('div');
+    navRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 20px 16px;';
+
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '‹';
+    prevBtn.style.cssText = 'width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#16181c;color:#d1d5db;font-size:16px;cursor:pointer;font-family:inherit;';
+    prevBtn.addEventListener('click', () => { healthFilterOffset -= 1; renderHealthStats(); });
+
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = '›';
+    nextBtn.style.cssText = 'width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#16181c;color:#d1d5db;font-size:16px;cursor:pointer;font-family:inherit;';
+    // Disable going beyond the current period -- no future data to show
+    if (healthFilterOffset >= 0) {
+      nextBtn.disabled = true;
+      nextBtn.style.opacity = '0.3';
+      nextBtn.style.cursor = 'default';
+    } else {
+      nextBtn.addEventListener('click', () => { healthFilterOffset += 1; renderHealthStats(); });
+    }
+
+    const periodLbl = document.createElement('div');
+    periodLbl.style.cssText = 'font-size:13px;font-weight:600;color:#d1d5db;min-width:140px;text-align:center;';
+    periodLbl.textContent = formatHealthPeriodLabel();
+
+    navRow.appendChild(prevBtn);
+    navRow.appendChild(periodLbl);
+    navRow.appendChild(nextBtn);
+    container.appendChild(navRow);
+  }
+}
+
+// Builds a human-readable label for the currently selected week/month/year,
+// e.g. "23-29 Jun 2026", "June 2026", "2026", or "This week" / "This month"
+// / "This year" when offset is 0 (current period).
+function formatHealthPeriodLabel() {
+  const anchor = getHealthFilterAnchorDate();
+  if (healthFilterMode === 'week') {
+    if (healthFilterOffset === 0) return 'This week';
+    const [monday, sunday] = getCalendarWeekRange(anchor);
+    const sameMonth = monday.getMonth() === sunday.getMonth();
+    const startStr = monday.toLocaleDateString('en-GB', { day: 'numeric', month: sameMonth ? undefined : 'short' });
+    const endStr = sunday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return startStr + '–' + endStr;
+  }
+  if (healthFilterMode === 'month') {
+    if (healthFilterOffset === 0) return 'This month';
+    return anchor.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+  if (healthFilterMode === 'year') {
+    if (healthFilterOffset === 0) return 'This year';
+    return String(anchor.getFullYear());
+  }
+  return '';
 }
 
 function renderHealthStats() {
@@ -9630,19 +9723,22 @@ function renderHealthStats() {
 
     // Comparison window for the trend arrow: previous equivalent period,
     // computed from the FULL dataset (not the filtered one) so "this week
-    // vs last week" etc still works even when zoomed in.
+    // vs last week" etc still works even when zoomed in -- and respects
+    // healthFilterOffset, so navigating back/forward still compares
+    // against the period immediately before whatever you're viewing.
     let comparisonPrior = [];
     const today = new Date(); today.setHours(0,0,0,0);
+    const anchorForCompare = getHealthFilterAnchorDate();
     if (healthFilterMode === 'week') {
-      const [monday] = getCalendarWeekRange(today);
+      const [monday] = getCalendarWeekRange(anchorForCompare);
       const priorMonday = new Date(monday); priorMonday.setDate(monday.getDate() - 7);
       const priorSunday = new Date(monday); priorSunday.setDate(monday.getDate() - 1);
-      comparisonPrior = allRows.filter(r => { const d = new Date(r.metric_date); return d >= priorMonday && d <= priorSunday; });
+      comparisonPrior = allRows.filter(r => { const d = parseLocalDate(r.metric_date); return d >= priorMonday && d <= priorSunday; });
     } else if (healthFilterMode === 'month') {
-      const priorMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      comparisonPrior = allRows.filter(r => { const d = new Date(r.metric_date); return d.getFullYear() === priorMonth.getFullYear() && d.getMonth() === priorMonth.getMonth(); });
+      const priorMonth = new Date(anchorForCompare.getFullYear(), anchorForCompare.getMonth() - 1, 1);
+      comparisonPrior = allRows.filter(r => { const d = parseLocalDate(r.metric_date); return d.getFullYear() === priorMonth.getFullYear() && d.getMonth() === priorMonth.getMonth(); });
     } else if (healthFilterMode === 'year') {
-      comparisonPrior = allRows.filter(r => new Date(r.metric_date).getFullYear() === today.getFullYear() - 1);
+      comparisonPrior = allRows.filter(r => parseLocalDate(r.metric_date).getFullYear() === anchorForCompare.getFullYear() - 1);
     } else {
       // 'all' -- compare last 14 days vs the 14 days before that, same as before
       comparisonPrior = allRows.slice(-28, -14);
@@ -9664,9 +9760,7 @@ function renderHealthStats() {
     // KPI cards
     const kpiGrid = document.createElement('div'); kpiGrid.className = 'stats-kpi-grid';
 
-    const periodLabel = healthFilterMode === 'week' ? 'this week'
-      : healthFilterMode === 'month' ? 'this month'
-      : healthFilterMode === 'year' ? 'this year' : 'last 14 days';
+    const periodLabel = healthFilterMode === 'all' ? 'last 14 days' : formatHealthPeriodLabel().toLowerCase();
 
     buildStatsKpiCard(kpiGrid,
       latestRhr != null ? latestRhr + ' bpm' : '&mdash;', 'health', 'Resting heart rate',
@@ -9707,7 +9801,7 @@ function renderHealthStats() {
       if (maxStepsRow) {
         const card = document.createElement('div');
         card.style.cssText = 'flex:1;min-width:140px;background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
-        const dt = new Date(maxStepsRow.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        const dt = parseLocalDate(maxStepsRow.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
         card.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Highest step day</div>' +
           '<div style="font-size:18px;font-weight:800;color:#c8f06e;">' + maxStepsRow.steps.toLocaleString() + '</div>' +
           '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + '</div>';
@@ -9716,7 +9810,7 @@ function renderHealthStats() {
       if (minRhrRow) {
         const card = document.createElement('div');
         card.style.cssText = 'flex:1;min-width:140px;background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
-        const dt = new Date(minRhrRow.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        const dt = parseLocalDate(minRhrRow.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
         card.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Lowest resting HR</div>' +
           '<div style="font-size:18px;font-weight:800;color:#f06e6e;">' + minRhrRow.resting_hr + ' bpm</div>' +
           '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + '</div>';
@@ -9761,7 +9855,7 @@ function renderHealthStats() {
       const sec = document.createElement('div'); sec.className = 'stats-section';
       sec.innerHTML = '<div class="stats-section-title">Steps per day this week</div>';
       const wrap = document.createElement('div'); wrap.className = 'stats-pace-chart';
-      wrap.appendChild(buildStepsByDayOfWeekSVG(rows));
+      wrap.appendChild(buildStepsByDayOfWeekSVG(rows, getHealthFilterAnchorDate()));
       const info = document.createElement('div');
       info.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
       info.innerHTML = 'Green bars are days at or above 9,000 steps. Dashed line marks the threshold.';
@@ -9860,7 +9954,7 @@ function buildHealthTrendSVG(rows, key, color, unit, isBar) {
   rows.forEach((r, i) => {
     if (i % labelStep !== 0 && i !== rows.length - 1) return;
     const x = pad + i*xStep;
-    const dt = new Date(r.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const dt = parseLocalDate(r.metric_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
     lbl.setAttribute('x',x); lbl.setAttribute('y',H-4);
     lbl.setAttribute('fill','#4b5563'); lbl.setAttribute('font-size','8'); lbl.setAttribute('text-anchor','middle');
@@ -9873,16 +9967,16 @@ function buildHealthTrendSVG(rows, key, color, unit, isBar) {
 // Bar chart for the "This week" filter -- labels each bar with the day
 // name (Mon/Tue/.../Sun) instead of a date, since within a single week
 // the day-of-week is more useful at a glance than the date itself.
-function buildStepsByDayOfWeekSVG(rows) {
+function buildStepsByDayOfWeekSVG(rows, anchorDate) {
   const W = 600, H = 130, pad = 36;
   const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   // Build a Mon-Sun array, filling in 0 for any day with no data yet
   // (e.g. the rest of the current week that hasn't happened).
-  const [weekStart] = getCalendarWeekRange(new Date());
+  const [weekStart] = getCalendarWeekRange(anchorDate || new Date());
   const byDay = dayNames.map((name, i) => {
     const d = new Date(weekStart); d.setDate(weekStart.getDate() + i);
-    const iso = d.toISOString().slice(0,10);
+    const iso = formatLocalDate(d);
     const match = rows.find(r => r.metric_date === iso);
     return { name, date: d, steps: match ? match.steps : null };
   });
@@ -12523,7 +12617,7 @@ function addTenKStepsCard(kpiGrid, startDate, endDate, periodLabel) {
   if (!Array.isArray(garminMetricsCache) || !garminMetricsCache.length) return;
   const inRange = garminMetricsCache.filter(r => {
     if (r.steps == null) return false;
-    const d = new Date(r.metric_date);
+    const d = parseLocalDate(r.metric_date);
     return (!startDate || d >= startDate) && (!endDate || d <= endDate);
   });
   if (!inRange.length) return;
