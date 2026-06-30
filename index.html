@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8612,7 +8612,8 @@ function openStatsPage() {
   // would otherwise load it on its own.
   const fatiguePromise = window._fatigueCacheLoaded ? Promise.resolve() : loadLongRunFatigueCache().then(() => { window._fatigueCacheLoaded = true; });
   const garminPromise = garminMetricsCache ? Promise.resolve() : loadGarminMetrics().then(rows => { garminMetricsCache = rows; });
-  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, garminPromise, stravaPromise]).then(() => renderStats());
+  const intervalCachePromise = Object.keys(intervalAnalysisCache).length ? Promise.resolve() : loadIntervalAnalysisCache();
+  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, garminPromise, intervalCachePromise, stravaPromise]).then(() => renderStats());
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
@@ -8758,6 +8759,17 @@ function renderStats() {
 }
 
 // ── LONG RUN FATIGUE INDEX ───────────────────────────────────────────────────
+let intervalAnalysisCache = {}; // keyed by activity_id, loaded from Supabase
+async function loadIntervalAnalysisCache() {
+  try {
+    const res = await fetch(SUPA_BASE + 'interval_analysis?select=activity_id,intervals', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    const rows = await res.json();
+    intervalAnalysisCache = {};
+    rows.forEach(r => { intervalAnalysisCache[r.activity_id] = r; });
+  } catch(e) { console.warn('[interval analysis cache] load failed:', e); }
+}
+
 let longRunFatigueCache = {}; // keyed by activity_id, loaded from Supabase
 
 async function loadLongRunFatigueCache() {
@@ -11592,12 +11604,18 @@ function renderRunningStats() {
 
   // Card 1: Distance logged
   const totalQualityKm = weeks.reduce((a,wk)=>a+(wk.qualityKm||0),0);
+  const totalQualitySessions = weeks.reduce((a,wk)=>a+(wk.qualityRuns||0),0);
   const qualityKmPct = totalActualKm > 0 ? Math.round((totalQualityKm/totalActualKm)*100) : 0;
+  // "% quality km" only counts distance from quality sessions that have
+  // been analysed (tap Analyse in the Intervals tab) -- unanalysed
+  // sessions contribute 0 rather than the whole activity distance, since
+  // that would wrongly include warm-up/cool-down. If there are unanalysed
+  // quality sessions, the % will understate true quality volume.
   buildStatsKpiCard(kpiGrid,
     totalActualKm.toFixed(1)+' km', 'accent', 'Distance logged',
     [{label:'Avg per run', val: allRunCount>0?avgRunKm.toFixed(1)+' km':'—'},
      {label:'of planned', val: completionPct+'%'},
-     {label:'% quality km', val: totalQualityKm>0?qualityKmPct+'%':'—'}]
+     {label:'% quality km', val: totalQualitySessions>0?(qualityKmPct+'%'+(totalQualityKm===0?' (analyse sessions)':'')):'—'}]
   );
   // Card 2: Long run
   buildStatsKpiCard(kpiGrid,
@@ -12707,7 +12725,7 @@ function renderWeekStats() {
   buildStatsKpiCard(kpiGrid, wk.actualKm.toFixed(1)+' km', 'accent', 'Distance logged',
     [{label:'Avg per run', val: wk.doneSessions>0?weekAvgRunKm.toFixed(1)+' km':'—'},
      {label:'of '+wk.plannedKm+'km planned', val: weekCompPct+'%'},
-     {label:'% quality km', val: (wk.qualityKm||0)>0?weekQualityKmPct+'%':'—'}]);
+     {label:'% quality km', val: (wk.qualityRuns||0)>0?(weekQualityKmPct+'%'+((wk.qualityKm||0)===0?' (analyse sessions)':'')):'—'}]);
   buildStatsKpiCard(kpiGrid, weekLongestKm>0?weekLongestKm.toFixed(1)+' km':'—', 'orange', 'Longest run',
     [{label:'long runs', val: weekLongCount||'0'},
      {label:'runs total', val: wk.doneSessions}]);
@@ -12963,10 +12981,19 @@ function buildStatsWeeks() {
             paceRuns.push(a.moving_time/a.distance*1000/60);
             if (a.average_heartrate) hrRuns.push(a.average_heartrate);
           }
-          // Quality km: any session tagged as interval/sub-threshold/threshold
-          // work (the 'quality' prefix), so the % can reflect actual distance
-          // covered in hard sessions, not just session count.
-          if (prefix==='quality') qualityKm += (a.distance||0)/1000;
+          // Quality km: only the ACTUAL interval/rep distance from an
+          // analysed session, not the whole activity (which includes
+          // warm-up and cool-down at easy pace). If the session hasn't
+          // been analysed yet, it contributes 0 here -- analysing it in
+          // the Intervals tab will make it count correctly, rather than
+          // guessing and overstating quality volume.
+          if (prefix==='quality') {
+            const analysed = typeof intervalAnalysisCache !== 'undefined' ? intervalAnalysisCache[a.id] : null;
+            if (analysed && Array.isArray(analysed.intervals)) {
+              const repKm = analysed.intervals.reduce((sum, iv) => sum + ((iv.distance||0)/1000), 0);
+              qualityKm += repKm;
+            }
+          }
         });
         if (dayHasLongRun)                              longRuns++;
         else if (prefix==='quality'||prefix==='kinder') qualityRuns++;
