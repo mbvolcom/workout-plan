@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -11136,6 +11136,9 @@ function renderRaceEstimate(container, weeks) {
       '<span class="race-est-label">Confidence</span>' +
       '<div class="race-est-conf-bar"><div class="race-est-conf-fill" style="width:' + est.confidence + '%"></div></div>' +
       '<span class="race-est-conf-label">' + est.confidence + '%</span>' +
+    '</div>' +
+    '<div style="font-size:11px;color:#6b7280;line-height:1.5;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">' +
+      '⚠️ This estimate is only as reliable as the LT pace it is built on. A lactate threshold pace sourced from a watch auto-estimate (rather than a real benchmark test or time trial) tends to run optimistic, which pulls this whole prediction faster than reality. Treat this number with more caution until it is based on a logged benchmark effort -- the confidence score above reflects training data quality, not whether the underlying LT number itself is trustworthy.' +
     '</div>';
 
   // ── Guidance section ─────────────────────────────────────────────────────
