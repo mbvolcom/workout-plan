@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.23.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -11487,10 +11487,13 @@ function renderRunningStats() {
   const allRunCount = weeks.reduce((a,wk)=>a+(wk.doneSessions||0),0);
 
   // Card 1: Distance logged
+  const totalQualityKm = weeks.reduce((a,wk)=>a+(wk.qualityKm||0),0);
+  const qualityKmPct = totalActualKm > 0 ? Math.round((totalQualityKm/totalActualKm)*100) : 0;
   buildStatsKpiCard(kpiGrid,
     totalActualKm.toFixed(1)+' km', 'accent', 'Distance logged',
     [{label:'Avg per run', val: allRunCount>0?avgRunKm.toFixed(1)+' km':'—'},
-     {label:'of planned', val: completionPct+'%'}]
+     {label:'of planned', val: completionPct+'%'},
+     {label:'% quality km', val: totalQualityKm>0?qualityKmPct+'%':'—'}]
   );
   // Card 2: Long run
   buildStatsKpiCard(kpiGrid,
@@ -12596,9 +12599,11 @@ function renderWeekStats() {
   const weekSick = wk.days.filter(d=>{const f=dayFlags[d.dateStr];return f&&f.type==='sick';}).length;
   const weekInj  = wk.days.filter(d=>{const f=dayFlags[d.dateStr];return f&&f.type==='injured_run';}).length;
 
+  const weekQualityKmPct = wk.actualKm > 0 ? Math.round(((wk.qualityKm||0)/wk.actualKm)*100) : 0;
   buildStatsKpiCard(kpiGrid, wk.actualKm.toFixed(1)+' km', 'accent', 'Distance logged',
     [{label:'Avg per run', val: wk.doneSessions>0?weekAvgRunKm.toFixed(1)+' km':'—'},
-     {label:'of '+wk.plannedKm+'km planned', val: weekCompPct+'%'}]);
+     {label:'of '+wk.plannedKm+'km planned', val: weekCompPct+'%'},
+     {label:'% quality km', val: (wk.qualityKm||0)>0?weekQualityKmPct+'%':'—'}]);
   buildStatsKpiCard(kpiGrid, weekLongestKm>0?weekLongestKm.toFixed(1)+' km':'—', 'orange', 'Longest run',
     [{label:'long runs', val: weekLongCount||'0'},
      {label:'runs total', val: wk.doneSessions}]);
@@ -12808,7 +12813,7 @@ function buildStatsWeeks() {
     const isCurrent = today >= monDate && today <= new Date(y,m-1,d+6);
 
     let plannedKm=0, actualKm=0, plannedRuns=0, doneRuns=0, totalSecs=0, longestRun=0;
-    let easyRuns=0, qualityRuns=0, longRuns=0;
+    let easyRuns=0, qualityRuns=0, longRuns=0, qualityKm=0;
     let runSecs=0, rideSecs=0, swimSecs=0, strSecs=0;
     const paceRuns=[], hrRuns=[], days=[];
 
@@ -12842,6 +12847,10 @@ function buildStatsWeeks() {
             paceRuns.push(a.moving_time/a.distance*1000/60);
             if (a.average_heartrate) hrRuns.push(a.average_heartrate);
           }
+          // Quality km: any session tagged as interval/sub-threshold/threshold
+          // work (the 'quality' prefix), so the % can reflect actual distance
+          // covered in hard sessions, not just session count.
+          if (prefix==='quality') qualityKm += (a.distance||0)/1000;
         });
         if (prefix==='long')                            longRuns++;
         else if (prefix==='quality'||prefix==='kinder') qualityRuns++;
@@ -12865,7 +12874,7 @@ function buildStatsWeeks() {
       dates:w.dates, plannedKm, actualKm,
       plannedSessions: plannedRuns, doneSessions: doneRuns,
       totalSecs, longestRun, paceRuns, hrRuns, days, isCurrent,
-      easyRuns, qualityRuns, longRuns,
+      easyRuns, qualityRuns, longRuns, qualityKm,
       runSecs, rideSecs, swimSecs, strSecs,
       month: `${MONTH_NAMES[m-1]} ${y}`,
     };
