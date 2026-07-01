@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -5549,9 +5549,23 @@ async function fetchStravaActivities() {
     return;
   }
 
-  // Fetch activities from plan start (Apr 13) to race day (Aug 29)
-  const after  = Math.floor(new Date('2026-04-13').getTime() / 1000);
-  const before = Math.floor(new Date('2026-08-30').getTime() / 1000);
+  // Fetch activities covering the full span of all active plans --
+  // from the earliest plan start date to the latest race date (or today
+  // + 1 day, whichever is later), so adding a new plan doesn't require
+  // editing this code.
+  let afterDate = new Date('2026-04-13'); // safe fallback
+  let beforeDate = new Date(); beforeDate.setDate(beforeDate.getDate() + 1);
+  try {
+    const activePlans = (allPlans||[]).filter(p => !p.archived);
+    if (activePlans.length) {
+      const starts = activePlans.map(p => p.start_date ? new Date(p.start_date) : null).filter(Boolean);
+      const ends   = activePlans.map(p => p.race_date  ? new Date(p.race_date)  : null).filter(Boolean);
+      if (starts.length) afterDate  = new Date(Math.min(...starts.map(d=>d.getTime())));
+      if (ends.length)   beforeDate = new Date(Math.max(...ends.map(d=>d.getTime()), beforeDate.getTime()));
+    }
+  } catch(e) { console.warn('[strava] date range fallback:', e); }
+  const after  = Math.floor(afterDate.getTime() / 1000);
+  const before = Math.floor(beforeDate.getTime() / 1000);
 
   try {
     const res = await fetch(
