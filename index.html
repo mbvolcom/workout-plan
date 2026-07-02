@@ -1364,7 +1364,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.4</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9547,7 +9547,7 @@ let garminMetricsCache = null; // loaded once per session
 
 async function loadGarminMetrics() {
   try {
-    const res = await fetch(SUPA_BASE + 'garmin_daily_metrics?select=*&order=metric_date.asc&limit=180', { headers: SUPA_HDR });
+    const res = await fetch(SUPA_BASE + 'garmin_daily_metrics?select=*&order=metric_date.asc&limit=500', { headers: SUPA_HDR });
     if (!res.ok) { console.warn('[health] load failed:', res.status); return []; }
     return await res.json();
   } catch(e) { console.warn('[health] load error:', e); return []; }
@@ -9724,7 +9724,10 @@ function renderHealthStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#4b5563;font-size:13px;">Loading health data&hellip;</div>';
 
-  const dataPromise = garminMetricsCache ? Promise.resolve(garminMetricsCache) : loadGarminMetrics();
+  // Always fetch fresh from Supabase when the Health tab is opened -- the
+  // cache loaded at stats-page-open time may be stale if a Garmin sync
+  // ran after the page was already open.
+  const dataPromise = loadGarminMetrics();
 
   dataPromise.then(allRows => {
     garminMetricsCache = allRows;
