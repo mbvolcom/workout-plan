@@ -460,8 +460,7 @@ body.wife-edit-mode .row-lbl.w { color:#633806; font-weight:700; }
 /* DROP ZONES */
 .drop-zone { min-height:26px; border-radius:4px; display:flex; flex-direction:column; gap:2px; padding:1px; transition:background 0.12s,outline 0.12s; position:relative; }
 .drop-zone.droppable.drag-over { background:var(--drop-hi); outline:1.5px dashed var(--drop-border); }
-.drop-zone.wife-zone { pointer-events:none; }
-.drop-zone.wife-zone.wife-editable { pointer-events:auto; }
+/* wife-zone is fully interactive like all other drop zones */
 body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-radius:4px; }
 
 /* DATE NUMBER ROW */
@@ -1364,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.24.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.25.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1376,7 +1375,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div class="options-wrap">
         <button class="profile-btn options-btn" id="options-btn" onclick="toggleOptionsMenu()">⋯ Options</button>
         <div class="options-menu glass" id="options-menu">
-          <button class="options-item" id="opt-edit-work" onclick="toggleWifeEdit();document.getElementById('opt-edit-work').textContent=wifeEditMode?'🔒 Lock Work':'✏️ Edit Work';">✏️ Edit Work</button>
+
           <button class="options-item" onclick="openLibModal().catch(console.error);closeOptionsMenu()">📚 Library</button>
           <button class="options-item" onclick="openStatsPage();closeOptionsMenu()">📊 Stats</button>
           <button class="options-item violet" onclick="openClaudePanel();closeOptionsMenu()">✦ Claude</button>
@@ -1400,7 +1399,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 <div class="glass toolbar">
   <div class="tb-group">
     <div id="autosave-indicator" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:11px;background:rgba(255,255,255,0.45);border:0.5px solid rgba(255,255,255,0.55);font-size:12px;color:#6b7280;font-family:'Inter Tight',system-ui,sans-serif;white-space:nowrap;">✓ Saved</div>
-    <button class="btn" id="edit-wife-btn" onclick="toggleWifeEdit()">✏️ Edit Work</button>
+
     <a class="btn" href="https://mbvolcom.github.io/marathon-plan/" target="_blank">🏃 Marathon Plan</a>
     <button class="btn" id="strava-btn" onclick="connectStrava()">🔗 Connect Strava</button>
     <button class="btn" onclick="openLibModal().catch(console.error)">📚 Library</button>
@@ -2359,8 +2358,7 @@ function toggleOptionsMenu() {
   menu.style.left  = 'auto';
   menu.style.width = 'auto';
 
-  const opt = document.getElementById('opt-edit-work');
-  if (opt) opt.textContent = wifeEditMode ? '🔒 Lock Work' : '✏️ Edit Work';
+
 
   menu.classList.add('open');
 }
@@ -2438,7 +2436,7 @@ function getKinder(wi, di) {
 }
 
 const collapsedWeeks = new Set();
-let wifeEditMode = false;
+
 
 // ── PARSE ──────────────────────────────────────────────────────────────────
 function parse(s) {
@@ -2863,12 +2861,7 @@ document.getElementById('add-cancel-btn').addEventListener('click', e => { e.sto
 addOverlay.addEventListener('click', e => { if (e.target === addOverlay) closeAddModal(); });
 
 // ── WIFE EDIT MODE ─────────────────────────────────────────────────────────
-function toggleWifeEdit() {
-  wifeEditMode = !wifeEditMode;
-  const btn = document.getElementById('edit-wife-btn');
-  btn.textContent = wifeEditMode ? '🔒 Lock Work' : '✏️ Edit Work';
-  btn.classList.toggle('active', wifeEditMode);
-  document.body.classList.toggle('wife-edit-mode', wifeEditMode);
+function toggleWifeEdit() { // no-op, kept for safety in case any stale reference calls it
   WEEKS.forEach((_, wi) => renderWeek(wi));
 }
 
@@ -2955,7 +2948,7 @@ function wifePillEl(s, weekIdx, dayIdx) {
   el.className = 'pill ' + p.cls;
   el.textContent = displayLabel;
   el.title = p.label; // keep original code as tooltip
-  if (wifeEditMode) makeDraggablePill(el, weekIdx, 'wife', dayIdx);
+  makeDraggablePill(el, weekIdx, 'wife', dayIdx);
   return el;
 }
 
@@ -2984,21 +2977,12 @@ function makeDropZone(weekIdx, row, dayIdx, isWife) {
   const zone = document.createElement('div');
   zone.dataset.week = weekIdx; zone.dataset.row = row; zone.dataset.day = dayIdx;
 
-  if (isWife) {
-    zone.className = 'drop-zone wife-zone' + (wifeEditMode ? ' droppable wife-editable' : '');
-    if (wifeEditMode) {
-      zone.addEventListener('dragover', onDragOver);
-      zone.addEventListener('dragleave', onDragLeave);
-      zone.addEventListener('drop', onDrop);
-      addEmptyZoneListeners(zone, weekIdx, 'wife');
-    }
-  } else {
-    zone.className = 'drop-zone droppable';
-    zone.addEventListener('dragover', onDragOver);
-    zone.addEventListener('dragleave', onDragLeave);
-    zone.addEventListener('drop', onDrop);
-    addEmptyZoneListeners(zone, weekIdx, row);
-  }
+  // Wife shift zone is now treated identically to all other drop zones
+  zone.className = 'drop-zone droppable' + (isWife ? ' wife-zone' : '');
+  zone.addEventListener('dragover', onDragOver);
+  zone.addEventListener('dragleave', onDragLeave);
+  zone.addEventListener('drop', onDrop);
+  addEmptyZoneListeners(zone, weekIdx, isWife ? 'wife' : row);
   return zone;
 }
 
@@ -14401,7 +14385,7 @@ function renderWeekForMonth(wi, days, weekNum, mk, container) {
         }
         // Allow adding via click on empty zone
         zone.addEventListener('click', e => {
-          if (e.target === zone && wifeEditMode) openAddModal(wi, 'wife', di);
+          if (e.target === zone) openAddModal(wi, 'wife', di);
         });
         zone.addEventListener('contextmenu', e => { if (e.target === zone) { e.preventDefault(); openCtxMenuAt(e.clientX, e.clientY, wi, 'wife', di); } });
         rowEl.appendChild(zone);
