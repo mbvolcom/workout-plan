@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v3.25.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.0.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1533,16 +1533,24 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div id="stats-tab-toggle" style="display:none;"></div>
     </div>
 
-    <!-- Sport selector: Running vs Cycling -->
+    <!-- Top-level view selector: Overview vs Deep Dive -->
     <div style="padding:10px 20px 0;">
-      <div id="stats-sport-toggle" style="display:flex;gap:2px;background:rgba(255,255,255,0.05);border-radius:8px;padding:2px;">
-        <button class="stats-sport-btn active" data-sport="running" onclick="setStatsSport('running')" style="flex:1;padding:7px 10px;border:none;background:none;color:#e5e7eb;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🏃 Running</button>
-        <button class="stats-sport-btn" data-sport="cycling" onclick="setStatsSport('cycling')" style="flex:1;padding:7px 10px;border:none;background:none;color:#e5e7eb;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🚴 Cycling</button>
-        <button class="stats-sport-btn" data-sport="health" onclick="setStatsSport('health')" style="flex:1;padding:7px 10px;border:none;background:none;color:#e5e7eb;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">❤️ Health</button>
+      <div id="stats-view-toggle" style="display:flex;gap:2px;background:rgba(255,255,255,0.05);border-radius:8px;padding:2px;">
+        <button class="stats-view-btn active" data-view="overview" onclick="setStatsView('overview')" style="flex:1;padding:7px 10px;border:none;background:none;color:#e5e7eb;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">📊 Overview</button>
+        <button class="stats-view-btn" data-view="deepdive" onclick="setStatsView('deepdive')" style="flex:1;padding:7px 10px;border:none;background:none;color:#e5e7eb;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🔬 Deep Dive</button>
       </div>
     </div>
 
-    <div id="stats-running-header" style="padding:10px 20px 0;">
+    <!-- Deep Dive sport sub-tabs (hidden when in Overview) -->
+    <div id="stats-deepdive-nav" style="padding:8px 20px 0;display:none;">
+      <div id="stats-sport-toggle" style="display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:8px;padding:2px;">
+        <button class="stats-sport-btn active" data-sport="running" onclick="setStatsSport('running')" style="flex:1;padding:6px 10px;border:none;background:none;color:#e5e7eb;font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🏃 Running</button>
+        <button class="stats-sport-btn" data-sport="cycling" onclick="setStatsSport('cycling')" style="flex:1;padding:6px 10px;border:none;background:none;color:#e5e7eb;font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🚴 Cycling</button>
+        <button class="stats-sport-btn" data-sport="health" onclick="setStatsSport('health')" style="flex:1;padding:6px 10px;border:none;background:none;color:#e5e7eb;font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">❤️ Health</button>
+      </div>
+    </div>
+
+    <div id="stats-running-header" style="padding:8px 20px 0;display:none;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div id="stats-scope-toggle">
           <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
@@ -1553,7 +1561,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
         <button id="lt-input-btn" onclick="openLTModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(252,76,2,0.4);background:rgba(252,76,2,0.1);color:#FC4C02;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">LT Pace</button>
       </div>
     </div>
-    <div id="stats-cycling-header" style="padding:10px 20px 0;display:none;">
+    <div id="stats-cycling-header" style="padding:8px 20px 0;display:none;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <button id="ftp-input-btn" onclick="openFTPModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(110,184,240,0.4);background:rgba(110,184,240,0.1);color:#6eb8f0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">FTP</button>
       </div>
@@ -8588,7 +8596,8 @@ function renderStrLoggedBody(dateStr) {
 }
 let statsScope = 'plan';
 let statsTab   = 'running';
-let statsSport = 'running'; // 'running' | 'cycling'
+let statsSport = 'running'; // 'running' | 'cycling' | 'health'
+let statsView  = 'overview'; // 'overview' | 'deepdive'
 let statsWeekIdx = -1; // -1 = use current week
 
 function openStatsPage() {
@@ -8611,11 +8620,38 @@ function openStatsPage() {
   const fatiguePromise = window._fatigueCacheLoaded ? Promise.resolve() : loadLongRunFatigueCache().then(() => { window._fatigueCacheLoaded = true; });
   const garminPromise = garminMetricsCache ? Promise.resolve() : loadGarminMetrics().then(rows => { garminMetricsCache = rows; });
   const intervalCachePromise = Object.keys(intervalAnalysisCache).length ? Promise.resolve() : loadIntervalAnalysisCache();
-  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, garminPromise, intervalCachePromise, stravaPromise]).then(() => renderStats());
+  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, garminPromise, intervalCachePromise, stravaPromise]).then(() => {
+    // Always land on Overview when opening stats
+    if (statsView !== 'overview') {
+      statsView = 'overview';
+      document.querySelectorAll('.stats-view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'overview'));
+      const deepNav = document.getElementById('stats-deepdive-nav');
+      if (deepNav) deepNav.style.display = 'none';
+      document.getElementById('stats-running-header').style.display = 'none';
+      document.getElementById('stats-cycling-header').style.display = 'none';
+    }
+    renderStats();
+  });
 }
 function closeStatsPage() {
   document.getElementById('stats-overlay').classList.remove('open');
 }
+function setStatsView(view) {
+  statsView = view;
+  document.querySelectorAll('.stats-view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  const deepNav = document.getElementById('stats-deepdive-nav');
+  if (deepNav) deepNav.style.display = view === 'deepdive' ? 'block' : 'none';
+  // When switching to deepdive, restore sport headers; hide both in overview
+  if (view === 'overview') {
+    document.getElementById('stats-running-header').style.display = 'none';
+    document.getElementById('stats-cycling-header').style.display = 'none';
+  } else {
+    document.getElementById('stats-running-header').style.display = statsSport === 'running' ? 'block' : 'none';
+    document.getElementById('stats-cycling-header').style.display = statsSport === 'cycling' ? 'block' : 'none';
+  }
+  renderStats();
+}
+
 function setStatsSport(sport) {
   statsSport = sport;
   document.querySelectorAll('.stats-sport-btn').forEach(b => b.classList.toggle('active', b.dataset.sport === sport));
@@ -8746,10 +8782,12 @@ function latestLTPaceSecs() {
 
 function renderStats() {
   statsTab = 'running';
+  // Route to overview or deep-dive first
+  if (statsView === 'overview') { renderOverviewStats(); return; }
+  // Deep dive routing
   if (statsSport === 'cycling') { renderCyclingStats(); return; }
   if (statsSport === 'health') { renderHealthStats(); return; }
   if (statsScope === 'week') { renderWeekStats(); return; }
-  // Sterk Gutt stats moved to dedicated app
   renderRunningStats();
   // Run sequentially so the fatigue section always lands AFTER interval
   // history finishes appending its DOM, instead of racing and interleaving.
@@ -9703,6 +9741,238 @@ function formatHealthPeriodLabel() {
   }
   return '';
 }
+
+// ── OVERVIEW STATS ────────────────────────────────────────────────────────────
+// A single-scroll summary that answers "how am I doing right now?" by
+// pulling from all three data sources (Strava runs, Garmin health, plan
+// structure) without requiring the user to visit three separate tabs.
+// This is the default landing view when opening Statistics.
+
+async function renderOverviewStats() {
+  const container = document.getElementById('stats-content');
+  container.innerHTML = '';
+
+  const plan = getActivePlan ? getActivePlan() : null;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // ── Race countdown banner ───────────────────────────────────────────────
+  if (plan && plan.race_date) {
+    const raceDate = new Date(plan.race_date);
+    const daysLeft = Math.max(0, Math.ceil((raceDate - today) / 86400000));
+    const weeksLeft = Math.floor(daysLeft / 7);
+    const banner = document.createElement('div');
+    banner.style.cssText = 'padding:16px 20px 0;';
+    const inner = document.createElement('div');
+    inner.style.cssText = 'background:linear-gradient(135deg,rgba(252,76,2,0.12),rgba(252,76,2,0.04));' +
+      'border:1px solid rgba(252,76,2,0.25);border-radius:14px;padding:14px 16px;' +
+      'display:flex;align-items:center;justify-content:space-between;';
+    inner.innerHTML =
+      '<div>' +
+        '<div style="font-size:10px;color:#FC4C02;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:3px;">' +
+          (plan.race_name || 'Race day') +
+        '</div>' +
+        '<div style="font-size:13px;color:#f0ede8;font-weight:600;">' +
+          raceDate.toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'}) +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;">' +
+        '<div style="font-size:28px;font-weight:800;color:#FC4C02;line-height:1;">' + weeksLeft + '</div>' +
+        '<div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">weeks to go</div>' +
+      '</div>';
+    banner.appendChild(inner);
+    container.appendChild(banner);
+  }
+
+  // ── Marathon readiness score (front and centre) ─────────────────────────
+  try {
+    const weeks = buildStatsWeeks ? buildStatsWeeks() : [];
+    const planWeeks = weeks.filter(wk => wk.plannedKm > 0);
+    const ltSecs = latestLT ? latestLT() : null;
+    if (planWeeks.length && ltSecs) {
+      const readinessSection = document.createElement('div');
+      readinessSection.style.cssText = 'padding:14px 20px 0;';
+      renderMarathonReadiness(readinessSection, planWeeks);
+      container.appendChild(readinessSection);
+    }
+  } catch(e) { console.warn('[overview] readiness error:', e); }
+
+  // ── This week snapshot ──────────────────────────────────────────────────
+  try {
+    const allWeeks = buildStatsWeeks ? buildStatsWeeks() : [];
+    const [monDate, sunDate] = getCalendarWeekRange(today);
+
+    // Find the week object matching this calendar week
+    const thisWk = allWeeks.find(wk => {
+      const [y,m,d] = WEEK_MONDAYS[wk.wi];
+      const mon = new Date(y,m-1,d);
+      return mon.getTime() === monDate.getTime();
+    });
+
+    const sec = document.createElement('div');
+    sec.style.cssText = 'padding:14px 20px 0;';
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
+    title.textContent = 'This week';
+    sec.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+
+    // km logged this week
+    const kmCard = document.createElement('div');
+    kmCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
+    if (thisWk) {
+      const pct = thisWk.plannedKm > 0 ? Math.round((thisWk.actualKm/thisWk.plannedKm)*100) : null;
+      kmCard.innerHTML =
+        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Distance</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#c8f06e;">' + (thisWk.actualKm||0).toFixed(1) + ' km</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' +
+          (pct != null ? pct + '% of ' + thisWk.plannedKm + ' km planned' : 'no plan this week') +
+        '</div>';
+    } else {
+      kmCard.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Distance</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#4b5563;">\u2014</div>' +
+        '<div style="font-size:11px;color:#6b7280;">no plan data</div>';
+    }
+    grid.appendChild(kmCard);
+
+    // Sessions done this week
+    const sessCard = document.createElement('div');
+    sessCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
+    if (thisWk) {
+      const longDone = thisWk.longRuns > 0;
+      const qualDone = thisWk.qualityRuns > 0;
+      sessCard.innerHTML =
+        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Sessions</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#f0ede8;">' + (thisWk.doneSessions||0) + '</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' +
+          (longDone ? '\u2713 long run ' : '') +
+          (qualDone ? '\u2713 quality' : '') +
+          (!longDone && !qualDone ? 'runs logged' : '') +
+        '</div>';
+    } else {
+      sessCard.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Sessions</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#4b5563;">\u2014</div>';
+    }
+    grid.appendChild(sessCard);
+
+    sec.appendChild(grid);
+    container.appendChild(sec);
+  } catch(e) { console.warn('[overview] week snapshot error:', e); }
+
+  // ── Recovery snapshot (Garmin data) ────────────────────────────────────
+  try {
+    const garmin = Array.isArray(garminMetricsCache) ? garminMetricsCache : [];
+    const [monDate] = getCalendarWeekRange(today);
+    const thisWeekGarmin = garmin.filter(r => {
+      const d = parseLocalDate(r.metric_date);
+      return d >= monDate && d <= today;
+    });
+    const last14 = garmin.slice(-14);
+    const prev14 = garmin.slice(-28, -14);
+
+    if (garmin.length) {
+      const sec = document.createElement('div');
+      sec.style.cssText = 'padding:14px 20px 0;';
+      const title = document.createElement('div');
+      title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
+      title.textContent = 'Recovery & health';
+      sec.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
+
+      // Resting HR
+      const latestRhr = [...garmin].reverse().find(r => r.resting_hr != null)?.resting_hr;
+      const avgRhrRecent = avgOf(last14, 'resting_hr');
+      const avgRhrPrior = avgOf(prev14, 'resting_hr');
+      const rhrArrow = trendArrow(avgRhrRecent, avgRhrPrior);
+      const rhrGood = avgRhrRecent != null && avgRhrPrior != null && avgRhrRecent <= avgRhrPrior;
+
+      const rhrCard = document.createElement('div');
+      rhrCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
+      rhrCard.innerHTML =
+        '<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Resting HR</div>' +
+        '<div style="font-size:20px;font-weight:800;color:#f06e6e;">' + (latestRhr != null ? latestRhr + ' bpm' : '\u2014') + '</div>' +
+        '<div style="font-size:11px;color:' + (rhrGood ? '#6b7280' : '#f0c060') + ';margin-top:2px;">' +
+          (avgRhrRecent != null ? Math.round(avgRhrRecent) + ' avg ' + rhrArrow : '') +
+        '</div>';
+      grid.appendChild(rhrCard);
+
+      // Avg steps this week
+      const avgStepsWeek = avgOf(thisWeekGarmin.filter(r => r.steps != null), 'steps');
+      const stepsCard = document.createElement('div');
+      stepsCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
+      stepsCard.innerHTML =
+        '<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Steps avg</div>' +
+        '<div style="font-size:20px;font-weight:800;color:#c8f06e;">' +
+          (avgStepsWeek != null ? (avgStepsWeek/1000).toFixed(1) + 'k' : '\u2014') +
+        '</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">this week</div>';
+      grid.appendChild(stepsCard);
+
+      // Body battery
+      const latestBB = [...garmin].reverse().find(r => r.body_battery_max != null);
+      const bbCard = document.createElement('div');
+      bbCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
+      bbCard.innerHTML =
+        '<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Body battery</div>' +
+        '<div style="font-size:20px;font-weight:800;color:#f0c060;">' +
+          (latestBB ? latestBB.body_battery_max + '%' : '\u2014') +
+        '</div>' +
+        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' +
+          (latestBB ? 'low ' + latestBB.body_battery_min + '%' : '') +
+        '</div>';
+      grid.appendChild(bbCard);
+
+      sec.appendChild(grid);
+      container.appendChild(sec);
+    }
+  } catch(e) { console.warn('[overview] recovery snapshot error:', e); }
+
+  // ── Training direction card ─────────────────────────────────────────────
+  try {
+    const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&order=activity_date.desc&limit=10', { headers: SUPA_HDR });
+    if (res.ok) {
+      const rawRows = await res.json();
+      if (rawRows.length >= 2) {
+        const sessionsWithPace = rawRows
+          .filter(r => r.intervals && r.intervals.length >= 2)
+          .map(r => {
+            const paces = r.intervals.map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+            if (!paces.length) return null;
+            const totalDist = r.intervals.reduce((a,iv)=>a+(iv.distance||0),0)/1000;
+            const vwPace = paces.reduce((a,b)=>a+b,0)/paces.length;
+            return { vwPace, totalKm: totalDist, date: r.activity_date };
+          }).filter(Boolean);
+
+        if (sessionsWithPace.length >= 2) {
+          const dirSec = document.createElement('div');
+          dirSec.style.cssText = 'padding:14px 20px 0;';
+          const dirTitle = document.createElement('div');
+          dirTitle.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
+          dirTitle.textContent = 'Training direction';
+          dirSec.appendChild(dirTitle);
+          renderTrainingDirection(dirSec, sessionsWithPace, rawRows);
+          container.appendChild(dirSec);
+        }
+      }
+    }
+  } catch(e) { console.warn('[overview] training direction error:', e); }
+
+  // ── "Explore further" prompt ────────────────────────────────────────────
+  const footer = document.createElement('div');
+  footer.style.cssText = 'padding:20px 20px 28px;';
+  footer.innerHTML =
+    '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;text-align:center;">' +
+      '<div style="font-size:12px;color:#6b7280;line-height:1.6;">' +
+        'For full interval history, long run fatigue, pace trends, FTP progression, and detailed health charts &mdash; ' +
+        '<span style="color:#FC4C02;cursor:pointer;font-weight:600;" onclick="setStatsView(\'deepdive\')">open Deep Dive \u2192</span>' +
+      '</div>' +
+    '</div>';
+  container.appendChild(footer);
+}
+
 
 function renderHealthStats() {
   const container = document.getElementById('stats-content');
