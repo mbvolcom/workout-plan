@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.0.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.1.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9860,6 +9860,86 @@ async function renderOverviewStats() {
     container.appendChild(sec);
   } catch(e) { console.warn('[overview] week snapshot error:', e); }
 
+  // ── Hours trained this week ────────────────────────────────────────────
+  try {
+    const [monHrs] = getCalendarWeekRange(today);
+    let runSecs = 0, rideSecs = 0, strSecs = 0;
+
+    // Scan all Strava activities this calendar week
+    Object.entries(stravaActivities).forEach(([dateStr, acts]) => {
+      const d = parseLocalDate(dateStr);
+      const sunHrs = new Date(monHrs); sunHrs.setDate(monHrs.getDate() + 6);
+      if (d < monHrs || d > sunHrs) return;
+      acts.forEach(a => {
+        const secs = a.moving_time || 0;
+        const type = (a.type || '').toLowerCase();
+        if (type.includes('ride') || type.includes('virtual')) rideSecs += secs;
+        else runSecs += secs;
+      });
+    });
+
+    // Strength: sum from state array -- count days with a str/str2 pill this week
+    if (WEEK_MONDAYS && state) {
+      const [wy,wm,wd] = WEEK_MONDAYS.find(([y,m,d]) => {
+        const dt = new Date(y,m-1,d); return dt.getTime() === monHrs.getTime();
+      }) || [];
+      if (wy !== undefined) {
+        const wi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() === monHrs.getTime());
+        if (wi >= 0 && state[wi]) {
+          [0,1,2,3,4,5,6].forEach(di => {
+            const strVal = state[wi].str ? state[wi].str[di] : null;
+            const str2Val = state[wi].str2 ? state[wi].str2[di] : null;
+            // Estimate 45 min per strength session (no Strava data for these)
+            if (strVal) strSecs += 45 * 60;
+            else if (str2Val) strSecs += 45 * 60;
+          });
+        }
+      }
+    }
+
+    const totalSecs = runSecs + rideSecs + strSecs;
+    if (totalSecs > 0) {
+      const fmtHrs = secs => {
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        return h > 0 ? h + 'h ' + (m > 0 ? m + 'm' : '') : m + 'm';
+      };
+
+      const sec = document.createElement('div');
+      sec.style.cssText = 'padding:14px 20px 0;';
+      const title = document.createElement('div');
+      title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
+      title.textContent = 'Time trained this week';
+      sec.appendChild(title);
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;';
+
+      const totalRow = document.createElement('div');
+      totalRow.style.cssText = 'font-size:28px;font-weight:800;color:#f0ede8;margin-bottom:12px;';
+      totalRow.textContent = fmtHrs(totalSecs);
+      card.appendChild(totalRow);
+
+      const breakdown = document.createElement('div');
+      breakdown.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);';
+
+      const addRow = (label, secs, color) => {
+        if (secs <= 0) return;
+        const row = document.createElement('div');
+        row.innerHTML = '<span style="font-size:11px;color:#6b7280;">' + label + '</span> ' +
+          '<span style="font-size:13px;font-weight:700;color:' + color + ';">' + fmtHrs(secs) + '</span>';
+        breakdown.appendChild(row);
+      };
+      addRow('🏃 Running', runSecs, '#c8f06e');
+      addRow('💪 Strength', strSecs, '#f06e6e');
+      addRow('🚴 Cycling', rideSecs, '#6eb8f0');
+
+      card.appendChild(breakdown);
+      sec.appendChild(card);
+      container.appendChild(sec);
+    }
+  } catch(e) { console.warn('[overview] hours trained error:', e); }
+
   // ── Recovery snapshot (Garmin data) ────────────────────────────────────
   try {
     const garmin = Array.isArray(garminMetricsCache) ? garminMetricsCache : [];
@@ -9932,30 +10012,29 @@ async function renderOverviewStats() {
 
   // ── Training direction card ─────────────────────────────────────────────
   try {
-    const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&order=activity_date.desc&limit=10', { headers: SUPA_HDR });
-    if (res.ok) {
-      const rawRows = await res.json();
-      if (rawRows.length >= 2) {
-        const sessionsWithPace = rawRows
-          .filter(r => r.intervals && r.intervals.length >= 2)
-          .map(r => {
-            const paces = r.intervals.map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
-            if (!paces.length) return null;
-            const totalDist = r.intervals.reduce((a,iv)=>a+(iv.distance||0),0)/1000;
-            const vwPace = paces.reduce((a,b)=>a+b,0)/paces.length;
-            return { vwPace, totalKm: totalDist, date: r.activity_date };
-          }).filter(Boolean);
+    // Use the already-loaded intervalAnalysisCache (same data the Deep Dive
+    // tab uses) rather than a fresh fetch, so we get the full history.
+    const cachedRows = Object.values(intervalAnalysisCache);
+    const rawRows = cachedRows
+      .sort((a,b) => (b.activity_date||'').localeCompare(a.activity_date||''))
+      .slice(0, 50);
+    if (rawRows.length >= 1) {
+      const sessionsWithPace = rawRows
+        .filter(r => r.intervals && r.intervals.length >= 2)
+        .map(r => {
+          const paces = r.intervals.map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+          if (!paces.length) return null;
+          const totalDist = r.intervals.reduce((a,iv)=>a+(iv.distance||0),0)/1000;
+          const vwPace = paces.reduce((a,b)=>a+b,0)/paces.length;
+          return { vwPace, totalKm: totalDist, date: r.activity_date };
+        }).filter(Boolean);
 
-        if (sessionsWithPace.length >= 2) {
-          const dirSec = document.createElement('div');
-          dirSec.style.cssText = 'padding:14px 20px 0;';
-          const dirTitle = document.createElement('div');
-          dirTitle.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
-          dirTitle.textContent = 'Training direction';
-          dirSec.appendChild(dirTitle);
-          renderTrainingDirection(dirSec, sessionsWithPace, rawRows);
-          container.appendChild(dirSec);
-        }
+      if (sessionsWithPace.length >= 2) {
+        const dirSec = document.createElement('div');
+        dirSec.style.cssText = 'padding:14px 20px 0;';
+        // Pass suppressTitle=true since the Overview adds its own section label
+        renderTrainingDirection(dirSec, sessionsWithPace, rawRows, true);
+        container.appendChild(dirSec);
       }
     }
   } catch(e) { console.warn('[overview] training direction error:', e); }
@@ -11314,17 +11393,19 @@ function computeTrainingDirection(sessionsWithPace, rawRows) {
   return { headline, detail, action, urgency, paceTrend, fadePattern, volTrend, phase, weeksLeft, paceDeltaSecs };
 }
 
-function renderTrainingDirection(container, sessionsWithPace, rawRows) {
+function renderTrainingDirection(container, sessionsWithPace, rawRows, suppressTitle) {
   const result = computeTrainingDirection(sessionsWithPace, rawRows);
   if (!result) return;
 
   const sec = document.createElement('div');
   sec.style.cssText = 'padding:16px 20px 0;';
 
-  const title = document.createElement('div');
-  title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
-  title.textContent = 'Training direction';
-  sec.appendChild(title);
+  if (!suppressTitle) {
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
+    title.textContent = 'Training direction';
+    sec.appendChild(title);
+  }
 
   const accentColor = result.urgency === 'caution' ? '#f0c060' : '#6eb8f0';
   const card = document.createElement('div');
