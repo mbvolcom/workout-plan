@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.1.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.1.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8856,7 +8856,10 @@ function getAllLongRuns() {
       acts.forEach(a => {
         const isLabelledLong = prefix === 'long';
         const isAlreadyAnalysed = !!longRunFatigueCache[a.id];
-        if (!isLabelledLong && !isAlreadyAnalysed) return;
+        // Also include any run >= 18km even if not labelled 'long' --
+        // same logic as buildStatsWeeks(), so both are consistent.
+        const isLongByDistance = (a.distance || 0) >= 18000;
+        if (!isLabelledLong && !isAlreadyAnalysed && !isLongByDistance) return;
         if (seenIds.has(a.id)) return;
         seenIds.add(a.id);
         longRuns.push({ ...a, dateStr });
