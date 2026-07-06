@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.2.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.2.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9782,6 +9782,12 @@ function computeWeeklyRecap() {
       const type = (a.type || '').toLowerCase();
       const km = (a.distance || 0) / 1000;
       const secs = a.moving_time || 0;
+      // Skip strength/gym activities -- these get counted via calendar pills
+      // to avoid double-counting (Strava WeightTraining + calendar str pill)
+      const isStrength = type.includes('weight') || type === 'workout' ||
+        type.includes('crossfit') || type.includes('elliptical') ||
+        type.includes('stairstepper') || type.includes('yoga');
+      if (isStrength) { sessionsCount++; return; }
       if (type.includes('ride') || type.includes('virtual')) {
         rideSecs += secs; rideKm += km;
       } else {
