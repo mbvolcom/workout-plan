@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.2.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.2.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8799,7 +8799,7 @@ function renderStats() {
 let intervalAnalysisCache = {}; // keyed by activity_id, loaded from Supabase
 async function loadIntervalAnalysisCache() {
   try {
-    const res = await fetch(SUPA_BASE + 'interval_analysis?select=activity_id,intervals', { headers: SUPA_HDR });
+    const res = await fetch(SUPA_BASE + 'interval_analysis?select=activity_id,activity_date,intervals', { headers: SUPA_HDR });
     if (!res.ok) return;
     const rows = await res.json();
     intervalAnalysisCache = {};
@@ -10253,7 +10253,14 @@ async function renderOverviewStats() {
       grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
 
       // Resting HR
-      const latestRhr = [...garmin].reverse().find(r => r.resting_hr != null)?.resting_hr;
+      // Use this week's garmin data for resting HR -- only show if we
+      // actually have data for this week (don't show last week's as "this week")
+      const [thisMonRhr] = getCalendarWeekRange(today);
+      const thisWeekGarminRhr = garmin.filter(r => {
+        const d = parseLocalDate(r.metric_date);
+        return d >= thisMonRhr && d <= today;
+      });
+      const latestRhr = [...thisWeekGarminRhr].reverse().find(r => r.resting_hr != null)?.resting_hr ?? null;
       const avgRhrRecent = avgOf(last14, 'resting_hr');
       const avgRhrPrior = avgOf(prev14, 'resting_hr');
       const rhrArrow = trendArrow(avgRhrRecent, avgRhrPrior);
