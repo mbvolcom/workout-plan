@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.1.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.2.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8630,6 +8630,7 @@ function openStatsPage() {
       document.getElementById('stats-running-header').style.display = 'none';
       document.getElementById('stats-cycling-header').style.display = 'none';
     }
+    maybeFireWeeklyRecapNotification();
     renderStats();
   });
 }
@@ -9751,6 +9752,286 @@ function formatHealthPeriodLabel() {
 // structure) without requiring the user to visit three separate tabs.
 // This is the default landing view when opening Statistics.
 
+
+// ── WEEKLY RECAP ──────────────────────────────────────────────────────────────
+// Computes a summary of the PREVIOUS calendar week (Mon–Sun), combining
+// Strava activities, calendar plan data, and Garmin health metrics.
+// Always available in the Overview -- not just on Mondays.
+
+function getPreviousWeekRange() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const [thisMonday] = getCalendarWeekRange(today);
+  const prevMonday = new Date(thisMonday); prevMonday.setDate(thisMonday.getDate() - 7);
+  const prevSunday = new Date(thisMonday); prevSunday.setDate(thisMonday.getDate() - 1);
+  return [prevMonday, prevSunday];
+}
+
+function computeWeeklyRecap() {
+  const [prevMonday, prevSunday] = getPreviousWeekRange();
+
+  // ── Strava activities last week ────────────────────────────────────────
+  let runSecs = 0, rideSecs = 0, runKm = 0, rideKm = 0;
+  let qualityKmRecap = 0, longRunKm = 0, sessionsCount = 0;
+  let fastestRepPace = null; // sec/km
+  const runActivities = [];
+
+  Object.entries(stravaActivities || {}).forEach(([dateStr, acts]) => {
+    const d = parseLocalDate(dateStr);
+    if (d < prevMonday || d > prevSunday) return;
+    acts.forEach(a => {
+      const type = (a.type || '').toLowerCase();
+      const km = (a.distance || 0) / 1000;
+      const secs = a.moving_time || 0;
+      if (type.includes('ride') || type.includes('virtual')) {
+        rideSecs += secs; rideKm += km;
+      } else {
+        runSecs += secs; runKm += km;
+        runActivities.push({ ...a, dateStr });
+        if (km >= 16) longRunKm = Math.max(longRunKm, km);
+      }
+      sessionsCount++;
+    });
+  });
+
+  // Quality km from interval analysis cache
+  Object.values(intervalAnalysisCache || {}).forEach(r => {
+    if (!r.activity_date) return;
+    const d = parseLocalDate(r.activity_date);
+    if (d < prevMonday || d > prevSunday) return;
+    if (r.intervals && Array.isArray(r.intervals)) {
+      r.intervals.forEach(iv => {
+        qualityKmRecap += (iv.distance || 0) / 1000;
+        const pace = paceStrToSecs(iv.avgPaceStr);
+        if (pace && (!fastestRepPace || pace < fastestRepPace)) fastestRepPace = pace;
+      });
+    }
+  });
+
+  // Strength sessions from calendar
+  let strSecs = 0;
+  if (WEEK_MONDAYS && state) {
+    WEEK_MONDAYS.forEach(([y,m,d], wi) => {
+      const mon = new Date(y,m-1,d);
+      if (mon.getTime() !== prevMonday.getTime()) return;
+      if (!state[wi]) return;
+      [0,1,2,3,4,5,6].forEach(di => {
+        if (state[wi].str?.[di] || state[wi].str2?.[di]) strSecs += 45 * 60;
+      });
+    });
+  }
+
+  // Plan: what was scheduled vs done
+  let plannedKm = 0, plannedSessions = 0;
+  const prevWi = WEEK_MONDAYS.findIndex(([y,m,d]) => {
+    return new Date(y,m-1,d).getTime() === prevMonday.getTime();
+  });
+  if (prevWi >= 0 && WEEKS[prevWi]) {
+    plannedKm = WEEKS[prevWi].km || 0;
+  }
+
+  // Garmin last week
+  const garmin = Array.isArray(garminMetricsCache) ? garminMetricsCache : [];
+  const prevGarmin = garmin.filter(r => {
+    const d = parseLocalDate(r.metric_date);
+    return d >= prevMonday && d <= prevSunday;
+  });
+  const stepsByDay = [0,1,2,3,4,5,6].map(i => {
+    const d = new Date(prevMonday); d.setDate(prevMonday.getDate() + i);
+    const iso = formatLocalDate(d);
+    const row = prevGarmin.find(r => r.metric_date === iso);
+    return { day: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i], steps: row?.steps ?? null };
+  });
+  const stepsWithData = stepsByDay.filter(d => d.steps != null);
+  const avgSteps = stepsWithData.length ? Math.round(stepsWithData.reduce((a,d)=>a+d.steps,0) / stepsWithData.length) : null;
+  const totalSteps = stepsWithData.reduce((a,d)=>a+(d.steps||0), 0);
+  const avgRhr = avgOf(prevGarmin.filter(r=>r.resting_hr!=null), 'resting_hr');
+
+  // Compare vs week before that for resting HR trend
+  const [twoWeeksAgoMonday] = getPreviousWeekRange();
+  twoWeeksAgoMonday.setDate(twoWeeksAgoMonday.getDate() - 7);
+  const twoWeeksAgoSunday = new Date(twoWeeksAgoMonday); twoWeeksAgoSunday.setDate(twoWeeksAgoMonday.getDate() + 6);
+  const prevPrevGarmin = garmin.filter(r => {
+    const d = parseLocalDate(r.metric_date);
+    return d >= twoWeeksAgoMonday && d <= twoWeeksAgoSunday;
+  });
+  const avgRhrPrev = avgOf(prevPrevGarmin.filter(r=>r.resting_hr!=null), 'resting_hr');
+
+  const totalTrainSecs = runSecs + rideSecs + strSecs;
+
+  return {
+    prevMonday, prevSunday,
+    runSecs, rideSecs, strSecs, totalTrainSecs,
+    runKm, rideKm, qualityKmRecap, longRunKm,
+    sessionsCount,
+    fastestRepPace,
+    plannedKm,
+    stepsByDay, avgSteps, totalSteps,
+    avgRhr, avgRhrPrev,
+  };
+}
+
+function renderWeeklyRecap(container) {
+  const recap = computeWeeklyRecap();
+  if (!recap) return;
+
+  const { prevMonday, prevSunday, runSecs, rideSecs, strSecs, totalTrainSecs,
+    runKm, rideKm, qualityKmRecap, longRunKm, fastestRepPace,
+    plannedKm, stepsByDay, avgSteps, avgRhr, avgRhrPrev } = recap;
+
+  const fmtHrs = secs => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return h > 0 ? h + 'h ' + (m > 0 ? m + 'm' : '').trim() : m + 'm';
+  };
+
+  const weekLabel = prevMonday.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) +
+    ' \u2013 ' + prevSunday.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+
+  const sec = document.createElement('div');
+  sec.style.cssText = 'padding:14px 20px 0;';
+
+  const titleRow = document.createElement('div');
+  titleRow.style.cssText = 'display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;';
+  titleRow.innerHTML =
+    '<div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;">Last week</div>' +
+    '<div style="font-size:10px;color:#4b5563;">' + weekLabel + '</div>';
+  sec.appendChild(titleRow);
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+
+  // ── Training hours headline ──────────────────────────────────────────────
+  if (totalTrainSecs > 0) {
+    const topRow = document.createElement('div');
+    topRow.style.cssText = 'padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
+    topRow.innerHTML =
+      '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Time trained</div>' +
+      '<div style="font-size:26px;font-weight:800;color:#f0ede8;margin-bottom:8px;">' + fmtHrs(totalTrainSecs) + '</div>' +
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;">' +
+        (runSecs > 0 ? '<span style="font-size:12px;"><span style="color:#6b7280;">🏃</span> <span style="font-weight:700;color:#c8f06e;">' + fmtHrs(runSecs) + '</span></span>' : '') +
+        (strSecs > 0 ? '<span style="font-size:12px;"><span style="color:#6b7280;">💪</span> <span style="font-weight:700;color:#f06e6e;">' + fmtHrs(strSecs) + '</span></span>' : '') +
+        (rideSecs > 0 ? '<span style="font-size:12px;"><span style="color:#6b7280;">🚴</span> <span style="font-weight:700;color:#6eb8f0;">' + fmtHrs(rideSecs) + '</span></span>' : '') +
+      '</div>';
+    card.appendChild(topRow);
+  }
+
+  // ── Running stats ──────────────────────────────────────────────────────
+  if (runKm > 0) {
+    const runRow = document.createElement('div');
+    runRow.style.cssText = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
+    const qualityPct = runKm > 0 && qualityKmRecap > 0 ? Math.round((qualityKmRecap/runKm)*100) : null;
+    runRow.innerHTML =
+      '<div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Distance</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#c8f06e;">' + runKm.toFixed(1) + ' km</div>' +
+        (plannedKm > 0 ? '<div style="font-size:10px;color:#6b7280;">' + Math.round((runKm/plannedKm)*100) + '% of ' + plannedKm + 'km</div>' : '') +
+      '</div>' +
+      (longRunKm > 0 ? '<div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Long run</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#FC4C02;">' + longRunKm.toFixed(1) + ' km</div></div>' : '<div></div>') +
+      '<div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Quality km</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#f0ede8;">' + (qualityPct != null ? qualityPct + '%' : '\u2014') + '</div>' +
+        (fastestRepPace ? '<div style="font-size:10px;color:#6b7280;">best rep ' + secsToMinSec(fastestRepPace) + '/km</div>' : '') +
+      '</div>';
+    card.appendChild(runRow);
+  }
+
+  // ── Steps chart (Mon–Sun bars) ─────────────────────────────────────────
+  if (stepsByDay.some(d => d.steps != null)) {
+    const stepsRow = document.createElement('div');
+    stepsRow.style.cssText = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
+    const stepsTitle = document.createElement('div');
+    stepsTitle.style.cssText = 'font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;';
+    stepsTitle.textContent = 'Steps ' + (avgSteps ? '\u00b7 avg ' + Math.round(avgSteps/1000*10)/10 + 'k/day' : '');
+    stepsRow.appendChild(stepsTitle);
+
+    const maxSteps = Math.max(10000, ...stepsByDay.map(d => d.steps || 0));
+    const chartWrap = document.createElement('div');
+    chartWrap.style.cssText = 'display:flex;gap:4px;align-items:flex-end;height:48px;';
+    stepsByDay.forEach(d => {
+      const col = document.createElement('div');
+      col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;';
+      const barH = d.steps != null ? Math.max(4, Math.round((d.steps / maxSteps) * 40)) : 2;
+      const color = d.steps == null ? '#1f2937' : d.steps >= 9000 ? '#c8f06e' : '#6eb8f0';
+      col.innerHTML =
+        '<div style="width:100%;border-radius:3px 3px 0 0;background:' + color + ';height:' + barH + 'px;"></div>' +
+        '<div style="font-size:8px;color:#4b5563;font-weight:600;">' + d.day.slice(0,1) + '</div>';
+      chartWrap.appendChild(col);
+    });
+    stepsRow.appendChild(chartWrap);
+    card.appendChild(stepsRow);
+  }
+
+  // ── Recovery ──────────────────────────────────────────────────────────
+  if (avgRhr != null) {
+    const rhrRow = document.createElement('div');
+    rhrRow.style.cssText = 'padding:12px 16px;display:flex;align-items:center;justify-content:space-between;';
+    const rhrArrow = trendArrow(avgRhr, avgRhrPrev);
+    const rhrGood = avgRhrPrev != null && avgRhr <= avgRhrPrev;
+    rhrRow.innerHTML =
+      '<div>' +
+        '<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">Avg resting HR</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#f06e6e;">' + Math.round(avgRhr) + ' bpm ' +
+          '<span style="font-size:13px;color:' + (rhrGood ? '#c8f06e' : '#f0c060') + ';">' + rhrArrow + '</span></div>' +
+        (avgRhrPrev ? '<div style="font-size:10px;color:#6b7280;">vs ' + Math.round(avgRhrPrev) + ' bpm prev week</div>' : '') +
+      '</div>';
+    card.appendChild(rhrRow);
+  }
+
+  sec.appendChild(card);
+  container.appendChild(sec);
+}
+
+// ── Weekly recap push notification ────────────────────────────────────────────
+// Fires once per Monday, when the user opens the app. Uses localStorage to
+// track whether this week's notification has already been sent.
+async function maybeFireWeeklyRecapNotification() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (today.getDay() !== 1) return; // only Mondays
+
+  const mondayKey = 'weekly-recap-notified-' + formatLocalDate(today);
+  if (localStorage.getItem(mondayKey)) return; // already sent today
+
+  try {
+    const recap = computeWeeklyRecap();
+    if (!recap || recap.totalTrainSecs === 0) return;
+
+    const { runKm, totalTrainSecs, avgSteps } = recap;
+    const fmtHrs = secs => {
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      return h > 0 ? h + 'h ' + (m > 0 ? m + 'm' : '').trim() : m + 'm';
+    };
+
+    const lines = [];
+    if (totalTrainSecs > 0) lines.push(fmtHrs(totalTrainSecs) + ' trained');
+    if (runKm > 0) lines.push(runKm.toFixed(1) + ' km run');
+    if (avgSteps) lines.push('avg ' + Math.round(avgSteps/1000*10)/10 + 'k steps/day');
+
+    const body = lines.join(' \u00b7 ');
+
+    // Get push subscriptions for Marius (this notification is personal)
+    const subRes = await fetch(SUPA_BASE + 'push_subscriptions?user_id=eq.marius&select=subscription', { headers: SUPA_HDR });
+    if (!subRes.ok) return;
+    const subs = await subRes.json();
+    if (!subs.length) return;
+
+    await fetch(SUPA_FN + 'notify-shopping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: '\ud83d\udcca Last week recap',
+        body,
+        user_id: 'marius',
+        url: '/?stats=overview'
+      })
+    });
+
+    localStorage.setItem(mondayKey, '1');
+    console.log('[weekly recap] Monday notification sent:', body);
+  } catch(e) {
+    console.warn('[weekly recap] notification failed:', e);
+  }
+}
+
 async function renderOverviewStats() {
   const container = document.getElementById('stats-content');
   container.innerHTML = '';
@@ -9785,6 +10066,9 @@ async function renderOverviewStats() {
     banner.appendChild(inner);
     container.appendChild(banner);
   }
+
+  // ── Last week recap ────────────────────────────────────────────────────
+  try { renderWeeklyRecap(container); } catch(e) { console.warn('[overview] recap error:', e); }
 
   // ── Marathon readiness score (front and centre) ─────────────────────────
   try {
@@ -9881,22 +10165,19 @@ async function renderOverviewStats() {
       });
     });
 
-    // Strength: sum from state array -- count days with a str/str2 pill this week
+    // Strength: count days with a str/str2 pill this week that have
+    // already happened (day date <= today) -- not future scheduled sessions.
     if (WEEK_MONDAYS && state) {
-      const [wy,wm,wd] = WEEK_MONDAYS.find(([y,m,d]) => {
-        const dt = new Date(y,m-1,d); return dt.getTime() === monHrs.getTime();
-      }) || [];
-      if (wy !== undefined) {
-        const wi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() === monHrs.getTime());
-        if (wi >= 0 && state[wi]) {
-          [0,1,2,3,4,5,6].forEach(di => {
-            const strVal = state[wi].str ? state[wi].str[di] : null;
-            const str2Val = state[wi].str2 ? state[wi].str2[di] : null;
-            // Estimate 45 min per strength session (no Strava data for these)
-            if (strVal) strSecs += 45 * 60;
-            else if (str2Val) strSecs += 45 * 60;
-          });
-        }
+      const wi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() === monHrs.getTime());
+      if (wi >= 0 && state[wi]) {
+        [0,1,2,3,4,5,6].forEach(di => {
+          const dayDate = new Date(monHrs); dayDate.setDate(monHrs.getDate() + di);
+          if (dayDate > today) return; // don't count future days
+          const strVal = state[wi].str ? state[wi].str[di] : null;
+          const str2Val = state[wi].str2 ? state[wi].str2[di] : null;
+          // Estimate 45 min per strength session (no Strava data for these)
+          if (strVal || str2Val) strSecs += 45 * 60;
+        });
       }
     }
 
