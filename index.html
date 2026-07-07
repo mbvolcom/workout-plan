@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1651,7 +1651,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     </div>
     <div id="run-panel-tabs">
       <button class="run-tab-btn active" data-tab="workout">Workout</button>
-      <button class="run-tab-btn" data-tab="session" id="run-tab-session-btn" style="display:none;">Session</button>
+      <button class="run-tab-btn" data-tab="session" id="run-tab-session-btn">Session</button>
       <button class="run-tab-btn" data-tab="strava">Strava</button>
     </div>
     <div id="run-tab-workout" class="run-tab-panel active">
@@ -8396,13 +8396,8 @@ function openRunPanel(label, wi, di) {
   const targetKey = `${wi}-${di}`;
   const currentTarget = runTargets[targetKey] ?? '';
 
-  // Show/hide Session tab based on whether structured data exists
-  const sessBtn = document.getElementById('run-tab-session-btn');
-  const hasStructured = !!getStructuredSession(wi, di);
-  if (sessBtn) {
-    sessBtn.style.display = hasStructured ? 'block' : 'none';
-    if (hasStructured) renderSessionTab(wi, di);
-  }
+  // Always render session tab -- shows create prompt if no data exists yet
+  renderSessionTab(wi, di);
 
   document.getElementById('run-panel-name').textContent = label;
   document.getElementById('run-panel-type').textContent = entry ? entry.type + ' run' : 'Run';
@@ -8468,12 +8463,13 @@ function openRunPanel(label, wi, di) {
     stravaBody.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;">No Strava activity logged for this day.</div>`;
   }
 
-  // Default to Strava tab if activity exists, else workout
+  // Default tab: Session always shown first (structured data or create prompt)
+  // Falls back to Strava if activity logged, otherwise Workout
   document.querySelectorAll('.run-tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.run-tab-panel').forEach(p => p.classList.remove('active'));
-  const defaultTab = (stravaActs && stravaActs.length) ? 'strava' : 'workout';
-  document.querySelector(`.run-tab-btn[data-tab="${defaultTab}"]`).classList.add('active');
-  document.getElementById('run-tab-' + defaultTab).classList.add('active');
+  const defaultTab = 'session';
+  document.querySelector(`.run-tab-btn[data-tab="${defaultTab}"]`)?.classList.add('active');
+  document.getElementById('run-tab-' + defaultTab)?.classList.add('active');
 
   runPanelOverlay.dataset.wi = wi;
   runPanelOverlay.dataset.di = di;
