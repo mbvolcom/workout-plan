@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8027,7 +8027,7 @@ function generateSessionRecommendation(session, intervalAnalysisRow) {
 }
 
 // ── Session editor UI ────────────────────────────────────────────────────────
-function renderSessionTab(wi, di) {
+async function renderSessionTab(wi, di) {
   const container = document.getElementById('run-session-body');
   if (!container) return;
   container.innerHTML = '';
@@ -8109,6 +8109,11 @@ function renderSessionTab(wi, di) {
 
   // ── Past session: actual vs planned ──────────────────────────────────
   if (isPast) {
+    // Ensure interval analysis cache is loaded even if stats page hasn't
+    // been opened yet (cache is normally loaded lazily via openStatsPage)
+    if (!Object.keys(intervalAnalysisCache).length) {
+      await loadIntervalAnalysisCache();
+    }
     const matchingAnalysis = Object.values(intervalAnalysisCache).find(r => {
       if (!r.activity_date) return false;
       const d2 = parseLocalDate(r.activity_date);
