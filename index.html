@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.3.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1651,10 +1651,14 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
     </div>
     <div id="run-panel-tabs">
       <button class="run-tab-btn active" data-tab="workout">Workout</button>
+      <button class="run-tab-btn" data-tab="session" id="run-tab-session-btn" style="display:none;">Session</button>
       <button class="run-tab-btn" data-tab="strava">Strava</button>
     </div>
     <div id="run-tab-workout" class="run-tab-panel active">
       <div id="run-workout-body"></div>
+    </div>
+    <div id="run-tab-session" class="run-tab-panel">
+      <div id="run-session-body"></div>
     </div>
     <div id="run-tab-strava" class="run-tab-panel">
       <div id="run-strava-body"></div>
@@ -7794,7 +7798,14 @@ document.querySelectorAll('.run-tab-btn').forEach(btn => {
     document.querySelectorAll('.run-tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.run-tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('run-tab-' + btn.dataset.tab).classList.add('active');
+    document.getElementById('run-tab-' + btn.dataset.tab)?.classList.add('active');
+    // Re-render session tab when switching to it (needs wi/di from overlay dataset)
+    if (btn.dataset.tab === 'session') {
+      const ov = document.getElementById('run-panel-overlay');
+      const openWi = parseInt(ov?.dataset.wi);
+      const openDi = parseInt(ov?.dataset.di);
+      if (!isNaN(openWi) && !isNaN(openDi)) renderSessionTab(openWi, openDi);
+    }
   });
 });
 
@@ -7836,11 +7847,562 @@ async function saveRunTarget(wi, di, km) {
   } catch(e) { console.error('Failed to save run target:', e); }
 }
 
+
+// ── STRUCTURED SESSIONS ──────────────────────────────────────────────────────
+// A richer session data layer on top of the existing free-text pill system.
+// Reads from/writes to the `structured_sessions` Supabase table.
+// Existing pills are unaffected -- structured data lives alongside them.
+
+let structuredSessionsCache = {}; // keyed by "wi-di"
+
+async function loadStructuredSessions() {
+  try {
+    const res = await fetch(SUPA_BASE + 'structured_sessions?select=*&order=week_index.asc,day_index.asc', { headers: SUPA_HDR });
+    if (!res.ok) return;
+    const rows = await res.json();
+    structuredSessionsCache = {};
+    rows.forEach(r => {
+      const key = r.week_index + '-' + r.day_index;
+      if (!structuredSessionsCache[key]) structuredSessionsCache[key] = [];
+      structuredSessionsCache[key].push(r);
+    });
+    console.log('[structured sessions] loaded', rows.length, 'sessions');
+  } catch(e) { console.warn('[structured sessions] load failed:', e); }
+}
+
+function getStructuredSession(wi, di) {
+  const key = wi + '-' + di;
+  const sessions = structuredSessionsCache[key] || [];
+  return sessions[0] || null; // return most relevant (first) session for this day
+}
+
+async function saveStructuredSession(session) {
+  const { id, ...data } = session;
+  data.updated_at = new Date().toISOString();
+  let res;
+  if (id) {
+    res = await fetch(SUPA_BASE + 'structured_sessions?id=eq.' + id, {
+      method: 'PATCH', headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+  } else {
+    res = await fetch(SUPA_BASE + 'structured_sessions', {
+      method: 'POST', headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
+      body: JSON.stringify(data)
+    });
+  }
+  if (!res.ok) throw new Error(await res.text());
+  const rows = await res.json();
+  const saved = Array.isArray(rows) ? rows[0] : rows;
+  // Update cache
+  const key = saved.week_index + '-' + saved.day_index;
+  structuredSessionsCache[key] = [saved];
+  return saved;
+}
+
+async function deleteStructuredSession(id, wi, di) {
+  await fetch(SUPA_BASE + 'structured_sessions?id=eq.' + id, { method: 'DELETE', headers: SUPA_HDR });
+  const key = wi + '-' + di;
+  structuredSessionsCache[key] = (structuredSessionsCache[key] || []).filter(s => s.id !== id);
+}
+
+// ── Session label auto-generation ────────────────────────────────────────────
+function generateSessionLabel(s) {
+  if (s.label_override) return s.label_override;
+  if (s.type === 'easy') {
+    const pace = s.target_pace_min ? s.target_pace_min + (s.target_pace_max ? '–' + s.target_pace_max : '') + '/km' : '';
+    return 'Easy' + (s.target_km ? ' ' + s.target_km + 'km' : '') + (pace ? ' @' + pace : '');
+  }
+  if (s.type === 'long') {
+    const pace = s.target_pace_min ? ' @' + s.target_pace_min + (s.target_pace_max ? '–' + s.target_pace_max : '') + '/km' : '';
+    return 'Long run' + (s.target_km ? ' ' + s.target_km + 'km' : '') + pace;
+  }
+  if (s.type === 'quality') {
+    if (s.subtype === 'lt_tempo') {
+      const dur = s.rep_duration_secs ? Math.round(s.rep_duration_secs / 60) + 'min tempo' : 'Tempo';
+      const pace = s.rep_pace_min ? ' @' + s.rep_pace_min + (s.rep_pace_max ? '–' + s.rep_pace_max : '') + '/km' : '';
+      return dur + pace;
+    }
+    if (s.reps && (s.rep_duration_secs || s.rep_distance_km)) {
+      const repStr = s.rep_unit === 'distance'
+        ? s.reps + '×' + s.rep_distance_km + 'km'
+        : s.reps + '×' + Math.round(s.rep_duration_secs / 60) + 'min';
+      const pace = s.rep_pace_min ? ' @' + s.rep_pace_min + (s.rep_pace_max ? '–' + s.rep_pace_max : '') + '/km' : '';
+      return repStr + pace;
+    }
+    return s.subtype ? s.subtype.replace(/_/g, ' ') : 'Quality';
+  }
+  return s.notes || 'Session';
+}
+
+function calcTotalKm(s) {
+  const warmup = s.warmup_km || 0;
+  const cooldown = s.cooldown_km || 0;
+  let repKm = 0;
+  if (s.reps) {
+    if (s.rep_unit === 'distance' && s.rep_distance_km) {
+      repKm = s.reps * s.rep_distance_km;
+    } else if (s.rep_duration_secs && s.rep_pace_min) {
+      // pace min is "mm:ss" -- convert to sec/km then distance = time/pace
+      const parts = s.rep_pace_min.split(':');
+      const paceSecs = parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
+      repKm = s.reps * (s.rep_duration_secs / paceSecs);
+    }
+  } else if (s.rep_duration_secs && s.rep_pace_min && s.subtype === 'lt_tempo') {
+    const parts = s.rep_pace_min.split(':');
+    const paceSecs = parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
+    repKm = s.rep_duration_secs / paceSecs;
+  }
+  if (s.target_km) return s.target_km;
+  const total = warmup + repKm + cooldown;
+  return total > 0 ? Math.round(total * 10) / 10 : null;
+}
+
+// ── Session recommendation engine ─────────────────────────────────────────────
+function generateSessionRecommendation(session, intervalAnalysisRow) {
+  if (!intervalAnalysisRow || !session) return null;
+  const ivs = intervalAnalysisRow.intervals || [];
+  if (ivs.length < 2) return null;
+
+  const paces = ivs.map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+  if (!paces.length) return null;
+
+  const avgPace = paces.reduce((a,b) => a+b, 0) / paces.length;
+  const firstHalf = paces.slice(0, Math.ceil(paces.length / 2));
+  const secondHalf = paces.slice(Math.ceil(paces.length / 2));
+  const avgFirst = firstHalf.reduce((a,b) => a+b, 0) / firstHalf.length;
+  const avgSecond = secondHalf.reduce((a,b) => a+b, 0) / secondHalf.length;
+  const fadePct = (avgSecond - avgFirst) / avgFirst;
+
+  // Check if within target pace range
+  let onTarget = true, belowTarget = false, aboveTarget = false;
+  if (session.rep_pace_min && session.rep_pace_max) {
+    const minSecs = paceStrToSecs(session.rep_pace_min);
+    const maxSecs = paceStrToSecs(session.rep_pace_max);
+    if (avgPace < minSecs) belowTarget = true; // faster than min = too fast
+    if (avgPace > maxSecs) aboveTarget = true; // slower than max = too slow
+    onTarget = !belowTarget && !aboveTarget;
+  }
+
+  const fading = fadePct > 0.025;
+  const strong = fadePct < -0.01;
+
+  const actualPaceStr = secsToMinSec(Math.round(avgPace));
+  const repCount = ivs.length;
+  const plannedReps = session.reps || repCount;
+
+  let headline, body, action;
+
+  if (aboveTarget) {
+    headline = 'Pace was below target';
+    body = 'You averaged ' + actualPaceStr + '/km — slower than the ' + session.rep_pace_max + '/km ceiling. This can mean fatigue, a tough day, or that the target is currently a stretch.';
+    action = fading ? 'Hold reps and pace the same — focus on even splits rather than chasing the target.' : 'Keep the same structure next session. If this persists for 2–3 sessions, the target pace may need adjusting.';
+  } else if (belowTarget && fading) {
+    headline = 'Went out too fast, faded';
+    body = 'You averaged ' + actualPaceStr + '/km — faster than target — but pace dropped off in the second half. Starting within range and holding it is more valuable than a fast average with a fade.';
+    action = 'Start the first rep at ' + session.rep_pace_min + '/km and aim for even splits. Same rep count.';
+  } else if (onTarget && fading) {
+    headline = 'On pace, slight fade';
+    body = 'Average pace ' + actualPaceStr + '/km was on target, but reps slowed in the second half. A small fade is normal — if it is consistent across sessions, volume may be the limiter.';
+    action = plannedReps > 2 ? 'Drop to ' + (plannedReps - 1) + ' reps next session and focus on even splits, then build back.' : 'Hold same structure, focus on even pacing.';
+  } else if (onTarget && strong) {
+    headline = 'Strong negative split';
+    body = 'Average ' + actualPaceStr + '/km, finishing stronger than you started. Excellent execution.';
+    action = 'Add one rep next session — try ' + (plannedReps + 1) + '×' + (session.rep_duration_secs ? Math.round(session.rep_duration_secs/60) + 'min' : '') + ' same pace.';
+  } else if (onTarget) {
+    headline = 'Solid and consistent';
+    body = 'Average ' + actualPaceStr + '/km, reps held steady. Good execution within target range.';
+    if (repCount >= plannedReps) {
+      action = 'Ready to progress — add one rep or extend rep duration by 30 seconds next session.';
+    } else {
+      action = 'Keep same structure. Build to ' + plannedReps + ' reps before adding load.';
+    }
+  } else {
+    headline = 'Good session';
+    body = 'Average pace ' + actualPaceStr + '/km across ' + repCount + ' reps.';
+    action = 'Keep same structure next session.';
+  }
+
+  return { headline, body, action, avgPace: actualPaceStr, repCount, fading, strong, onTarget };
+}
+
+// ── Session editor UI ────────────────────────────────────────────────────────
+function renderSessionTab(wi, di) {
+  const container = document.getElementById('run-session-body');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const session = getStructuredSession(wi, di);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const [y,m,d] = WEEK_MONDAYS[wi];
+  const sessionDate = new Date(y, m-1, d + di);
+  const isPast = sessionDate < today;
+
+  if (!session) {
+    // No structured data yet -- show quick-create prompt
+    const prompt = document.createElement('div');
+    prompt.style.cssText = 'padding:16px 0;text-align:center;';
+    prompt.innerHTML =
+      '<div style="font-size:13px;color:#6b7280;margin-bottom:14px;">No structured session data yet for this day.</div>' +
+      '<button id="sess-create-btn" style="width:100%;padding:12px;background:#FC4C02;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">+ Create structured session</button>';
+    container.appendChild(prompt);
+    document.getElementById('sess-create-btn').addEventListener('click', () => openSessionEditor(null, wi, di));
+    return;
+  }
+
+  // ── Session plan details ──────────────────────────────────────────────
+  const totalKm = calcTotalKm(session);
+
+  const planCard = document.createElement('div');
+  planCard.style.cssText = 'background:#f9f8ff;border:1px solid rgba(0,0,0,0.06);border-radius:12px;padding:14px;margin-bottom:12px;';
+
+  const typeLabel = {
+    lt_reps: 'LT Reps', lt_tempo: 'LT Tempo', fast_intervals: 'Fast Intervals',
+    hill_sprints: 'Hill Sprints', strides: 'Strides', easy: 'Easy Run',
+    long: 'Long Run', custom: 'Custom'
+  }[session.subtype] || session.subtype || session.type;
+
+  let planHtml = '<div style="font-size:11px;font-weight:700;color:#FC4C02;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">' + typeLabel + '</div>';
+
+  const row = (label, val) => val != null
+    ? '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.05);">' +
+      '<span style="font-size:13px;color:#6b7280;">' + label + '</span>' +
+      '<span style="font-size:13px;font-weight:600;color:#1a1626;">' + val + '</span></div>'
+    : '';
+
+  if (session.warmup_km) planHtml += row('Warm-up', session.warmup_km + ' km');
+
+  if (session.reps && (session.rep_duration_secs || session.rep_distance_km)) {
+    const repStr = session.rep_unit === 'distance'
+      ? session.reps + ' × ' + session.rep_distance_km + ' km'
+      : session.reps + ' × ' + Math.round(session.rep_duration_secs / 60) + ' min';
+    planHtml += row('Reps', repStr);
+    if (session.rep_pace_min) {
+      const pace = session.rep_pace_min + (session.rep_pace_max ? '–' + session.rep_pace_max : '') + ' /km';
+      planHtml += row('Target pace', pace);
+    }
+    if (session.effort_type === 'max_effort') planHtml += row('Effort', 'Max effort');
+    if (session.rest_secs) {
+      const restStr = Math.round(session.rest_secs / 60) + ' min ' + (session.rest_type || 'rest');
+      planHtml += row('Rest', restStr);
+    }
+  } else if (session.subtype === 'lt_tempo' && session.rep_duration_secs) {
+    planHtml += row('Duration', Math.round(session.rep_duration_secs / 60) + ' min continuous');
+    if (session.rep_pace_min) {
+      planHtml += row('Target pace', session.rep_pace_min + (session.rep_pace_max ? '–' + session.rep_pace_max : '') + ' /km');
+    }
+  } else if (session.target_km) {
+    planHtml += row('Distance', session.target_km + ' km');
+    if (session.target_pace_min) {
+      planHtml += row('Target pace', session.target_pace_min + (session.target_pace_max ? '–' + session.target_pace_max : '') + ' /km');
+    }
+  }
+
+  if (session.cooldown_km) planHtml += row('Cool-down', session.cooldown_km + ' km');
+  if (totalKm) planHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0 0;margin-top:4px;">' +
+    '<span style="font-size:13px;font-weight:700;color:#1a1626;">Total</span>' +
+    '<span style="font-size:15px;font-weight:800;color:#FC4C02;">~' + totalKm + ' km</span></div>';
+  if (session.notes) planHtml += '<div style="margin-top:10px;font-size:12px;color:#6b7280;line-height:1.5;">' + session.notes + '</div>';
+
+  planCard.innerHTML = planHtml;
+  container.appendChild(planCard);
+
+  // ── Past session: actual vs planned ──────────────────────────────────
+  if (isPast) {
+    const matchingAnalysis = Object.values(intervalAnalysisCache).find(r => {
+      if (!r.activity_date) return false;
+      const d2 = parseLocalDate(r.activity_date);
+      return d2.getTime() === sessionDate.getTime();
+    });
+
+    if (matchingAnalysis) {
+      const rec = generateSessionRecommendation(session, matchingAnalysis);
+      if (rec) {
+        const recCard = document.createElement('div');
+        recCard.style.cssText = 'background:#f0fdf4;border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:14px;margin-bottom:12px;';
+        const color = rec.onTarget ? '#15803d' : rec.fading ? '#b45309' : '#1d4ed8';
+        recCard.innerHTML =
+          '<div style="font-size:11px;font-weight:700;color:' + color + ';text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Last session result</div>' +
+          '<div style="font-size:14px;font-weight:700;color:#1a1626;margin-bottom:6px;">' + rec.headline + '</div>' +
+          '<div style="font-size:12px;color:#4b5563;line-height:1.5;margin-bottom:10px;">' + rec.body + '</div>' +
+          '<div style="padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);">' +
+          '<span style="font-size:11px;font-weight:700;color:#6b7280;">NEXT SESSION: </span>' +
+          '<span style="font-size:12px;color:#1a1626;">' + rec.action + '</span></div>';
+        container.appendChild(recCard);
+      }
+
+      // Rep breakdown
+      const ivs = matchingAnalysis.intervals || [];
+      if (ivs.length) {
+        const breakdownCard = document.createElement('div');
+        breakdownCard.style.cssText = 'background:#f9f8ff;border:1px solid rgba(0,0,0,0.06);border-radius:12px;padding:14px;margin-bottom:12px;';
+        const paces = ivs.map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+        const minPace = Math.min(...paces);
+        const maxPace = Math.max(...paces);
+        const range = maxPace - minPace || 1;
+        let html = '<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Rep breakdown</div>';
+        ivs.forEach((iv, i) => {
+          const pace = paceStrToSecs(iv.avgPaceStr);
+          if (!pace) return;
+          const barPct = Math.round(((maxPace - pace) / range) * 100);
+          const paceStr = secsToMinSec(Math.round(pace));
+          const targetMin = session.rep_pace_min ? paceStrToSecs(session.rep_pace_min) : null;
+          const targetMax = session.rep_pace_max ? paceStrToSecs(session.rep_pace_max) : null;
+          const onT = targetMin && targetMax ? pace >= targetMin && pace <= targetMax : true;
+          html +=
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+            '<span style="font-size:11px;color:#9ca3af;width:36px;flex-shrink:0;">Rep ' + (i+1) + '</span>' +
+            '<div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + Math.max(8, barPct) + '%;background:' + (onT ? '#22c55e' : '#f59e0b') + ';border-radius:4px;"></div></div>' +
+            '<span style="font-size:12px;font-weight:700;color:' + (onT ? '#15803d' : '#b45309') + ';width:52px;text-align:right;flex-shrink:0;">' + paceStr + '</span>' +
+            '</div>';
+        });
+        breakdownCard.innerHTML = html;
+        container.appendChild(breakdownCard);
+      }
+    } else {
+      const noAnalysis = document.createElement('div');
+      noAnalysis.style.cssText = 'background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;';
+      noAnalysis.innerHTML = '<div style="font-size:13px;color:#6b7280;">Analyse this session in the Intervals tab to see rep breakdown and next-session recommendations.</div>';
+      container.appendChild(noAnalysis);
+    }
+  }
+
+  // ── Edit / Delete buttons ─────────────────────────────────────────────
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;margin-top:4px;';
+  btnRow.innerHTML =
+    '<button id="sess-edit-btn" style="flex:1;padding:11px;background:#FC4C02;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Edit session</button>' +
+    '<button id="sess-del-btn" style="padding:11px 14px;background:rgba(0,0,0,0.06);border:none;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;">🗑</button>';
+  container.appendChild(btnRow);
+  document.getElementById('sess-edit-btn').addEventListener('click', () => openSessionEditor(session, wi, di));
+  document.getElementById('sess-del-btn').addEventListener('click', async () => {
+    if (!confirm('Delete this structured session?')) return;
+    await deleteStructuredSession(session.id, wi, di);
+    renderSessionTab(wi, di);
+  });
+}
+
+// ── Session editor modal ─────────────────────────────────────────────────────
+function openSessionEditor(existing, wi, di) {
+  // Remove any existing editor
+  document.getElementById('sess-editor-overlay')?.remove();
+
+  const isNew = !existing;
+  const s = existing || {
+    week_index: wi, day_index: di, row: 'runs',
+    type: 'quality', subtype: 'lt_reps', rep_unit: 'time',
+    effort_type: 'pace', rest_type: 'walk'
+  };
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sess-editor-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center;';
+
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:20px;color:#1a1626;';
+
+  const subtypeOptions = [
+    ['lt_reps', 'LT Reps'],
+    ['lt_tempo', 'LT Tempo'],
+    ['fast_intervals', 'Fast Intervals'],
+    ['hill_sprints', 'Hill Sprints'],
+    ['strides', 'Strides'],
+    ['easy', 'Easy Run'],
+    ['long', 'Long Run'],
+    ['custom', 'Custom'],
+  ];
+
+  sheet.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:16px;font-weight:700;">${isNew ? 'New session' : 'Edit session'}</div>
+      <button id="sess-ed-close" style="background:rgba(0,0,0,0.06);border:none;padding:4px 10px;border-radius:8px;font-size:16px;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="sess-field"><label>Session type</label>
+      <select id="se-subtype">
+        ${subtypeOptions.map(([v,l]) => `<option value="${v}"${s.subtype===v?' selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+
+    <div id="se-interval-fields">
+      <div class="sess-field"><label>Rep unit</label>
+        <div style="display:flex;gap:8px;">
+          <button class="se-toggle${s.rep_unit!=='distance'?' active':''}" data-val="time" id="se-rep-time">Time</button>
+          <button class="se-toggle${s.rep_unit==='distance'?' active':''}" data-val="distance" id="se-rep-dist">Distance</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sess-field"><label>Reps</label><input id="se-reps" type="number" min="1" value="${s.reps||''}"></div>
+        <div class="sess-field" id="se-dur-field"><label>Duration (min)</label><input id="se-dur" type="number" min="1" value="${s.rep_duration_secs?Math.round(s.rep_duration_secs/60):''}"></div>
+        <div class="sess-field" id="se-dist-field" style="display:none;"><label>Distance (km)</label><input id="se-rep-km" type="number" step="0.1" value="${s.rep_distance_km||''}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sess-field"><label>Pace min (/km)</label><input id="se-pace-min" type="text" placeholder="4:55" value="${s.rep_pace_min||''}"></div>
+        <div class="sess-field"><label>Pace max (/km)</label><input id="se-pace-max" type="text" placeholder="5:05" value="${s.rep_pace_max||''}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="se-rest-row">
+        <div class="sess-field"><label>Rest (min)</label><input id="se-rest" type="number" min="0" step="0.5" value="${s.rest_secs?s.rest_secs/60:''}"></div>
+        <div class="sess-field"><label>Rest type</label>
+          <div style="display:flex;gap:8px;">
+            <button class="se-toggle${s.rest_type!=='jog'?' active':''}" id="se-rest-walk">Walk</button>
+            <button class="se-toggle${s.rest_type==='jog'?' active':''}" id="se-rest-jog">Jog</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="se-continuous-fields" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sess-field"><label>Duration (min)</label><input id="se-tempo-dur" type="number" value="${s.rep_duration_secs?Math.round(s.rep_duration_secs/60):''}"></div>
+        <div class="sess-field"><label>Or target km</label><input id="se-target-km" type="number" step="0.5" value="${s.target_km||''}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="sess-field"><label>Pace min (/km)</label><input id="se-cont-pace-min" type="text" placeholder="5:00" value="${s.target_pace_min||s.rep_pace_min||''}"></div>
+        <div class="sess-field"><label>Pace max (/km)</label><input id="se-cont-pace-max" type="text" placeholder="5:10" value="${s.target_pace_max||s.rep_pace_max||''}"></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+      <div class="sess-field"><label>Warm-up (km)</label><input id="se-warmup" type="number" step="0.5" value="${s.warmup_km||''}"></div>
+      <div class="sess-field"><label>Cool-down (km)</label><input id="se-cooldown" type="number" step="0.5" value="${s.cooldown_km||''}"></div>
+    </div>
+
+    <div class="sess-field"><label>Notes</label><textarea id="se-notes" rows="2" style="width:100%;padding:8px;border:1.5px solid #e5e7eb;border-radius:8px;font:14px inherit;resize:none;">${s.notes||''}</textarea></div>
+
+    ${!isNew ? `
+    <div class="sess-field" style="margin-top:4px;"><label>Apply change to</label>
+      <select id="se-scope">
+        <option value="one">This session only</option>
+        <option value="future">This and future sessions</option>
+        <option value="all">All sessions</option>
+      </select>
+    </div>` : ''}
+
+    <button id="se-save" style="width:100%;padding:13px;background:#FC4C02;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;">Save session</button>
+  `;
+
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+
+  // Add styles if not already present
+  if (!document.getElementById('sess-editor-styles')) {
+    const style = document.createElement('style');
+    style.id = 'sess-editor-styles';
+    style.textContent = `
+      .sess-field { margin-bottom:12px; }
+      .sess-field label { display:block;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px; }
+      .sess-field input, .sess-field select { width:100%;padding:9px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font:14px inherit;background:#fff;color:#1a1626; }
+      .se-toggle { flex:1;padding:8px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font:600 13px inherit;cursor:pointer;color:#6b7280; }
+      .se-toggle.active { background:#FC4C02;border-color:#FC4C02;color:#fff; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Wire up subtype switching
+  const subtypeSel = document.getElementById('se-subtype');
+  const intervalFields = document.getElementById('se-interval-fields');
+  const continuousFields = document.getElementById('se-continuous-fields');
+  const updateSubtype = () => {
+    const v = subtypeSel.value;
+    const isContinuous = v === 'lt_tempo' || v === 'easy' || v === 'long';
+    intervalFields.style.display = isContinuous ? 'none' : 'block';
+    continuousFields.style.display = isContinuous ? 'block' : 'none';
+  };
+  subtypeSel.addEventListener('change', updateSubtype);
+  updateSubtype();
+
+  // Rep unit toggle
+  let repUnit = s.rep_unit || 'time';
+  const updateRepUnit = () => {
+    document.getElementById('se-dur-field').style.display = repUnit === 'time' ? 'block' : 'none';
+    document.getElementById('se-dist-field').style.display = repUnit === 'distance' ? 'block' : 'none';
+    document.getElementById('se-rep-time').classList.toggle('active', repUnit === 'time');
+    document.getElementById('se-rep-dist').classList.toggle('active', repUnit === 'distance');
+  };
+  document.getElementById('se-rep-time').addEventListener('click', () => { repUnit = 'time'; updateRepUnit(); });
+  document.getElementById('se-rep-dist').addEventListener('click', () => { repUnit = 'distance'; updateRepUnit(); });
+  updateRepUnit();
+
+  // Rest type toggle
+  let restType = s.rest_type || 'walk';
+  document.getElementById('se-rest-walk').addEventListener('click', () => {
+    restType = 'walk';
+    document.getElementById('se-rest-walk').classList.add('active');
+    document.getElementById('se-rest-jog').classList.remove('active');
+  });
+  document.getElementById('se-rest-jog').addEventListener('click', () => {
+    restType = 'jog';
+    document.getElementById('se-rest-jog').classList.add('active');
+    document.getElementById('se-rest-walk').classList.remove('active');
+  });
+
+  document.getElementById('sess-ed-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  // Save
+  document.getElementById('se-save').addEventListener('click', async () => {
+    const subtype = subtypeSel.value;
+    const isContinuous = subtype === 'lt_tempo' || subtype === 'easy' || subtype === 'long';
+    const data = {
+      id: s.id,
+      week_index: wi, day_index: di, row: 'runs',
+      type: ['easy','long'].includes(subtype) ? subtype : 'quality',
+      subtype,
+      warmup_km: parseFloat(document.getElementById('se-warmup').value) || null,
+      cooldown_km: parseFloat(document.getElementById('se-cooldown').value) || null,
+      notes: document.getElementById('se-notes').value || null,
+      effort_type: 'pace',
+      rest_type: restType,
+    };
+    if (!isContinuous) {
+      data.reps = parseInt(document.getElementById('se-reps').value) || null;
+      data.rep_unit = repUnit;
+      if (repUnit === 'time') {
+        const mins = parseFloat(document.getElementById('se-dur').value);
+        data.rep_duration_secs = mins ? Math.round(mins * 60) : null;
+      } else {
+        data.rep_distance_km = parseFloat(document.getElementById('se-rep-km').value) || null;
+      }
+      data.rep_pace_min = document.getElementById('se-pace-min').value || null;
+      data.rep_pace_max = document.getElementById('se-pace-max').value || null;
+      const restMins = parseFloat(document.getElementById('se-rest').value);
+      data.rest_secs = restMins ? Math.round(restMins * 60) : null;
+    } else {
+      const durMins = parseFloat(document.getElementById('se-tempo-dur').value);
+      data.rep_duration_secs = durMins ? Math.round(durMins * 60) : null;
+      data.target_km = parseFloat(document.getElementById('se-target-km').value) || null;
+      data.target_pace_min = document.getElementById('se-cont-pace-min').value || null;
+      data.target_pace_max = document.getElementById('se-cont-pace-max').value || null;
+      data.rep_pace_min = data.target_pace_min;
+      data.rep_pace_max = data.target_pace_max;
+    }
+
+    try {
+      document.getElementById('se-save').textContent = 'Saving…';
+      await saveStructuredSession(data);
+      overlay.remove();
+      renderSessionTab(wi, di);
+    } catch(e) {
+      document.getElementById('se-save').textContent = 'Failed — try again';
+      console.error('[session editor] save failed:', e);
+    }
+  });
+}
+
 function openRunPanel(label, wi, di) {
   const entry = getLibraryEntry(label);
   const stravaActs = getStravaForDay(wi, di, 'runs');
   const targetKey = `${wi}-${di}`;
   const currentTarget = runTargets[targetKey] ?? '';
+
+  // Show/hide Session tab based on whether structured data exists
+  const sessBtn = document.getElementById('run-tab-session-btn');
+  const hasStructured = !!getStructuredSession(wi, di);
+  if (sessBtn) {
+    sessBtn.style.display = hasStructured ? 'block' : 'none';
+    if (hasStructured) renderSessionTab(wi, di);
+  }
 
   document.getElementById('run-panel-name').textContent = label;
   document.getElementById('run-panel-type').textContent = entry ? entry.type + ' run' : 'Run';
@@ -7913,6 +8475,8 @@ function openRunPanel(label, wi, di) {
   document.querySelector(`.run-tab-btn[data-tab="${defaultTab}"]`).classList.add('active');
   document.getElementById('run-tab-' + defaultTab).classList.add('active');
 
+  runPanelOverlay.dataset.wi = wi;
+  runPanelOverlay.dataset.di = di;
   runPanelOverlay.classList.add('open');
 }
 
@@ -8621,7 +9185,8 @@ function openStatsPage() {
   const fatiguePromise = window._fatigueCacheLoaded ? Promise.resolve() : loadLongRunFatigueCache().then(() => { window._fatigueCacheLoaded = true; });
   const garminPromise = garminMetricsCache ? Promise.resolve() : loadGarminMetrics().then(rows => { garminMetricsCache = rows; });
   const intervalCachePromise = Object.keys(intervalAnalysisCache).length ? Promise.resolve() : loadIntervalAnalysisCache();
-  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, garminPromise, intervalCachePromise, stravaPromise]).then(() => {
+  const structuredSessPromise = Object.keys(structuredSessionsCache).length ? Promise.resolve() : loadStructuredSessions();
+  Promise.all([loadLTHistory(), loadRaceEstimateHistory(), loadFTPHistory(), fatiguePromise, garminPromise, intervalCachePromise, structuredSessPromise, stravaPromise]).then(() => {
     // Always land on Overview when opening stats
     if (statsView !== 'overview') {
       statsView = 'overview';
