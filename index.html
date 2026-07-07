@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.2.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v4.2.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10312,9 +10312,11 @@ async function renderOverviewStats() {
     // Use the already-loaded intervalAnalysisCache (same data the Deep Dive
     // tab uses) rather than a fresh fetch, so we get the full history.
     const cachedRows = Object.values(intervalAnalysisCache);
+    // Sort ASCENDING (oldest first) so computeTrainingDirection's
+    // earlier/later split correctly compares old sessions vs recent ones.
     const rawRows = cachedRows
-      .sort((a,b) => (b.activity_date||'').localeCompare(a.activity_date||''))
-      .slice(0, 50);
+      .sort((a,b) => (a.activity_date||'').localeCompare(b.activity_date||''))
+      .slice(-50); // take the 50 most recent
     if (rawRows.length >= 1) {
       const sessionsWithPace = rawRows
         .filter(r => r.intervals && r.intervals.length >= 2)
@@ -10329,7 +10331,6 @@ async function renderOverviewStats() {
       if (sessionsWithPace.length >= 2) {
         const dirSec = document.createElement('div');
         dirSec.style.cssText = 'padding:14px 20px 0;';
-        // Pass suppressTitle=true since the Overview adds its own section label
         renderTrainingDirection(dirSec, sessionsWithPace, rawRows, true);
         container.appendChild(dirSec);
       }
@@ -11615,7 +11616,7 @@ function computeTrainingDirection(sessionsWithPace, rawRows) {
   // rep pace within each session. Consistent fading across sessions
   // suggests volume/recovery is the limiter, not pace itself.
   const fadeRatios = [];
-  rawRows.slice(0, 4).forEach(r => {
+  rawRows.slice(-4).forEach(r => { // most recent 4 sessions (rawRows is ascending)
     const ivs = (r.intervals||[]).map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
     if (ivs.length < 2) return; // need at least 2 reps to compare halves
     const halfPt = Math.floor(ivs.length / 2);
