@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8114,11 +8114,11 @@ async function renderSessionTab(wi, di) {
     if (!Object.keys(intervalAnalysisCache).length) {
       await loadIntervalAnalysisCache();
     }
-    const matchingAnalysis = Object.values(intervalAnalysisCache).find(r => {
-      if (!r.activity_date) return false;
-      const d2 = parseLocalDate(r.activity_date);
-      return d2.getTime() === sessionDate.getTime();
-    });
+    // Match by Strava activity ID -- direct and reliable, no date arithmetic.
+    // Get all Strava activities logged on this calendar day, then check if
+    // any of them have a saved interval analysis in the cache.
+    const stravaActs = getStravaForDay(wi, di, 'runs') || [];
+    const matchingAnalysis = stravaActs.map(a => intervalAnalysisCache[a.id]).find(Boolean) || null;
 
     if (matchingAnalysis) {
       const rec = generateSessionRecommendation(session, matchingAnalysis);
@@ -8168,8 +8168,25 @@ async function renderSessionTab(wi, di) {
     } else {
       const noAnalysis = document.createElement('div');
       noAnalysis.style.cssText = 'background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center;';
-      noAnalysis.innerHTML = '<div style="font-size:13px;color:#6b7280;">Analyse this session in the Intervals tab to see rep breakdown and next-session recommendations.</div>';
-      container.appendChild(noAnalysis);
+      if (stravaActs.length) {
+        // Activity exists but not yet analysed
+        noAnalysis.innerHTML =
+          '<div style="font-size:13px;color:#6b7280;margin-bottom:10px;">Strava activity found but not yet analysed.</div>' +
+          '<button id="sess-analyse-btn" style="padding:9px 16px;background:#FC4C02;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Analyse in Intervals tab →</button>';
+        container.appendChild(noAnalysis);
+        document.getElementById('sess-analyse-btn')?.addEventListener('click', () => {
+          document.getElementById('run-panel-overlay')?.classList.remove('open');
+          // Switch to stats page Intervals section
+          openStatsPage();
+          setTimeout(() => {
+            setStatsView('deepdive');
+            setStatsSport('running');
+          }, 300);
+        });
+      } else {
+        noAnalysis.innerHTML = '<div style="font-size:13px;color:#6b7280;">No Strava activity logged for this day yet.</div>';
+        container.appendChild(noAnalysis);
+      }
     }
   }
 
