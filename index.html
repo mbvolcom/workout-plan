@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.5</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.3.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9678,8 +9678,14 @@ async function renderIntervalStats() {
   try {
     const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&order=activity_date.desc&limit=50', { headers: SUPA_HDR });
     if (!res.ok) throw new Error('Failed to load interval history');
-    const rows = await res.json();
+    const allRows = await res.json();
     loading.remove();
+
+    // Long runs with an MP/quality segment (tagged via the "Long run interval" toggle)
+    // still count toward Quality km in the weekly stats, but they aren't standalone
+    // interval sessions -- keep them out of this list, the KPIs, and the pace trend
+    // so a 33km long run doesn't sit alongside actual track/tempo sessions.
+    const rows = allRows.filter(r => r.session_type !== 'long_run');
 
     if (!rows.length) {
       const empty = document.createElement('div');
@@ -14201,7 +14207,11 @@ async function renderIntervalStatsForWeek(container, wk) {
     const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&activity_date=gte.' + monISO + '&activity_date=lte.' + sunISO + '&order=activity_date.desc', { headers: SUPA_HDR });
     loading.remove();
     if (!res.ok) { container.appendChild(Object.assign(document.createElement('div'),{style:'padding:12px 20px;color:#f06e6e;font-size:12px;',textContent:'Could not load interval data.'})); return; }
-    const rows = await res.json();
+    const allRows = await res.json();
+    // Long runs tagged as "Long run interval" (MP segment inside a long run) still
+    // count toward Quality km elsewhere, but shouldn't clutter this list of standalone
+    // interval/tempo sessions.
+    const rows = allRows.filter(r => r.session_type !== 'long_run');
 
     if (!rows.length) {
       // Fall back to showing Strava quality runs from this week
