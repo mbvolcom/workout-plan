@@ -29,7 +29,7 @@
   --ink-meta:    oklch(0.56 0.04 25);
 
   /* ── RUN (greens) ─────────────────────────────────────── */
-  --easy-bg:#E8F5E9;  --easy-c:#1B5E20;  --easy-b:#66BB6A;   /* light  green */
+  --easy-bg:#E8F5E9;  --easy-c:#1B5E20;  --easy-b:#66BB6A;   /* light green */
   --pm-bg:#DCEDC8;    --pm-c:#33691E;    --pm-b:#8BC34A;     /* lime green */
   --qual-bg:#C8E6C9;  --qual-c:#2E7D32;  --qual-b:#43A047;   /* medium green */
   --long-bg:#1B5E20;  --long-c:#E8F5E9;  --long-b:#388E3C;   /* deep forest green (inverted) */
@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.0.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.1.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10673,234 +10673,272 @@ async function renderOverviewStats() {
     }
   } catch(e) { console.warn('[overview] readiness error:', e); }
 
-  // ── This week snapshot ──────────────────────────────────────────────────
-  try {
-    const allWeeks = buildStatsWeeks ? buildStatsWeeks() : [];
-    const [monDate, sunDate] = getCalendarWeekRange(today);
 
-    // Find the week object matching this calendar week
-    const thisWk = allWeeks.find(wk => {
-      const [y,m,d] = WEEK_MONDAYS[wk.wi];
-      const mon = new Date(y,m-1,d);
-      return mon.getTime() === monDate.getTime();
-    });
+  // ── Unified weekly view (This week / Last week selector) ─────────────────
+  // Replaces the separate "This week", "Time trained", and "Recovery" sections
+  // with a single unified card that has a week selector at the top.
+  let overviewWeekOffset = 0; // 0 = this week, -1 = last week
+
+  function renderUnifiedWeekView() {
+    // Remove existing unified view if re-rendering
+    document.getElementById('overview-week-section')?.remove();
+
+    const isThisWeek = overviewWeekOffset === 0;
+    const [baseMonday] = getCalendarWeekRange(today);
+    const monday = new Date(baseMonday);
+    monday.setDate(baseMonday.getDate() + overviewWeekOffset * 7);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+
+    const weekLabel = isThisWeek ? 'This week' :
+      monday.toLocaleDateString('en-GB', {day:'numeric', month:'short'}) +
+      ' \u2013 ' + sunday.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
 
     const sec = document.createElement('div');
+    sec.id = 'overview-week-section';
     sec.style.cssText = 'padding:14px 20px 0;';
-    const title = document.createElement('div');
-    title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
-    title.textContent = 'This week';
-    sec.appendChild(title);
 
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+    // ── Week selector ──────────────────────────────────────────────────────
+    const selectorRow = document.createElement('div');
+    selectorRow.style.cssText = 'display:flex;gap:6px;margin-bottom:14px;';
+    ['This week', 'Last week'].forEach((label, i) => {
+      const offset = i === 0 ? 0 : -1;
+      const btn = document.createElement('button');
+      btn.textContent = label;
+      const active = overviewWeekOffset === offset;
+      btn.style.cssText = 'padding:6px 14px;border-radius:14px;border:1px solid ' +
+        (active ? 'rgba(252,76,2,0.5)' : 'rgba(255,255,255,0.1)') + ';' +
+        'background:' + (active ? 'rgba(252,76,2,0.12)' : 'none') + ';' +
+        'color:' + (active ? '#FC4C02' : '#9ca3af') + ';' +
+        'font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;';
+      btn.addEventListener('click', () => {
+        overviewWeekOffset = offset;
+        renderUnifiedWeekView();
+      });
+      selectorRow.appendChild(btn);
+    });
+    sec.appendChild(selectorRow);
 
-    // km logged this week
-    const kmCard = document.createElement('div');
-    kmCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
-    if (thisWk) {
-      const pct = thisWk.plannedKm > 0 ? Math.round((thisWk.actualKm/thisWk.plannedKm)*100) : null;
-      kmCard.innerHTML =
-        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Distance</div>' +
-        '<div style="font-size:22px;font-weight:800;color:#c8f06e;">' + (thisWk.actualKm||0).toFixed(1) + ' km</div>' +
-        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' +
-          (pct != null ? pct + '% of ' + thisWk.plannedKm + ' km planned' : 'no plan this week') +
-        '</div>';
-    } else {
-      kmCard.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Distance</div>' +
-        '<div style="font-size:22px;font-weight:800;color:#4b5563;">\u2014</div>' +
-        '<div style="font-size:11px;color:#6b7280;">no plan data</div>';
-    }
-    grid.appendChild(kmCard);
+    // ── Main card ──────────────────────────────────────────────────────────
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
 
-    // Sessions done this week
-    const sessCard = document.createElement('div');
-    sessCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
-    if (thisWk) {
-      const longDone = thisWk.longRuns > 0;
-      const qualDone = thisWk.qualityRuns > 0;
-      sessCard.innerHTML =
-        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Sessions</div>' +
-        '<div style="font-size:22px;font-weight:800;color:#f0ede8;">' + (thisWk.doneSessions||0) + '</div>' +
-        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' +
-          (longDone ? '\u2713 long run ' : '') +
-          (qualDone ? '\u2713 quality' : '') +
-          (!longDone && !qualDone ? 'runs logged' : '') +
-        '</div>';
-    } else {
-      sessCard.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Sessions</div>' +
-        '<div style="font-size:22px;font-weight:800;color:#4b5563;">\u2014</div>';
-    }
-    grid.appendChild(sessCard);
+    // ── Training time headline ─────────────────────────────────────────────
+    const fmtHrs = secs => {
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      return h > 0 ? h + 'h ' + (m > 0 ? m + 'm' : '').trim() : m + 'm';
+    };
 
-    sec.appendChild(grid);
-    container.appendChild(sec);
-  } catch(e) { console.warn('[overview] week snapshot error:', e); }
+    // Get Strava activities for this week
+    let runSecs = 0, rideSecs = 0, strSecs = 0, runKm = 0;
+    const dayActivities = [null,null,null,null,null,null,null]; // Mon-Sun
 
-  // ── Hours trained this week ────────────────────────────────────────────
-  try {
-    const [monHrs] = getCalendarWeekRange(today);
-    let runSecs = 0, rideSecs = 0, strSecs = 0;
-
-    // Scan all Strava activities this calendar week
-    Object.entries(stravaActivities).forEach(([dateStr, acts]) => {
+    Object.entries(stravaActivities || {}).forEach(([dateStr, acts]) => {
       const d = parseLocalDate(dateStr);
-      const sunHrs = new Date(monHrs); sunHrs.setDate(monHrs.getDate() + 6);
-      if (d < monHrs || d > sunHrs) return;
+      if (d < monday || d > sunday) return;
+      const di = Math.round((d - monday) / 86400000);
       acts.forEach(a => {
-        const secs = a.moving_time || 0;
         const type = (a.type || '').toLowerCase();
-        if (type.includes('ride') || type.includes('virtual')) rideSecs += secs;
-        else runSecs += secs;
+        const km = (a.distance || 0) / 1000;
+        const secs = a.moving_time || 0;
+        const isStrength = type.includes('weight') || type === 'workout' || type.includes('crossfit');
+        if (isStrength) { strSecs += secs; return; }
+        if (type.includes('ride') || type.includes('virtual')) { rideSecs += secs; return; }
+        runSecs += secs; runKm += km;
+        if (!dayActivities[di]) dayActivities[di] = [];
+        dayActivities[di].push(a);
       });
     });
 
-    // Strength: count days with a str/str2 pill this week that have
-    // already happened (day date <= today) -- not future scheduled sessions.
-    if (WEEK_MONDAYS && state) {
-      const wi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() === monHrs.getTime());
-      if (wi >= 0 && state[wi]) {
-        [0,1,2,3,4,5,6].forEach(di => {
-          const dayDate = new Date(monHrs); dayDate.setDate(monHrs.getDate() + di);
-          if (dayDate > today) return; // don't count future days
-          const strVal = state[wi].str ? state[wi].str[di] : null;
-          const str2Val = state[wi].str2 ? state[wi].str2[di] : null;
-          // Estimate 45 min per strength session (no Strava data for these)
-          if (strVal || str2Val) strSecs += 45 * 60;
-        });
-      }
+    // Strength from calendar pills
+    const wi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() === monday.getTime());
+    if (wi >= 0 && state[wi]) {
+      [0,1,2,3,4,5,6].forEach(di => {
+        const dayDate = new Date(monday); dayDate.setDate(monday.getDate() + di);
+        if (dayDate > today && isThisWeek) return;
+        if (state[wi].str?.[di] || state[wi].str2?.[di]) strSecs += 45 * 60;
+      });
     }
 
     const totalSecs = runSecs + rideSecs + strSecs;
+
+    // Training time row
     if (totalSecs > 0) {
-      const fmtHrs = secs => {
-        const h = Math.floor(secs / 3600);
-        const m = Math.floor((secs % 3600) / 60);
-        return h > 0 ? h + 'h ' + (m > 0 ? m + 'm' : '') : m + 'm';
-      };
-
-      const sec = document.createElement('div');
-      sec.style.cssText = 'padding:14px 20px 0;';
-      const title = document.createElement('div');
-      title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
-      title.textContent = 'Time trained this week';
-      sec.appendChild(title);
-
-      const card = document.createElement('div');
-      card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;';
-
-      const totalRow = document.createElement('div');
-      totalRow.style.cssText = 'font-size:28px;font-weight:800;color:#f0ede8;margin-bottom:12px;';
-      totalRow.textContent = fmtHrs(totalSecs);
-      card.appendChild(totalRow);
-
-      const breakdown = document.createElement('div');
-      breakdown.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);';
-
-      const addRow = (label, secs, color) => {
-        if (secs <= 0) return;
-        const row = document.createElement('div');
-        row.innerHTML = '<span style="font-size:11px;color:#6b7280;">' + label + '</span> ' +
-          '<span style="font-size:13px;font-weight:700;color:' + color + ';">' + fmtHrs(secs) + '</span>';
-        breakdown.appendChild(row);
-      };
-      addRow('🏃 Running', runSecs, '#c8f06e');
-      addRow('💪 Strength', strSecs, '#f06e6e');
-      addRow('🚴 Cycling', rideSecs, '#6eb8f0');
-
-      card.appendChild(breakdown);
-      sec.appendChild(card);
-      container.appendChild(sec);
+      const timeRow = document.createElement('div');
+      timeRow.style.cssText = 'padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
+      timeRow.innerHTML =
+        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Time trained ' + (isThisWeek ? 'this week' : weekLabel) + '</div>' +
+        '<div style="font-size:26px;font-weight:800;color:#f0ede8;margin-bottom:8px;">' + fmtHrs(totalSecs) + '</div>' +
+        '<div style="display:flex;gap:14px;flex-wrap:wrap;">' +
+          (runSecs > 0 ? '<span style="font-size:12px;">\uD83C\uDFC3 <span style="font-weight:700;color:#c8f06e;">' + fmtHrs(runSecs) + '</span></span>' : '') +
+          (strSecs > 0 ? '<span style="font-size:12px;">\uD83D\uDCAA <span style="font-weight:700;color:#f06e6e;">' + fmtHrs(strSecs) + '</span></span>' : '') +
+          (rideSecs > 0 ? '<span style="font-size:12px;">\uD83D\uDEB4 <span style="font-weight:700;color:#6eb8f0;">' + fmtHrs(rideSecs) + '</span></span>' : '') +
+        '</div>';
+      card.appendChild(timeRow);
     }
-  } catch(e) { console.warn('[overview] hours trained error:', e); }
 
-  // ── Recovery snapshot (Garmin data) ────────────────────────────────────
-  try {
+    // ── Steps chart with numbers above bars ──────────────────────────────
     const garmin = Array.isArray(garminMetricsCache) ? garminMetricsCache : [];
-    const [monDate] = getCalendarWeekRange(today);
-    const thisWeekGarmin = garmin.filter(r => {
-      const d = parseLocalDate(r.metric_date);
-      return d >= monDate && d <= today;
+    const stepsByDay = [0,1,2,3,4,5,6].map(i => {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
+      const iso = formatLocalDate(d);
+      const row = garmin.find(r => r.metric_date === iso);
+      return { day: ['M','T','W','T','F','S','S'][i], date: d, steps: row?.steps ?? null };
     });
-    const last14 = garmin.slice(-14);
-    const prev14 = garmin.slice(-28, -14);
+    const stepsWithData = stepsByDay.filter(d => d.steps != null);
+    if (stepsWithData.length) {
+      const avgSteps = Math.round(stepsWithData.reduce((a,d) => a + d.steps, 0) / stepsWithData.length);
+      const stepsRow = document.createElement('div');
+      stepsRow.style.cssText = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
+      stepsRow.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Steps \u00b7 avg ' + Math.round(avgSteps/1000*10)/10 + 'k/day</div>';
 
-    if (garmin.length) {
-      const sec = document.createElement('div');
-      sec.style.cssText = 'padding:14px 20px 0;';
-      const title = document.createElement('div');
-      title.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;margin-bottom:10px;';
-      title.textContent = 'Recovery & health';
-      sec.appendChild(title);
+      const maxSteps = Math.max(9000, ...stepsByDay.map(d => d.steps || 0));
+      const chartWrap = document.createElement('div');
+      chartWrap.style.cssText = 'display:flex;gap:3px;align-items:flex-end;';
 
-      const grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
-
-      // Resting HR
-      // Use this week's garmin data for resting HR -- only show if we
-      // actually have data for this week (don't show last week's as "this week")
-      const [thisMonRhr] = getCalendarWeekRange(today);
-      const thisWeekGarminRhr = garmin.filter(r => {
-        const d = parseLocalDate(r.metric_date);
-        return d >= thisMonRhr && d <= today;
+      stepsByDay.forEach(d => {
+        const col = document.createElement('div');
+        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;';
+        const isFuture = d.date > today && isThisWeek;
+        if (d.steps != null && !isFuture) {
+          const barH = Math.max(4, Math.round((d.steps / maxSteps) * 44));
+          const color = d.steps >= 9000 ? '#c8f06e' : '#6eb8f0';
+          const kStr = d.steps >= 1000 ? (d.steps/1000).toFixed(1) + 'k' : d.steps;
+          col.innerHTML =
+            '<div style="font-size:7px;color:#9ca3af;font-weight:600;">' + kStr + '</div>' +
+            '<div style="width:100%;border-radius:2px 2px 0 0;background:' + color + ';height:' + barH + 'px;"></div>' +
+            '<div style="font-size:8px;color:#4b5563;font-weight:600;">' + d.day + '</div>';
+        } else {
+          col.innerHTML =
+            '<div style="font-size:7px;color:transparent;">0</div>' +
+            '<div style="width:100%;border-radius:2px 2px 0 0;background:#1f2937;height:4px;"></div>' +
+            '<div style="font-size:8px;color:#374151;font-weight:600;">' + d.day + '</div>';
+        }
+        chartWrap.appendChild(col);
       });
-      const latestRhr = [...thisWeekGarminRhr].reverse().find(r => r.resting_hr != null)?.resting_hr ?? null;
-      const avgRhrRecent = avgOf(last14, 'resting_hr');
-      const avgRhrPrior = avgOf(prev14, 'resting_hr');
-      const rhrArrow = trendArrow(avgRhrRecent, avgRhrPrior);
-      const rhrGood = avgRhrRecent != null && avgRhrPrior != null && avgRhrRecent <= avgRhrPrior;
-
-      const rhrCard = document.createElement('div');
-      rhrCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
-      rhrCard.innerHTML =
-        '<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Resting HR</div>' +
-        '<div style="font-size:20px;font-weight:800;color:#f06e6e;">' + (latestRhr != null ? latestRhr + ' bpm' : '\u2014') + '</div>' +
-        '<div style="font-size:11px;color:' + (rhrGood ? '#6b7280' : '#f0c060') + ';margin-top:2px;">' +
-          (avgRhrRecent != null ? Math.round(avgRhrRecent) + ' avg ' + rhrArrow : '') +
-        '</div>';
-      grid.appendChild(rhrCard);
-
-      // Avg steps this week
-      const avgStepsWeek = avgOf(thisWeekGarmin.filter(r => r.steps != null), 'steps');
-      const stepsCard = document.createElement('div');
-      stepsCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
-      stepsCard.innerHTML =
-        '<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Steps avg</div>' +
-        '<div style="font-size:20px;font-weight:800;color:#c8f06e;">' +
-          (avgStepsWeek != null ? (avgStepsWeek/1000).toFixed(1) + 'k' : '\u2014') +
-        '</div>' +
-        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">this week</div>';
-      grid.appendChild(stepsCard);
-
-      // Body battery
-      const latestBB = [...garmin].reverse().find(r => r.body_battery_max != null);
-      const bbCard = document.createElement('div');
-      bbCard.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;';
-      bbCard.innerHTML =
-        '<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Body battery</div>' +
-        '<div style="font-size:20px;font-weight:800;color:#f0c060;">' +
-          (latestBB ? latestBB.body_battery_max + '%' : '\u2014') +
-        '</div>' +
-        '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' +
-          (latestBB ? 'low ' + latestBB.body_battery_min + '%' : '') +
-        '</div>';
-      grid.appendChild(bbCard);
-
-      sec.appendChild(grid);
-      container.appendChild(sec);
+      stepsRow.appendChild(chartWrap);
+      card.appendChild(stepsRow);
     }
-  } catch(e) { console.warn('[overview] recovery snapshot error:', e); }
+
+    // ── Activity chart (km + duration per day, color-coded by type) ────────
+    const dayNames = ['M','T','W','T','F','S','S'];
+    // Build per-day run data with prefix (easy/quality/long)
+    const dayRunData = [0,1,2,3,4,5,6].map(i => {
+      const acts = dayActivities[i] || [];
+      if (!acts.length) return { km: 0, secs: 0, prefix: null };
+      const totalKm = acts.reduce((a,b) => a + (b.distance||0)/1000, 0);
+      const totalSecs = acts.reduce((a,b) => a + (b.moving_time||0), 0);
+      // Get prefix from calendar state
+      let prefix = 'easy';
+      if (wi >= 0 && state[wi]) {
+        const runVal = state[wi].runs?.[i];
+        if (runVal) prefix = runVal.split(':')[0];
+      }
+      return { km: totalKm, secs: totalSecs, prefix };
+    });
+
+    const maxKm = Math.max(1, ...dayRunData.map(d => d.km));
+    const hasAnyRun = dayRunData.some(d => d.km > 0);
+
+    if (hasAnyRun) {
+      const actRow = document.createElement('div');
+      actRow.style.cssText = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
+      actRow.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Activity per day</div>';
+
+      // Y-axis labels wrapper
+      const chartArea = document.createElement('div');
+      chartArea.style.cssText = 'display:flex;align-items:flex-end;gap:0;';
+
+      // Left Y-axis (km)
+      const yLeft = document.createElement('div');
+      yLeft.style.cssText = 'display:flex;flex-direction:column;justify-content:space-between;height:64px;margin-right:4px;';
+      yLeft.innerHTML =
+        '<div style="font-size:7px;color:#6b7280;">' + Math.round(maxKm) + 'k</div>' +
+        '<div style="font-size:7px;color:#6b7280;">' + Math.round(maxKm/2) + 'k</div>' +
+        '<div style="font-size:7px;color:#6b7280;">0</div>';
+      chartArea.appendChild(yLeft);
+
+      // Bars
+      const barsWrap = document.createElement('div');
+      barsWrap.style.cssText = 'flex:1;display:flex;gap:3px;align-items:flex-end;height:64px;';
+
+      const prefixColor = {
+        easy: '#6eb8f0', 'easy-pm': '#6eb8f0',
+        quality: '#FC4C02', kinder: '#FC4C02',
+        long: '#c8f06e', race: '#c8f06e',
+        cross: '#a78bfa'
+      };
+
+      dayRunData.forEach((d, i) => {
+        const col = document.createElement('div');
+        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:flex-end;height:100%;';
+        if (d.km > 0) {
+          const barH = Math.max(4, Math.round((d.km / maxKm) * 52));
+          const color = prefixColor[d.prefix] || '#6b7280';
+          const kmStr = d.km.toFixed(1);
+          const durStr = d.secs > 0 ? (Math.floor(d.secs/3600) > 0 ? Math.floor(d.secs/3600) + 'h' + Math.round((d.secs%3600)/60) + 'm' : Math.round(d.secs/60) + 'm') : '';
+          col.innerHTML =
+            '<div style="font-size:7px;color:#9ca3af;font-weight:600;line-height:1.1;text-align:center;">' + kmStr + '<br>' +
+            '<span style="color:#6b7280;">' + durStr + '</span></div>' +
+            '<div style="width:100%;border-radius:2px 2px 0 0;background:' + color + ';height:' + barH + 'px;opacity:0.9;"></div>' +
+            '<div style="font-size:8px;color:#4b5563;font-weight:600;">' + dayNames[i] + '</div>';
+        } else {
+          col.innerHTML =
+            '<div style="font-size:7px;color:transparent;">0</div>' +
+            '<div style="width:100%;border-radius:2px 2px 0 0;background:#1f2937;height:2px;"></div>' +
+            '<div style="font-size:8px;color:#374151;font-weight:600;">' + dayNames[i] + '</div>';
+        }
+        barsWrap.appendChild(col);
+      });
+      chartArea.appendChild(barsWrap);
+      actRow.appendChild(chartArea);
+
+      // Legend
+      const legend = document.createElement('div');
+      legend.style.cssText = 'display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;';
+      legend.innerHTML =
+        '<span style="font-size:10px;color:#6b7280;"><span style="color:#6eb8f0;">■</span> Easy</span>' +
+        '<span style="font-size:10px;color:#6b7280;"><span style="color:#FC4C02;">■</span> Quality</span>' +
+        '<span style="font-size:10px;color:#6b7280;"><span style="color:#c8f06e;">■</span> Long</span>';
+      actRow.appendChild(legend);
+      card.appendChild(actRow);
+    }
+
+    // ── Recovery row (resting HR) ─────────────────────────────────────────
+    const weekGarmin = garmin.filter(r => {
+      const d = parseLocalDate(r.metric_date);
+      return d >= monday && d <= sunday;
+    });
+    const avgRhr = avgOf(weekGarmin.filter(r => r.resting_hr != null), 'resting_hr');
+    if (avgRhr != null) {
+      const prevMonday = new Date(monday); prevMonday.setDate(monday.getDate() - 7);
+      const prevSunday = new Date(monday); prevSunday.setDate(monday.getDate() - 1);
+      const prevGarmin = garmin.filter(r => { const d = parseLocalDate(r.metric_date); return d >= prevMonday && d <= prevSunday; });
+      const prevRhr = avgOf(prevGarmin.filter(r => r.resting_hr != null), 'resting_hr');
+      const arrow = trendArrow(avgRhr, prevRhr);
+      const rhrGood = prevRhr != null && avgRhr <= prevRhr;
+      const rhrRow = document.createElement('div');
+      rhrRow.style.cssText = 'padding:12px 16px;';
+      rhrRow.innerHTML =
+        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Avg resting HR</div>' +
+        '<div style="font-size:18px;font-weight:800;color:#f06e6e;">' + Math.round(avgRhr) + ' bpm ' +
+          '<span style="font-size:14px;color:' + (rhrGood ? '#c8f06e' : '#f0c060') + ';">' + arrow + '</span></div>' +
+        (prevRhr ? '<div style="font-size:11px;color:#6b7280;">vs ' + Math.round(prevRhr) + ' bpm prev week</div>' : '');
+      card.appendChild(rhrRow);
+    }
+
+    sec.appendChild(card);
+    container.appendChild(sec);
+  }
+
+  renderUnifiedWeekView();
 
   // ── Training direction card ─────────────────────────────────────────────
   try {
-    // Use the already-loaded intervalAnalysisCache (same data the Deep Dive
-    // tab uses) rather than a fresh fetch, so we get the full history.
     const cachedRows = Object.values(intervalAnalysisCache);
-    // Sort ASCENDING (oldest first) so computeTrainingDirection's
-    // earlier/later split correctly compares old sessions vs recent ones.
     const rawRows = cachedRows
       .sort((a,b) => (a.activity_date||'').localeCompare(b.activity_date||''))
-      .slice(-50); // take the 50 most recent
+      .slice(-50);
     if (rawRows.length >= 1) {
       const sessionsWithPace = rawRows
         .filter(r => r.intervals && r.intervals.length >= 2)
@@ -10933,6 +10971,7 @@ async function renderOverviewStats() {
     '</div>';
   container.appendChild(footer);
 }
+
 
 
 function renderHealthStats() {
