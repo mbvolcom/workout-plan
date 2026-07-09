@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10657,9 +10657,6 @@ async function renderOverviewStats() {
     container.appendChild(banner);
   }
 
-  // ── Unified weekly view (always first after race banner) ─────────────────
-  renderUnifiedWeekView();
-
   // ── Marathon readiness score (front and centre) ─────────────────────────
   try {
     const weeks = buildStatsWeeks ? buildStatsWeeks() : [];
@@ -10985,8 +10982,18 @@ async function renderOverviewStats() {
     }
 
     sec.appendChild(card);
-    container.appendChild(sec);
+    // Insert at top of container so weekly view is always first,
+    // even though this function is called after other sections are set up
+    if (container.firstChild) {
+      container.insertBefore(sec, container.firstChild);
+    } else {
+      container.appendChild(sec);
+    }
   }
+
+  // Call the unified week view now that the function and all its
+  // dependencies (container, today, garmin, etc.) are in scope
+  renderUnifiedWeekView();
 
   // ── Training direction card ─────────────────────────────────────────────
   try {
