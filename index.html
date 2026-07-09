@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.5</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10740,6 +10740,7 @@ async function renderOverviewStats() {
     // Get Strava activities for this week
     let runSecs = 0, rideSecs = 0, strSecs = 0, runKm = 0;
     const dayActivities = [null,null,null,null,null,null,null]; // Mon-Sun
+    const strActualByDay = [0,0,0,0,0,0,0]; // actual strength seconds per day, from Strava
 
     Object.entries(stravaActivities || {}).forEach(([dateStr, acts]) => {
       const d = parseLocalDate(dateStr);
@@ -10750,7 +10751,11 @@ async function renderOverviewStats() {
         const km = (a.distance || 0) / 1000;
         const secs = a.moving_time || 0;
         const isStrength = type.includes('weight') || type === 'workout' || type.includes('crossfit');
-        if (isStrength) { strSecs += secs; return; }
+        if (isStrength) {
+          strSecs += secs;
+          if (di >= 0 && di < 7) strActualByDay[di] += secs;
+          return;
+        }
         if (type.includes('ride') || type.includes('virtual')) { rideSecs += secs; return; }
         runSecs += secs; runKm += km;
         if (!dayActivities[di]) dayActivities[di] = [];
@@ -10758,13 +10763,15 @@ async function renderOverviewStats() {
       });
     });
 
-    // Strength from calendar pills
+    // Strength from calendar pills -- only add the 45min estimate for days that
+    // don't already have real Strava strength data counted above, otherwise a
+    // logged gym session plus a checked calendar pill would count that day twice.
     const wi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() === monday.getTime());
     if (wi >= 0 && state[wi]) {
       [0,1,2,3,4,5,6].forEach(di => {
         const dayDate = new Date(monday); dayDate.setDate(monday.getDate() + di);
         if (dayDate > today && isThisWeek) return;
-        if (state[wi].str?.[di] || state[wi].str2?.[di]) strSecs += 45 * 60;
+        if ((state[wi].str?.[di] || state[wi].str2?.[di]) && !strActualByDay[di]) strSecs += 45 * 60;
       });
     }
 
