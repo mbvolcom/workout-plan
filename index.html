@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10657,6 +10657,9 @@ async function renderOverviewStats() {
     container.appendChild(banner);
   }
 
+  // ── Unified weekly view (right after race banner) ──────────────────────
+  renderUnifiedWeekView();
+
   // ── Marathon readiness score (front and centre) ─────────────────────────
   try {
     const weeks = buildStatsWeeks ? buildStatsWeeks() : [];
@@ -10829,13 +10832,23 @@ async function renderOverviewStats() {
       const runActs = dayActivities[i] || [];
       const runKmDay = runActs.reduce((a,b) => a + (b.distance||0)/1000, 0);
       const runSecsDay = runActs.reduce((a,b) => a + (b.moving_time||0), 0);
+      // Also collect ride/cross activities for this day from Strava
+      const dayDate2 = new Date(monday); dayDate2.setDate(monday.getDate() + i);
+      const dayStr2 = formatLocalDate(dayDate2);
+      const allDayActs = stravaActivities[dayStr2] || [];
+      const rideActs = allDayActs.filter(a => { const t = (a.type||'').toLowerCase(); return t.includes('ride')||t.includes('virtual'); });
+      const strActs = allDayActs.filter(a => { const t = (a.type||'').toLowerCase(); return t.includes('weight')||t==='workout'||t.includes('crossfit'); });
+      const rideKm2 = rideActs.reduce((a,b) => a+(b.distance||0)/1000, 0);
+      const rideSecs2 = rideActs.reduce((a,b) => a+(b.moving_time||0), 0);
+      const strSecsActual = strActs.reduce((a,b) => a+(b.moving_time||0), 0); // actual from Strava
       let prefix = 'easy';
       if (wi >= 0 && state[wi]?.runs?.[i]) prefix = state[wi].runs[i].split(':')[0];
       const hasStr = wi >= 0 && !!(state[wi]?.str?.[i] || state[wi]?.str2?.[i]);
       const hasCross = wi >= 0 && !!state[wi]?.cross?.[i];
       const dayDate = new Date(monday); dayDate.setDate(monday.getDate() + i);
       const isFut = dayDate > today && isThisWeek;
-      return { runKm: runKmDay, runSecs: runSecsDay, prefix, hasStr, hasCross, isFut };
+      return { runKm: runKmDay, runSecs: runSecsDay, prefix, hasStr, hasCross, isFut,
+               rideKm: rideKm2, rideSecs: rideSecs2, strSecsActual };
     });
 
     const maxKm = Math.max(1, ...dayData.map(d => d.runKm));
@@ -10879,13 +10892,26 @@ async function renderOverviewStats() {
         }
 
         if (d.hasStr) {
-          // Strength: fixed height segment, show duration if no run label
-          if (!labelHtml) labelHtml = '<div style="font-size:7px;color:#f06e6e;font-weight:600;">' + fmtDur(strEstSecs) + '</div>';
-          barsHtml = '<div style="width:100%;background:#f06e6e;height:6px;opacity:0.85;margin-bottom:1px;"></div>' + barsHtml;
+          // Use actual Strava strength duration when available, else 45min estimate
+          const strDurSecs = d.strSecsActual > 0 ? d.strSecsActual : strEstSecs;
+          const strLabel = fmtDur(strDurSecs);
+          if (d.runKm > 0) {
+            // Both run and strength on same day -- show strength label + bar BELOW km label,
+            // with a small visual gap, then the run bar above
+            barsHtml =
+              '<div style="font-size:7px;color:#f06e6e;font-weight:600;text-align:center;">' + strLabel + '</div>' +
+              '<div style="width:100%;background:#f06e6e;height:6px;opacity:0.85;margin-bottom:2px;border-radius:2px;"></div>' +
+              barsHtml;
+          } else {
+            if (!labelHtml) labelHtml = '<div style="font-size:7px;color:#f06e6e;font-weight:600;">' + strLabel + '</div>';
+            barsHtml = '<div style="width:100%;background:#f06e6e;height:6px;opacity:0.85;margin-bottom:1px;"></div>' + barsHtml;
+          }
         }
 
-        if (d.hasCross) {
-          if (!labelHtml) labelHtml = '<div style="font-size:7px;color:#a78bfa;font-weight:600;">cross</div>';
+        // Only show cross bar if there's an actual ride/cross Strava activity
+        // (not just a calendar pill -- pills can be planned but not yet done)
+        if (d.hasCross && d.rideKm > 0) {
+          if (!labelHtml) labelHtml = '<div style="font-size:7px;color:#a78bfa;font-weight:600;">' + fmtDur(d.rideSecs) + '</div>';
           barsHtml = '<div style="width:100%;background:#a78bfa;height:6px;opacity:0.85;margin-bottom:1px;"></div>' + barsHtml;
         }
 
@@ -10982,18 +11008,8 @@ async function renderOverviewStats() {
     }
 
     sec.appendChild(card);
-    // Insert at top of container so weekly view is always first,
-    // even though this function is called after other sections are set up
-    if (container.firstChild) {
-      container.insertBefore(sec, container.firstChild);
-    } else {
-      container.appendChild(sec);
-    }
+    container.appendChild(sec);
   }
-
-  // Call the unified week view now that the function and all its
-  // dependencies (container, today, garmin, etc.) are in scope
-  renderUnifiedWeekView();
 
   // ── Training direction card ─────────────────────────────────────────────
   try {
@@ -11016,6 +11032,31 @@ async function renderOverviewStats() {
         const dirSec = document.createElement('div');
         dirSec.style.cssText = 'padding:14px 20px 0;';
         renderTrainingDirection(dirSec, sessionsWithPace, rawRows, true);
+        container.appendChild(dirSec);
+      }
+    }
+  } catch(e) { console.warn('[overview] training direction error:', e); }
+
+  // ── Training direction card ─────────────────────────────────────────────
+  try {
+    const cachedRows2 = Object.values(intervalAnalysisCache);
+    const rawRows2 = cachedRows2
+      .sort((a,b) => (a.activity_date||'').localeCompare(b.activity_date||''))
+      .slice(-50);
+    if (rawRows2.length >= 1) {
+      const sessionsWithPace2 = rawRows2
+        .filter(r => r.intervals && r.intervals.length >= 2)
+        .map(r => {
+          const paces = r.intervals.map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
+          if (!paces.length) return null;
+          const totalDist = r.intervals.reduce((a,iv)=>a+(iv.distance||0),0)/1000;
+          const vwPace = paces.reduce((a,b)=>a+b,0)/paces.length;
+          return { vwPace, totalKm: totalDist, date: r.activity_date };
+        }).filter(Boolean);
+      if (sessionsWithPace2.length >= 2) {
+        const dirSec = document.createElement('div');
+        dirSec.style.cssText = 'padding:14px 20px 0;';
+        renderTrainingDirection(dirSec, sessionsWithPace2, rawRows2, true);
         container.appendChild(dirSec);
       }
     }
