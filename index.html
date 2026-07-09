@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.1.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10657,8 +10657,8 @@ async function renderOverviewStats() {
     container.appendChild(banner);
   }
 
-  // ── Last week recap ────────────────────────────────────────────────────
-  try { renderWeeklyRecap(container); } catch(e) { console.warn('[overview] recap error:', e); }
+  // ── Unified weekly view (always first after race banner) ─────────────────
+  renderUnifiedWeekView();
 
   // ── Marathon readiness score (front and centre) ─────────────────────────
   try {
@@ -10820,78 +10820,89 @@ async function renderOverviewStats() {
       card.appendChild(stepsRow);
     }
 
-    // ── Activity chart (km + duration per day, color-coded by type) ────────
+    // ── Activity chart (runs + strength + cross per day) ────────────────────
     const dayNames = ['M','T','W','T','F','S','S'];
-    // Build per-day run data with prefix (easy/quality/long)
-    const dayRunData = [0,1,2,3,4,5,6].map(i => {
-      const acts = dayActivities[i] || [];
-      if (!acts.length) return { km: 0, secs: 0, prefix: null };
-      const totalKm = acts.reduce((a,b) => a + (b.distance||0)/1000, 0);
-      const totalSecs = acts.reduce((a,b) => a + (b.moving_time||0), 0);
-      // Get prefix from calendar state
+
+    const fmtDur = secs => secs > 3600
+      ? Math.floor(secs/3600) + 'h' + Math.round((secs%3600)/60) + 'm'
+      : Math.round(secs/60) + 'm';
+
+    // Per-day data: runs from Strava, strength/cross from calendar state
+    const dayData = [0,1,2,3,4,5,6].map(i => {
+      const runActs = dayActivities[i] || [];
+      const runKmDay = runActs.reduce((a,b) => a + (b.distance||0)/1000, 0);
+      const runSecsDay = runActs.reduce((a,b) => a + (b.moving_time||0), 0);
       let prefix = 'easy';
-      if (wi >= 0 && state[wi]) {
-        const runVal = state[wi].runs?.[i];
-        if (runVal) prefix = runVal.split(':')[0];
-      }
-      return { km: totalKm, secs: totalSecs, prefix };
+      if (wi >= 0 && state[wi]?.runs?.[i]) prefix = state[wi].runs[i].split(':')[0];
+      const hasStr = wi >= 0 && !!(state[wi]?.str?.[i] || state[wi]?.str2?.[i]);
+      const hasCross = wi >= 0 && !!state[wi]?.cross?.[i];
+      const dayDate = new Date(monday); dayDate.setDate(monday.getDate() + i);
+      const isFut = dayDate > today && isThisWeek;
+      return { runKm: runKmDay, runSecs: runSecsDay, prefix, hasStr, hasCross, isFut };
     });
 
-    const maxKm = Math.max(1, ...dayRunData.map(d => d.km));
-    const hasAnyRun = dayRunData.some(d => d.km > 0);
+    const maxKm = Math.max(1, ...dayData.map(d => d.runKm));
+    const hasAny = dayData.some(d => d.runKm > 0 || d.hasStr || d.hasCross);
+    const strEstSecs = 45 * 60;
 
-    if (hasAnyRun) {
+    const prefixColor = {
+      easy: '#6eb8f0', 'easy-pm': '#6eb8f0',
+      quality: '#FC4C02', kinder: '#FC4C02',
+      long: '#c8f06e', race: '#c8f06e',
+    };
+
+    if (hasAny) {
       const actRow = document.createElement('div');
       actRow.style.cssText = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
       actRow.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Activity per day</div>';
 
-      // Y-axis labels wrapper
-      const chartArea = document.createElement('div');
-      chartArea.style.cssText = 'display:flex;align-items:flex-end;gap:0;';
-
-      // Left Y-axis (km)
-      const yLeft = document.createElement('div');
-      yLeft.style.cssText = 'display:flex;flex-direction:column;justify-content:space-between;height:64px;margin-right:4px;';
-      yLeft.innerHTML =
-        '<div style="font-size:7px;color:#6b7280;">' + Math.round(maxKm) + 'k</div>' +
-        '<div style="font-size:7px;color:#6b7280;">' + Math.round(maxKm/2) + 'k</div>' +
-        '<div style="font-size:7px;color:#6b7280;">0</div>';
-      chartArea.appendChild(yLeft);
-
-      // Bars
       const barsWrap = document.createElement('div');
-      barsWrap.style.cssText = 'flex:1;display:flex;gap:3px;align-items:flex-end;height:64px;';
+      barsWrap.style.cssText = 'display:flex;gap:3px;align-items:flex-end;height:80px;';
 
-      const prefixColor = {
-        easy: '#6eb8f0', 'easy-pm': '#6eb8f0',
-        quality: '#FC4C02', kinder: '#FC4C02',
-        long: '#c8f06e', race: '#c8f06e',
-        cross: '#a78bfa'
-      };
-
-      dayRunData.forEach((d, i) => {
+      dayData.forEach((d, i) => {
         const col = document.createElement('div');
-        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:flex-end;height:100%;';
-        if (d.km > 0) {
-          const barH = Math.max(4, Math.round((d.km / maxKm) * 52));
-          const color = prefixColor[d.prefix] || '#6b7280';
-          const kmStr = d.km.toFixed(1);
-          const durStr = d.secs > 0 ? (Math.floor(d.secs/3600) > 0 ? Math.floor(d.secs/3600) + 'h' + Math.round((d.secs%3600)/60) + 'm' : Math.round(d.secs/60) + 'm') : '';
+        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;justify-content:flex-end;height:100%;';
+        if (d.isFut) {
           col.innerHTML =
-            '<div style="font-size:7px;color:#9ca3af;font-weight:600;line-height:1.1;text-align:center;">' + kmStr + '<br>' +
-            '<span style="color:#6b7280;">' + durStr + '</span></div>' +
-            '<div style="width:100%;border-radius:2px 2px 0 0;background:' + color + ';height:' + barH + 'px;opacity:0.9;"></div>' +
-            '<div style="font-size:8px;color:#4b5563;font-weight:600;">' + dayNames[i] + '</div>';
-        } else {
-          col.innerHTML =
-            '<div style="font-size:7px;color:transparent;">0</div>' +
-            '<div style="width:100%;border-radius:2px 2px 0 0;background:#1f2937;height:2px;"></div>' +
+            '<div style="width:100%;background:#1f2937;height:2px;border-radius:2px 2px 0 0;"></div>' +
             '<div style="font-size:8px;color:#374151;font-weight:600;">' + dayNames[i] + '</div>';
+          barsWrap.appendChild(col);
+          return;
         }
+
+        let labelHtml = '';
+        let barsHtml = '';
+
+        if (d.runKm > 0) {
+          const barH = Math.max(4, Math.round((d.runKm / maxKm) * 60));
+          const color = prefixColor[d.prefix] || '#6eb8f0';
+          // Runs: show km only above bar
+          labelHtml += '<div style="font-size:7px;color:#9ca3af;font-weight:600;">' + d.runKm.toFixed(1) + '</div>';
+          barsHtml = '<div style="width:100%;border-radius:2px 2px 0 0;background:' + color + ';height:' + barH + 'px;opacity:0.9;"></div>' + barsHtml;
+        }
+
+        if (d.hasStr) {
+          // Strength: fixed height segment, show duration if no run label
+          if (!labelHtml) labelHtml = '<div style="font-size:7px;color:#f06e6e;font-weight:600;">' + fmtDur(strEstSecs) + '</div>';
+          barsHtml = '<div style="width:100%;background:#f06e6e;height:6px;opacity:0.85;margin-bottom:1px;"></div>' + barsHtml;
+        }
+
+        if (d.hasCross) {
+          if (!labelHtml) labelHtml = '<div style="font-size:7px;color:#a78bfa;font-weight:600;">cross</div>';
+          barsHtml = '<div style="width:100%;background:#a78bfa;height:6px;opacity:0.85;margin-bottom:1px;"></div>' + barsHtml;
+        }
+
+        if (!barsHtml) {
+          barsHtml = '<div style="width:100%;background:#1f2937;height:2px;border-radius:2px 2px 0 0;"></div>';
+        }
+
+        col.innerHTML = (labelHtml || '<div style="font-size:7px;color:transparent;">0</div>') +
+          barsHtml +
+          '<div style="font-size:8px;color:#4b5563;font-weight:600;">' + dayNames[i] + '</div>';
         barsWrap.appendChild(col);
       });
-      chartArea.appendChild(barsWrap);
-      actRow.appendChild(chartArea);
+
+      actRow.appendChild(barsWrap);
 
       // Legend
       const legend = document.createElement('div');
@@ -10899,8 +10910,54 @@ async function renderOverviewStats() {
       legend.innerHTML =
         '<span style="font-size:10px;color:#6b7280;"><span style="color:#6eb8f0;">■</span> Easy</span>' +
         '<span style="font-size:10px;color:#6b7280;"><span style="color:#FC4C02;">■</span> Quality</span>' +
-        '<span style="font-size:10px;color:#6b7280;"><span style="color:#c8f06e;">■</span> Long</span>';
+        '<span style="font-size:10px;color:#6b7280;"><span style="color:#c8f06e;">■</span> Long</span>' +
+        '<span style="font-size:10px;color:#6b7280;"><span style="color:#f06e6e;">■</span> Strength</span>' +
+        '<span style="font-size:10px;color:#6b7280;"><span style="color:#a78bfa;">■</span> Cross</span>';
       actRow.appendChild(legend);
+
+      // ── Stats row: distance, long run, quality km ─────────────────────
+      const allWks2 = buildStatsWeeks ? buildStatsWeeks() : [];
+      const thisWk2 = allWks2.find(wk => {
+        const [wy,wm,wd] = WEEK_MONDAYS[wk.wi];
+        return new Date(wy,wm-1,wd).getTime() === monday.getTime();
+      });
+      if (thisWk2) {
+        const pct2 = thisWk2.plannedKm > 0 ? Math.round((thisWk2.actualKm/thisWk2.plannedKm)*100) : null;
+        // Quality km from interval analysis cache for this week
+        let qualKm2 = 0, bestRepPace2 = null;
+        Object.values(intervalAnalysisCache || {}).forEach(r => {
+          if (!r.activity_date) return;
+          const d2 = parseLocalDate(r.activity_date);
+          if (d2 < monday || d2 > sunday) return;
+          (r.intervals||[]).forEach(iv => {
+            qualKm2 += (iv.distance||0)/1000;
+            const p = paceStrToSecs(iv.avgPaceStr);
+            if (p && (!bestRepPace2 || p < bestRepPace2)) bestRepPace2 = p;
+          });
+        });
+        const qualPct2 = thisWk2.actualKm > 0 && qualKm2 > 0 ? Math.round((qualKm2/thisWk2.actualKm)*100) : null;
+        const longKm = thisWk2.longestRun > 0 ? (thisWk2.longestRun/1000).toFixed(1) : null;
+
+        const statsRow = document.createElement('div');
+        statsRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:12px 0 0;border-top:1px solid rgba(255,255,255,0.05);margin-top:10px;';
+
+        const cell = (label, val, sub, color) =>
+          '<div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">' + label + '</div>' +
+          '<div style="font-size:15px;font-weight:800;color:' + (color||'#f0ede8') + ';">' + val + '</div>' +
+          (sub ? '<div style="font-size:10px;color:#6b7280;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
+
+        statsRow.innerHTML =
+          cell('Distance', (thisWk2.actualKm||0).toFixed(1) + ' km',
+            pct2 != null ? pct2 + '% of ' + thisWk2.plannedKm + 'km' : '', '#c8f06e') +
+          cell('Long run',
+            longKm ? longKm + ' km' : '\u2014', '', '#FC4C02') +
+          cell('Quality km',
+            qualPct2 != null ? qualPct2 + '%' : '\u2014',
+            bestRepPace2 ? 'best ' + secsToMinSec(Math.round(bestRepPace2)) + '/km' : '', '#f0ede8');
+
+        actRow.appendChild(statsRow);
+      }
+
       card.appendChild(actRow);
     }
 
@@ -10930,8 +10987,6 @@ async function renderOverviewStats() {
     sec.appendChild(card);
     container.appendChild(sec);
   }
-
-  renderUnifiedWeekView();
 
   // ── Training direction card ─────────────────────────────────────────────
   try {
