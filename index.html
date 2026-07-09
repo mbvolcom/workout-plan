@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.2.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10628,6 +10628,7 @@ async function renderOverviewStats() {
 
   const plan = getActivePlan ? getActivePlan() : null;
   const today = new Date(); today.setHours(0,0,0,0);
+  if (typeof overviewWeekOffset === 'undefined') window.overviewWeekOffset = 0;
 
   // ── Race countdown banner ───────────────────────────────────────────────
   if (plan && plan.race_date) {
@@ -10677,16 +10678,16 @@ async function renderOverviewStats() {
   // ── Unified weekly view (This week / Last week selector) ─────────────────
   // Replaces the separate "This week", "Time trained", and "Recovery" sections
   // with a single unified card that has a week selector at the top.
-  let overviewWeekOffset = 0; // 0 = this week, -1 = last week
+  // overviewWeekOffset is declared on window above so it persists between re-renders
 
   function renderUnifiedWeekView() {
     // Remove existing unified view if re-rendering
     document.getElementById('overview-week-section')?.remove();
 
-    const isThisWeek = overviewWeekOffset === 0;
+    const isThisWeek = window.overviewWeekOffset === 0;
     const [baseMonday] = getCalendarWeekRange(today);
     const monday = new Date(baseMonday);
-    monday.setDate(baseMonday.getDate() + overviewWeekOffset * 7);
+    monday.setDate(baseMonday.getDate() + window.overviewWeekOffset * 7);
     const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
 
     const weekLabel = isThisWeek ? 'This week' :
@@ -10704,14 +10705,14 @@ async function renderOverviewStats() {
       const offset = i === 0 ? 0 : -1;
       const btn = document.createElement('button');
       btn.textContent = label;
-      const active = overviewWeekOffset === offset;
+      const active = window.overviewWeekOffset === offset;
       btn.style.cssText = 'padding:6px 14px;border-radius:14px;border:1px solid ' +
         (active ? 'rgba(252,76,2,0.5)' : 'rgba(255,255,255,0.1)') + ';' +
         'background:' + (active ? 'rgba(252,76,2,0.12)' : 'none') + ';' +
         'color:' + (active ? '#FC4C02' : '#9ca3af') + ';' +
         'font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;';
       btn.addEventListener('click', () => {
-        overviewWeekOffset = offset;
+        window.overviewWeekOffset = offset;
         renderUnifiedWeekView();
       });
       selectorRow.appendChild(btn);
