@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.3.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.3.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -6074,7 +6074,16 @@ async function runIntervalAnalysis(activityId) {
       result.innerHTML = `<div class="ia-empty">No intervals found faster than ${mins}:${String(secs).padStart(2,'0')}/km for more than ${minDur}s${lenHint}.<br>Try adjusting the threshold, duration or expected length.</div>`;
     } else {
       const thresholdPaceStr = `${mins}:${String(secs).padStart(2,'0')}/km`;
-      saveIntervalAnalysis(activityId, thresholdPaceStr, minDur, intervals);
+      saveIntervalAnalysis(activityId, thresholdPaceStr, minDur, intervals).then(saved => {
+        // The "Long run interval" checkbox was populated when the panel first opened,
+        // before this analysis existed, so it had no row id and clicking it did nothing.
+        // Wire it up now that the row exists.
+        const lriChk = document.getElementById('strava-lri-checkbox');
+        if (saved && saved.id && lriChk) {
+          lriChk.dataset.analysisId = saved.id;
+          lriChk.disabled = false;
+        }
+      });
 
       result.innerHTML = `
         <div class="ia-saved-badge">✓ Saved to Supabase</div>
@@ -6119,9 +6128,9 @@ async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, inte
       });
     });
 
-    await fetch(SUPA_BASE + 'interval_analysis?on_conflict=activity_id', {
+    const res = await fetch(SUPA_BASE + 'interval_analysis?on_conflict=activity_id', {
       method: 'POST',
-      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates' },
+      headers: { ...SUPA_HDR, 'Prefer': 'resolution=merge-duplicates,return=representation' },
       body: JSON.stringify({
         activity_id:       activityId,
         activity_name:     activityName,
@@ -6134,7 +6143,12 @@ async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, inte
       })
     });
     console.log('Interval analysis saved for activity', activityId);
-  } catch(e) { console.warn('Failed to save interval analysis:', e); }
+    const saved = await res.json().catch(() => null);
+    return Array.isArray(saved) ? saved[0] : saved;
+  } catch(e) {
+    console.warn('Failed to save interval analysis:', e);
+    return null;
+  }
 }
 
 function drawIAPaceChart(canvas, timeArr, velArr, distArr, intervals, thresholdMps) {
