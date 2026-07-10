@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.4.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.4.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9424,7 +9424,7 @@ function renderStats() {
 let intervalAnalysisCache = {}; // keyed by activity_id, loaded from Supabase
 async function loadIntervalAnalysisCache() {
   try {
-    const res = await fetch(SUPA_BASE + 'interval_analysis?select=activity_id,activity_date,intervals', { headers: SUPA_HDR });
+    const res = await fetch(SUPA_BASE + 'interval_analysis?select=activity_id,activity_date,intervals,session_type', { headers: SUPA_HDR });
     if (!res.ok) return;
     const rows = await res.json();
     intervalAnalysisCache = {};
@@ -11088,7 +11088,10 @@ async function renderOverviewStats() {
 
   // ── Training direction card ─────────────────────────────────────────────
   try {
-    const cachedRows = Object.values(intervalAnalysisCache);
+    const cachedRows = Object.values(intervalAnalysisCache)
+      .filter(r => r.session_type !== 'long_run'); // MP segments inside long runs run at a
+      // deliberately slower pace than threshold/interval work -- mixing them in here made
+      // the pace trend look like it had slipped when it hadn't.
     const rawRows = cachedRows
       .sort((a,b) => (a.activity_date||'').localeCompare(b.activity_date||''))
       .slice(-50);
