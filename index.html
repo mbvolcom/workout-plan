@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.3.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.4.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -5825,7 +5825,15 @@ async function openStravaDetail(activity) {
       // Remove old listener and add fresh one
       const newChk = lriChk.cloneNode(true);
       lriChk.parentNode.replaceChild(newChk, lriChk);
+      let lriErr = document.getElementById('strava-lri-error');
+      if (!lriErr) {
+        lriErr = document.createElement('div');
+        lriErr.id = 'strava-lri-error';
+        lriErr.style.cssText = 'font-size:10px;color:#f06e6e;margin-top:4px;display:none;';
+        lriWrap.appendChild(lriErr);
+      }
       newChk.addEventListener('change', async () => {
+        lriErr.style.display = 'none';
         const analysisId = newChk.dataset.analysisId;
         if (!analysisId) { newChk.checked = !newChk.checked; return; } // no row — can't tag
         const newType = newChk.checked ? 'long_run' : 'standalone';
@@ -5833,12 +5841,22 @@ async function openStravaDetail(activity) {
         try {
           const r = await fetch(SUPA_BASE + 'interval_analysis?id=eq.' + analysisId, {
             method: 'PATCH',
-            headers: SUPA_HDR,
+            headers: { ...SUPA_HDR, 'Prefer': 'return=representation' },
             body: JSON.stringify({ session_type: newType })
           });
-          if (!r.ok) throw new Error('save failed ' + r.status);
+          if (!r.ok) {
+            const errBody = await r.json().catch(() => null);
+            throw new Error('save failed ' + r.status + (errBody?.message ? ': ' + errBody.message : ''));
+          }
+          const updated = await r.json().catch(() => null);
+          // PostgREST returns [] (not an error) if RLS silently blocked the row from matching
+          if (Array.isArray(updated) && updated.length === 0) {
+            throw new Error('update matched 0 rows — likely blocked by a row-level security policy on interval_analysis (UPDATE not permitted)');
+          }
         } catch(e) {
           console.warn('[LRI] update failed:', e);
+          lriErr.textContent = 'Could not save: ' + e.message;
+          lriErr.style.display = 'block';
           newChk.checked = !newChk.checked; // revert
         }
         newChk.disabled = false;
@@ -5923,6 +5941,12 @@ async function openStravaDetail(activity) {
           <option value="km">km</option>
         </select>
         <span style="font-size:10px;color:var(--muted);">±10% tolerance</span>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer;">
+        <input id="ia-lri" type="checkbox" style="width:14px;height:14px;accent-color:#FC4C02;cursor:pointer;"/>
+        <span style="font-size:11px;color:var(--muted);">🏃 This is a long run with a quality/MP segment (not a standalone interval session)</span>
+      </label>
+      <div style="margin-bottom:10px;">
         <button id="ia-run-btn" onclick="runIntervalAnalysis(${activity.id})" style="background:#FC4C02;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Analyse ↓</button>
       </div>
       <div id="ia-result"></div>`;
@@ -6074,13 +6098,15 @@ async function runIntervalAnalysis(activityId) {
       result.innerHTML = `<div class="ia-empty">No intervals found faster than ${mins}:${String(secs).padStart(2,'0')}/km for more than ${minDur}s${lenHint}.<br>Try adjusting the threshold, duration or expected length.</div>`;
     } else {
       const thresholdPaceStr = `${mins}:${String(secs).padStart(2,'0')}/km`;
-      saveIntervalAnalysis(activityId, thresholdPaceStr, minDur, intervals).then(saved => {
-        // The "Long run interval" checkbox was populated when the panel first opened,
-        // before this analysis existed, so it had no row id and clicking it did nothing.
-        // Wire it up now that the row exists.
+      const isLRI = document.getElementById('ia-lri')?.checked || false;
+      saveIntervalAnalysis(activityId, thresholdPaceStr, minDur, intervals, isLRI).then(saved => {
+        // Keep the Strava-panel "Long run interval" toggle in sync with what we just saved,
+        // so it reflects reality immediately and (for the retroactive-toggle path) has a
+        // valid row id to PATCH against.
         const lriChk = document.getElementById('strava-lri-checkbox');
         if (saved && saved.id && lriChk) {
           lriChk.dataset.analysisId = saved.id;
+          lriChk.checked = saved.session_type === 'long_run';
           lriChk.disabled = false;
         }
       });
@@ -6119,7 +6145,7 @@ async function runIntervalAnalysis(activityId) {
 }
 
 
-async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, intervals) {
+async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, intervals, isLRI) {
   try {
     let activityName = '', activityDate = '';
     Object.entries(stravaActivities).forEach(([date, acts]) => {
@@ -6139,6 +6165,7 @@ async function saveIntervalAnalysis(activityId, thresholdPace, minDuration, inte
         min_duration_secs: minDuration,
         intervals:         intervals,
         total_intervals:   intervals.length,
+        session_type:      isLRI ? 'long_run' : 'standalone',
         analysed_at:       new Date().toISOString(),
       })
     });
