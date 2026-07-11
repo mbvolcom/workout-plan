@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.4.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.4.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10813,11 +10813,14 @@ async function renderOverviewStats() {
     // Strength from calendar pills -- only add the 45min estimate for days that
     // don't already have real Strava strength data counted above, otherwise a
     // logged gym session plus a checked calendar pill would count that day twice.
+    // Also skip today unless it's already confirmed by Strava -- a checked pill just
+    // means "planned," not "done," so a morning check-in shouldn't already show it trained.
     const wi = WEEK_MONDAYS.findIndex(([y,m,d]) => new Date(y,m-1,d).getTime() === monday.getTime());
     if (wi >= 0 && state[wi]) {
       [0,1,2,3,4,5,6].forEach(di => {
         const dayDate = new Date(monday); dayDate.setDate(monday.getDate() + di);
         if (dayDate > today && isThisWeek) return;
+        if (dayDate.getTime() === today.getTime() && !strActualByDay[di]) return;
         if ((state[wi].str?.[di] || state[wi].str2?.[di]) && !strActualByDay[di]) strSecs += 45 * 60;
       });
     }
@@ -10914,10 +10917,16 @@ async function renderOverviewStats() {
       if (runKmDay >= 18) prefix = 'long';
       else if (actualHasIntervals) prefix = 'quality';
       else if (runKmDay > 0 && !actualHasIntervals && (prefix === 'quality' || prefix === 'kinder')) prefix = 'easy';
-      const hasStr = wi >= 0 && !!(state[wi]?.str?.[i] || state[wi]?.str2?.[i]);
-      const hasCross = wi >= 0 && !!state[wi]?.cross?.[i];
       const dayDate = new Date(monday); dayDate.setDate(monday.getDate() + i);
       const isFut = dayDate > today && isThisWeek;
+      const isToday = dayDate.getTime() === today.getTime();
+      // A checked calendar pill just means "planned" -- for today, don't show it as
+      // completed until Strava actually confirms it happened (avoids showing a strength/
+      // cross session as done first thing in the morning before it's been run).
+      const plannedStr = wi >= 0 && !!(state[wi]?.str?.[i] || state[wi]?.str2?.[i]);
+      const plannedCross = wi >= 0 && !!state[wi]?.cross?.[i];
+      const hasStr = strSecsActual > 0 || (plannedStr && !isFut && !isToday);
+      const hasCross = (rideSecs2 > 0) || (plannedCross && !isFut && !isToday);
       return { runKm: runKmDay, runSecs: runSecsDay, prefix, hasStr, hasCross, isFut,
                rideKm: rideKm2, rideSecs: rideSecs2, strSecsActual };
     });
