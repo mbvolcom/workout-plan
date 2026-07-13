@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.9.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.9.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -12576,9 +12576,9 @@ function computeTrainingDirection(sessionsWithPace, rawRows) {
     action = phase === 'sharp'
       ? 'Extend rep duration or reduce recovery slightly, rather than chasing a faster pace this close to race day.'
       : 'Extend rep duration or add one more rep next session, keeping pace where it is rather than pushing it faster yet.';
-  } else if (paceTrend === 'flat' && (fadePattern === 'consistent' || fadePattern === 'unknown')) {
+  } else if (paceTrend === 'flat' && (fadePattern === 'consistent' || fadePattern === 'unknown' || fadePattern === 'negative-split')) {
     headline = 'Steady -- ready for a small step up';
-    detail = 'Pace has been flat across recent sessions but reps are holding up consistently with no fading. This is a stable platform -- you are not struggling, but you are also not being pushed enough to drive further adaptation.';
+    detail = 'Pace has been flat across recent sessions, and reps are holding up well within sessions (' + (fadePattern === 'negative-split' ? 'even finishing strong' : 'no fading') + '). This is a stable platform -- you are not struggling, but you are also not being pushed enough to drive further adaptation.';
     action = volTrend === 'increasing'
       ? 'Volume is already trending up -- give it another 1-2 weeks before changing pace too.'
       : 'Try a small pace increase (2-3 sec/km) on your next session and see how the reps hold up.';
