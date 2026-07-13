@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.9.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.10.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9835,7 +9835,7 @@ async function renderIntervalStats() {
       trendTitle.textContent = 'Effort trend — pace × volume';
       const trendSub = document.createElement('div');
       trendSub.style.cssText = 'font-size:11px;color:#4b5563;margin-bottom:10px;';
-      trendSub.textContent = 'Volume-weighted pace (solid) and total quality km per session (dashed)';
+      trendSub.textContent = 'Line: pace per session, weighted by rep distance. Bars: quality km logged that session.';
       trendSection.appendChild(trendTitle);
       trendSection.appendChild(trendSub);
       const canWrap = document.createElement('div');
@@ -12173,15 +12173,42 @@ const LT_TO_RACE_PACE = {
   5:        { coeff: 0.96,  label: '5K' },
 };
 
+// The base LT->race-pace coefficients above assume solid preparation (good long-run
+// coverage, consistent training). Marathon and half-marathon performance is gated by
+// things LT pace alone can't see -- glycogen depletion, muscular endurance over hours,
+// fueling -- so under-prepared runners fade more than a flat coefficient accounts for.
+// This scales the coefficient up (slower) when long-run coverage or training
+// consistency falls short, rather than applying the same multiplier to everyone.
+function volumeAdjustedCoeff(baseCoeff, raceKm, longestRunM, weeks) {
+  if (raceKm < 15) return { coeff: baseCoeff, adjPct: 0 }; // not very relevant below half marathon
+
+  const longestKm = longestRunM / 1000;
+  const coveragePct = raceKm > 0 ? longestKm / raceKm : 0;
+  const targetCoverage = raceKm >= 42 ? 0.75 : 0.60; // marathon wants ~75%+, half wants ~60%+
+
+  let adj = 0;
+  if (coveragePct < targetCoverage) {
+    const gap = targetCoverage - coveragePct;
+    const perTenPoints = raceKm >= 42 ? 0.02 : 0.012; // marathon penalised more -- more glycogen-limited
+    adj += (gap / 0.10) * perTenPoints;
+  }
+
+  const doneWeeks = weeks.filter(wk => wk.doneSessions > 0).length;
+  const consistencyPct = weeks.length > 0 ? doneWeeks / weeks.length : 1;
+  if (consistencyPct < 0.7) adj += 0.01;
+
+  return { coeff: baseCoeff + adj, adjPct: adj };
+}
+
 function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
-  const coeff = LT_TO_RACE_PACE[raceKm]?.coeff || 1.07;
+  const baseCoeff = LT_TO_RACE_PACE[raceKm]?.coeff || 1.07;
+  const { coeff, adjPct } = volumeAdjustedCoeff(baseCoeff, raceKm, longestRunM, weeks);
 
   // Central estimate from LT pace
   const racePaceSecs = ltPaceSecs * coeff;
   const finishSecs   = racePaceSecs * raceKm;
 
   // Cross-check with easy run pace data (paceRuns stores min/km, convert to sec/km)
-  // Also factor in LRI adjustment: mid-long-run intervals are ~6% slower due to fatigue
   const allEasyPaces = weeks.flatMap(wk => wk.paceRuns || []).filter(Boolean);
   let intervalCheck = null;
   if (allEasyPaces.length >= 3) {
@@ -12191,21 +12218,25 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
     const derivedMarathonPace = bestEasySecs * (raceKm >= 42 ? 1.12 : raceKm >= 21 ? 1.07 : 1.02);
     intervalCheck = derivedMarathonPace * raceKm;
   }
-  // If we have LRI data from interval_analysis, blend in normalised LRI paces
-  // LRI pace / 1.06 = estimated fresh equivalent pace
-  // (This is computed async elsewhere; here we just use the already-loaded ltHistory
-  //  which already incorporates the user's reported LT — LRI data refines the cross-check
-  //  but does not override LT-based primary estimate)
 
-  // Blend: LT-based is primary. Add easy run cross-check if enough data.
-  // If cross-check is within 10% of LT estimate, blend 85/15; otherwise trust LT.
+  // Blend: LT-based is primary, but the cross-check is never fully discarded any more.
+  // When it disagrees a lot AND says the LT number is too optimistic (the documented
+  // failure mode of watch-estimated LT), lean toward it rather than ignoring it.
   let blendedSecs = finishSecs;
+  let crossCheckDominant = false;
   if (intervalCheck) {
     const diff = Math.abs(intervalCheck - finishSecs) / finishSecs;
+    const crossCheckSlower = intervalCheck > finishSecs;
     if (diff < 0.10) {
       blendedSecs = finishSecs * 0.85 + intervalCheck * 0.15;
+    } else if (crossCheckSlower) {
+      blendedSecs = finishSecs * 0.45 + intervalCheck * 0.55;
+      crossCheckDominant = true;
+    } else {
+      // Cross-check suggests LT number is too slow -- less common/trustworthy a signal,
+      // so still lean LT, but don't discard it outright either.
+      blendedSecs = finishSecs * 0.75 + intervalCheck * 0.25;
     }
-    // If very different, trust LT (100%) — data quality issue
   }
 
   // Confidence factors
@@ -12227,6 +12258,8 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
     confidence,
     ltBased: Math.round(finishSecs),
     intervalBased: intervalCheck ? Math.round(intervalCheck) : null,
+    volumeAdjPct: adjPct,          // how much the coefficient was scaled up for under-preparation
+    crossCheckDominant,             // true when the cross-check pulled the estimate meaningfully slower
   };
 }
 
@@ -12577,11 +12610,16 @@ function computeTrainingDirection(sessionsWithPace, rawRows) {
       ? 'Extend rep duration or reduce recovery slightly, rather than chasing a faster pace this close to race day.'
       : 'Extend rep duration or add one more rep next session, keeping pace where it is rather than pushing it faster yet.';
   } else if (paceTrend === 'flat' && (fadePattern === 'consistent' || fadePattern === 'unknown' || fadePattern === 'negative-split')) {
-    headline = 'Steady -- ready for a small step up';
-    detail = 'Pace has been flat across recent sessions, and reps are holding up well within sessions (' + (fadePattern === 'negative-split' ? 'even finishing strong' : 'no fading') + '). This is a stable platform -- you are not struggling, but you are also not being pushed enough to drive further adaptation.';
-    action = volTrend === 'increasing'
-      ? 'Volume is already trending up -- give it another 1-2 weeks before changing pace too.'
-      : 'Try a small pace increase (2-3 sec/km) on your next session and see how the reps hold up.';
+    const fadeDesc = fadePattern === 'negative-split' ? 'even finishing strong' : 'no fading';
+    if (volTrend === 'increasing') {
+      headline = 'Volume is doing the work -- pace can wait';
+      detail = 'Pace has been flat across recent sessions, but that is expected right now: your quality-km volume is already trending up, and that rise IS the current progression. Reps are holding up well within sessions (' + fadeDesc + '), so pace and volume together are working as intended -- pushing pace on top of rising volume would be stacking two progressions at once.';
+      action = 'Hold current pace for another 1-2 weeks while volume keeps building. Once volume levels off, that is your cue to add 2-3 sec/km to pace.';
+    } else {
+      headline = 'Steady -- ready for a small step up';
+      detail = 'Pace has been flat across recent sessions, and reps are holding up well within sessions (' + fadeDesc + '). This is a stable platform -- you are not struggling, but you are also not being pushed enough to drive further adaptation.';
+      action = 'Add 2-3 sec/km to pace on your next quality session and see how the reps hold up before deciding whether to keep it there.';
+    }
   } else if (paceTrend === 'declining') {
     headline = 'Pace has slipped -- worth a closer look';
     detail = 'Your interval pace has been slower in recent sessions than a few weeks ago. This can be normal during a high-volume block, after illness, or simply day-to-day variation -- but if it continues for another 2 sessions, it is worth checking recovery, sleep, and whether overall training load has crept up.';
@@ -12782,6 +12820,14 @@ function renderRaceEstimate(container, weeks) {
     if (Math.abs(goalDiff) < 60) { goalCls='race-est-goal-good'; goalTxt = 'On goal pace'; }
   }
 
+  const adjNotes = [];
+  if (est.volumeAdjPct > 0.005) {
+    adjNotes.push('Race pace adjusted ' + (est.volumeAdjPct*100).toFixed(1) + '% slower than a pure LT calculation, based on your long-run coverage and training consistency so far.');
+  }
+  if (est.crossCheckDominant) {
+    adjNotes.push('Your easy-run pace data suggested a notably slower finish than LT pace alone predicted, so this estimate leans toward that cross-check rather than the raw LT number.');
+  }
+
   const card = document.createElement('div');
   card.className = 'race-est-card';
   card.id = 'estimate';
@@ -12800,6 +12846,7 @@ function renderRaceEstimate(container, weeks) {
       '<div class="race-est-conf-bar"><div class="race-est-conf-fill" style="width:' + est.confidence + '%"></div></div>' +
       '<span class="race-est-conf-label">' + est.confidence + '%</span>' +
     '</div>' +
+    (adjNotes.length ? '<div style="font-size:11px;color:#f0c060;line-height:1.5;margin-top:10px;">' + adjNotes.map(n=>'\u2022 '+n).join('<br>') + '</div>' : '') +
     '<div style="font-size:11px;color:#6b7280;line-height:1.5;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">' +
       '⚠️ This estimate is only as reliable as the LT pace it is built on. A lactate threshold pace sourced from a watch auto-estimate (rather than a real benchmark test or time trial) tends to run optimistic, which pulls this whole prediction faster than reality. Treat this number with more caution until it is based on a logged benchmark effort -- the confidence score above reflects training data quality, not whether the underlying LT number itself is trustworthy.' +
     '</div>';
