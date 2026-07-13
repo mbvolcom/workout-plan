@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.8.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.9.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1558,8 +1558,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div id="stats-scope-toggle">
           <button class="stats-scope-btn active" data-scope="plan" onclick="setStatsScope('plan')">Active plan</button>
-          <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">All time</button>
-          <button class="stats-scope-btn" data-scope="week" onclick="setStatsScope('week')">Week</button>
+          <button class="stats-scope-btn" data-scope="alltime" onclick="setStatsScope('alltime')">Date range</button>
         </div>
         <div id="alltime-range-bar" style="display:none;width:100%;margin-top:8px;"></div>
         <button id="lt-input-btn" onclick="openLTModal()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(252,76,2,0.4);background:rgba(252,76,2,0.1);color:#FC4C02;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">LT Pace</button>
@@ -9291,7 +9290,6 @@ function setStatsSport(sport) {
 
 function setStatsScope(scope) {
   statsScope = scope;
-  if (scope === 'week') statsWeekIdx = -1; // reset to current week
   document.querySelectorAll('.stats-scope-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === scope));
   renderStats();
 }
@@ -9416,7 +9414,6 @@ function renderStats() {
   // Deep dive routing
   if (statsSport === 'cycling') { renderCyclingStats(); return; }
   if (statsSport === 'health') { renderHealthStats(); return; }
-  if (statsScope === 'week') { renderWeekStats(); return; }
   renderRunningStats();
   // Run sequentially so the fatigue section always lands AFTER interval
   // history finishes appending its DOM, instead of racing and interleaving.
@@ -12969,28 +12966,80 @@ function drawIntervalTrendChart(canvas, labels, paceData, volData) {
 // Filters by whole weeks only -- never splits a week, so long runs and
 // weekly patterns are never fragmented across a boundary.
 // allTimeRangeMode: 'all' | 'last4' | 'last8' | 'last12' | 'custom'
-let allTimeRangeMode = 'all';
-let allTimeCustomStart = null; // week index
-let allTimeCustomEnd = null;   // week index
+let allTimeRangeMode = 'ytd'; // default: Year to date
+let pickAnchorDate = null; // Date used by 'pick-month'/'pick-week' stepper; null = today
+
+// Computes the actual [start, end] date window for the current allTimeRangeMode,
+// plus a human label. pickAnchorDate drives the 'pick-month'/'pick-week' steppers.
+function getCustomRangeDates() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const anchor = pickAnchorDate ? new Date(pickAnchorDate) : new Date(today);
+
+  const startOfWeek = d => { const x = new Date(d); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); return x; };
+  const monthLabel = d => d.toLocaleDateString('en-GB', {month:'long', year:'numeric'});
+
+  switch (allTimeRangeMode) {
+    case 'ytd': {
+      const start = new Date(today.getFullYear(), 0, 1);
+      return { start, end: today, label: 'Year to date' };
+    }
+    case 'week': {
+      const start = startOfWeek(today); const end = new Date(start); end.setDate(start.getDate()+6);
+      return { start, end, label: 'This week' };
+    }
+    case 'lastweek': {
+      const start = startOfWeek(today); start.setDate(start.getDate()-7);
+      const end = new Date(start); end.setDate(start.getDate()+6);
+      return { start, end, label: 'Last week' };
+    }
+    case 'month': {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth()+1, 0);
+      return { start, end, label: 'This month' };
+    }
+    case 'lastmonth': {
+      const start = new Date(today.getFullYear(), today.getMonth()-1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { start, end, label: 'Last month' };
+    }
+    case 'last3m': {
+      const start = new Date(today.getFullYear(), today.getMonth()-2, 1);
+      return { start, end: today, label: 'Last 3 months' };
+    }
+    case 'year': {
+      const start = new Date(today.getFullYear(), 0, 1);
+      const end = new Date(today.getFullYear(), 11, 31);
+      return { start, end, label: String(today.getFullYear()) };
+    }
+    case 'lastyear': {
+      const y = today.getFullYear()-1;
+      return { start: new Date(y,0,1), end: new Date(y,11,31), label: String(y) };
+    }
+    case 'pick-month': {
+      const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+      const end = new Date(anchor.getFullYear(), anchor.getMonth()+1, 0);
+      return { start, end, label: monthLabel(anchor) };
+    }
+    case 'pick-week': {
+      const start = startOfWeek(anchor); const end = new Date(start); end.setDate(start.getDate()+6);
+      const label = start.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' \u2013 ' + end.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      return { start, end, label };
+    }
+    case 'all':
+    default:
+      return { start: null, end: null, label: 'All time' };
+  }
+}
 
 function applyAllTimeRangeFilter(weeks) {
-  if (allTimeRangeMode === 'all') return weeks;
-
-  // "Last N weeks" presets always exclude the current (in-progress) week
-  const completeWeeks = weeks.filter(wk => !wk.isCurrent);
-
-  if (allTimeRangeMode === 'last4')  return completeWeeks.slice(-4);
-  if (allTimeRangeMode === 'last8')  return completeWeeks.slice(-8);
-  if (allTimeRangeMode === 'last12') return completeWeeks.slice(-12);
-
-  if (allTimeRangeMode === 'custom' && allTimeCustomStart != null && allTimeCustomEnd != null) {
-    const lo = Math.min(allTimeCustomStart, allTimeCustomEnd);
-    const hi = Math.max(allTimeCustomStart, allTimeCustomEnd);
-    // Custom range is explicit, so it CAN include the current week if chosen
-    return weeks.filter(wk => wk.wi >= lo && wk.wi <= hi);
-  }
-
-  return weeks;
+  const { start, end } = getCustomRangeDates();
+  if (!start || !end) return weeks; // All time
+  return weeks.filter(wk => {
+    const [y,m,d] = WEEK_MONDAYS[wk.wi];
+    const monday = new Date(y, m-1, d);
+    const sunday = new Date(y, m-1, d+6);
+    return monday <= end && sunday >= start; // any overlap counts
+  });
 }
 
 function renderAllTimeRangeBar(allWeeks) {
@@ -13001,14 +13050,14 @@ function renderAllTimeRangeBar(allWeeks) {
 
   bar.innerHTML = '';
 
+  const isPicking = allTimeRangeMode === 'pick-month' || allTimeRangeMode === 'pick-week';
+
   const presetRow = document.createElement('div');
   presetRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
   [
-    ['all', 'All time'],
-    ['last4', 'Last 4 weeks'],
-    ['last8', 'Last 8 weeks'],
-    ['last12', 'Last 12 weeks'],
-    ['custom', 'Custom\u2026'],
+    ['ytd', 'Year to date'], ['week', 'This week'], ['lastweek', 'Last week'],
+    ['month', 'This month'], ['lastmonth', 'Last month'], ['last3m', 'Last 3 months'],
+    ['year', 'This year'], ['lastyear', 'Last year'], ['all', 'All time'],
   ].forEach(([mode, label]) => {
     const btn = document.createElement('button');
     btn.textContent = label;
@@ -13016,49 +13065,63 @@ function renderAllTimeRangeBar(allWeeks) {
     btn.style.cssText = 'padding:5px 10px;border-radius:14px;border:1px solid ' + (isActive ? 'rgba(252,76,2,0.5)' : 'rgba(255,255,255,0.1)') + ';' +
       'background:' + (isActive ? 'rgba(252,76,2,0.12)' : 'none') + ';color:' + (isActive ? '#FC4C02' : '#9ca3af') + ';' +
       'font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;';
-    btn.addEventListener('click', () => {
-      allTimeRangeMode = mode;
-      if (mode === 'custom' && allTimeCustomStart == null) {
-        const nonCurrent = allWeeks.filter(wk => !wk.isCurrent);
-        allTimeCustomStart = nonCurrent.length ? nonCurrent[Math.max(0, nonCurrent.length-4)].wi : allWeeks[0]?.wi;
-        allTimeCustomEnd = nonCurrent.length ? nonCurrent[nonCurrent.length-1].wi : allWeeks[allWeeks.length-1]?.wi;
-      }
-      renderStats();
-    });
+    btn.addEventListener('click', () => { allTimeRangeMode = mode; renderStats(); });
     presetRow.appendChild(btn);
   });
+  const pickBtn = document.createElement('button');
+  pickBtn.innerHTML = '&#128197; Pick&hellip;';
+  pickBtn.style.cssText = 'padding:5px 10px;border-radius:14px;border:1px solid ' + (isPicking ? 'rgba(252,76,2,0.5)' : 'rgba(255,255,255,0.1)') + ';' +
+    'background:' + (isPicking ? 'rgba(252,76,2,0.12)' : 'none') + ';color:' + (isPicking ? '#FC4C02' : '#9ca3af') + ';' +
+    'font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;';
+  pickBtn.addEventListener('click', () => {
+    if (!isPicking) { allTimeRangeMode = 'pick-month'; pickAnchorDate = new Date(); }
+    renderStats();
+  });
+  presetRow.appendChild(pickBtn);
   bar.appendChild(presetRow);
 
-  if (allTimeRangeMode === 'custom') {
-    const customRow = document.createElement('div');
-    customRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:8px;';
+  if (isPicking) {
+    const pickWrap = document.createElement('div');
+    pickWrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:10px;';
 
-    const makeSelect = (current, onChange) => {
-      const sel = document.createElement('select');
-      sel.style.cssText = 'flex:1;background:#16181c;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 8px;color:#d1d5db;font-size:12px;font-family:inherit;';
-      allWeeks.forEach(wk => {
-        const opt = document.createElement('option');
-        opt.value = wk.wi;
-        opt.textContent = wk.shortLabel + (wk.isCurrent ? ' (current)' : '');
-        if (wk.wi === current) opt.selected = true;
-        sel.appendChild(opt);
-      });
-      sel.addEventListener('change', () => { onChange(parseInt(sel.value)); renderStats(); });
-      return sel;
-    };
+    // Month / Week sub-toggle
+    const subToggle = document.createElement('div');
+    subToggle.style.cssText = 'display:flex;background:rgba(255,255,255,0.05);border-radius:7px;padding:2px;';
+    ['pick-month','pick-week'].forEach(mode => {
+      const b = document.createElement('button');
+      b.textContent = mode === 'pick-month' ? 'Month' : 'Week';
+      const active = allTimeRangeMode === mode;
+      b.style.cssText = 'padding:5px 10px;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;' +
+        'background:' + (active?'#FC4C02':'none') + ';color:' + (active?'#fff':'#9ca3af') + ';';
+      b.addEventListener('click', () => { allTimeRangeMode = mode; renderStats(); });
+      subToggle.appendChild(b);
+    });
+    pickWrap.appendChild(subToggle);
+    bar.appendChild(pickWrap);
 
-    const fromLbl = document.createElement('span');
-    fromLbl.textContent = 'From';
-    fromLbl.style.cssText = 'font-size:11px;color:#6b7280;';
-    const toLbl = document.createElement('span');
-    toLbl.textContent = 'to';
-    toLbl.style.cssText = 'font-size:11px;color:#6b7280;';
-
-    customRow.appendChild(fromLbl);
-    customRow.appendChild(makeSelect(allTimeCustomStart, v => allTimeCustomStart = v));
-    customRow.appendChild(toLbl);
-    customRow.appendChild(makeSelect(allTimeCustomEnd, v => allTimeCustomEnd = v));
-    bar.appendChild(customRow);
+    const stepRow = document.createElement('div');
+    stepRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px;background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 12px;';
+    const prevBtn = document.createElement('button');
+    prevBtn.innerHTML = '&lsaquo;';
+    prevBtn.style.cssText = 'width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.06);color:#d1d5db;font-size:16px;cursor:pointer;';
+    prevBtn.addEventListener('click', () => {
+      const d = pickAnchorDate ? new Date(pickAnchorDate) : new Date();
+      if (allTimeRangeMode === 'pick-month') d.setMonth(d.getMonth()-1); else d.setDate(d.getDate()-7);
+      pickAnchorDate = d; renderStats();
+    });
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:13px;font-weight:700;color:#f0ede8;min-width:120px;text-align:center;';
+    label.textContent = getCustomRangeDates().label;
+    const nextBtn = document.createElement('button');
+    nextBtn.innerHTML = '&rsaquo;';
+    nextBtn.style.cssText = 'width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.06);color:#d1d5db;font-size:16px;cursor:pointer;';
+    nextBtn.addEventListener('click', () => {
+      const d = pickAnchorDate ? new Date(pickAnchorDate) : new Date();
+      if (allTimeRangeMode === 'pick-month') d.setMonth(d.getMonth()+1); else d.setDate(d.getDate()+7);
+      pickAnchorDate = d; renderStats();
+    });
+    stepRow.appendChild(prevBtn); stepRow.appendChild(label); stepRow.appendChild(nextBtn);
+    bar.appendChild(stepRow);
   }
 }
 
@@ -13074,8 +13137,9 @@ function renderRunningStats() {
   jumpNav.style.cssText = 'position:sticky;top:52px;z-index:9;background:#0e0f11;padding:10px 20px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.08);overflow-x:auto;white-space:nowrap;scrollbar-width:none;';
   jumpNav.className = 'jump-nav-scroll';
   const jumpLinks = [
-    ['#stats-summary','Stats'], ['#readiness','Readiness'], ['#weekly-load','Weekly load'],
-    ['#estimate','Race estimate'], ['#lt-pace','LT pace'], ['#race-progression','Progression'],
+    ['#stats-summary','Stats'],
+    ...(statsScope === 'plan' ? [['#readiness','Readiness'], ['#estimate','Race estimate']] : []),
+    ['#weekly-load','Weekly load'], ['#lt-pace','LT pace'], ['#race-progression','Progression'],
     ['#run-types','Run types'], ['#intervals','Intervals'], ['#long-runs','Long runs'], ['#pace-hr','Pace/HR'],
   ];
   jumpNav.innerHTML = jumpLinks.map(([href,label]) =>
@@ -13320,12 +13384,16 @@ function renderRunningStats() {
   } catch(e) { console.warn('[pace vs hr] chart error:', e); }
 
   // ── RACE TIME ESTIMATE ────────────────────────────────────────────────────
-  const estSection = document.createElement('div'); estSection.className = 'stats-section';
-  container.appendChild(estSection);
-  renderRaceEstimate(estSection, weeks);
+  // Only meaningful in the context of the active training plan -- a marathon
+  // finish estimate for "March 2024" or "last week" doesn't mean anything.
+  if (statsScope === 'plan') {
+    const estSection = document.createElement('div'); estSection.className = 'stats-section';
+    container.appendChild(estSection);
+    renderRaceEstimate(estSection, weeks);
 
-  // ── MARATHON READINESS ────────────────────────────────────────────────────
-  renderMarathonReadiness(container, weeks);
+    // ── MARATHON READINESS ──────────────────────────────────────────────────
+    renderMarathonReadiness(container, weeks);
+  }
 
   // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
   const barSection=document.createElement('div'); barSection.className='stats-section'; barSection.id='weekly-load'; barSection.style.scrollMarginTop='56px';
