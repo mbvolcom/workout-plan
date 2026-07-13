@@ -1363,7 +1363,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.4.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.5.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -10682,6 +10682,7 @@ async function renderOverviewStats() {
     const raceDate = new Date(plan.race_date);
     const daysLeft = Math.max(0, Math.ceil((raceDate - today) / 86400000));
     const weeksLeft = Math.floor(daysLeft / 7);
+    const remDays = daysLeft % 7;
     const banner = document.createElement('div');
     banner.style.cssText = 'padding:16px 20px 0;';
     const inner = document.createElement('div');
@@ -10698,8 +10699,10 @@ async function renderOverviewStats() {
         '</div>' +
       '</div>' +
       '<div style="text-align:right;">' +
-        '<div style="font-size:28px;font-weight:800;color:#FC4C02;line-height:1;">' + weeksLeft + '</div>' +
-        '<div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">weeks to go</div>' +
+        '<div style="font-size:22px;font-weight:800;color:#FC4C02;line-height:1;white-space:nowrap;">' +
+          weeksLeft + 'w ' + remDays + 'd' +
+        '</div>' +
+        '<div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">to go</div>' +
       '</div>';
     banner.appendChild(inner);
     container.appendChild(banner);
@@ -10851,6 +10854,7 @@ async function renderOverviewStats() {
       return { day: ['M','T','W','T','F','S','S'][i], date: d, steps: row?.steps ?? null };
     });
     const stepsWithData = stepsByDay.filter(d => d.steps != null);
+    let stepsRowEl = null;
     if (stepsWithData.length) {
       const avgSteps = Math.round(stepsWithData.reduce((a,d) => a + d.steps, 0) / stepsWithData.length);
       const stepsRow = document.createElement('div');
@@ -10882,7 +10886,7 @@ async function renderOverviewStats() {
         chartWrap.appendChild(col);
       });
       stepsRow.appendChild(chartWrap);
-      card.appendChild(stepsRow);
+      stepsRowEl = stepsRow;
     }
 
     // ── Activity chart (runs + strength + cross per day) ────────────────────
@@ -11062,6 +11066,8 @@ async function renderOverviewStats() {
 
       card.appendChild(actRow);
     }
+
+    if (stepsRowEl) card.appendChild(stepsRowEl);
 
     // ── Recovery row (resting HR) ─────────────────────────────────────────
     const weekGarmin = garmin.filter(r => {
@@ -13098,6 +13104,70 @@ function renderRunningStats() {
   buildTotalTrainingCard(kpiGrid, weeks, true);
   container.appendChild(kpiGrid);
 
+  function computePaceHRAnalysis(pvhPoints) {
+    if (pvhPoints.length < 2) return null;
+    const half = Math.ceil(pvhPoints.length / 2);
+    const early = pvhPoints.slice(0, half);
+    const late = pvhPoints.slice(half);
+    if (!late.length) return null;
+
+    const avgPace = arr => arr.reduce((a,b)=>a+b.pace,0)/arr.length;
+    const earlyPace = avgPace(early), latePace = avgPace(late);
+    const paceDeltaPct = ((latePace - earlyPace) / earlyPace) * 100; // negative = faster
+
+    const earlyHrPts = early.filter(p=>p.hr!=null), lateHrPts = late.filter(p=>p.hr!=null);
+    let hrDeltaBpm = null;
+    if (earlyHrPts.length && lateHrPts.length) {
+      const avgHr = arr => arr.reduce((a,b)=>a+b.hr,0)/arr.length;
+      hrDeltaBpm = avgHr(lateHrPts) - avgHr(earlyHrPts);
+    }
+
+    const paceFaster = paceDeltaPct < -1.5;
+    const paceSlower = paceDeltaPct > 1.5;
+    const hrLower = hrDeltaBpm != null && hrDeltaBpm < -1.5;
+    const hrHigher = hrDeltaBpm != null && hrDeltaBpm > 1.5;
+    const paceAbsStr = Math.abs(paceDeltaPct).toFixed(1);
+    const hrStr = hrDeltaBpm != null ? (hrDeltaBpm >= 0 ? '+' : '') + hrDeltaBpm.toFixed(1) + ' bpm' : null;
+
+    let headline, detail, icon = '\ud83d\udca1', color = '#6eb8f0';
+
+    if (hrDeltaBpm == null) {
+      if (paceFaster) {
+        headline = 'Easy pace is trending faster';
+        detail = 'Your easy-run pace has picked up by about ' + paceAbsStr + '% over this period. There is not enough heart-rate data yet to tell whether that is improved fitness or just harder effort -- worth keeping an eye on how those runs feel.';
+      } else if (paceSlower) {
+        headline = 'Easy pace is trending slower';
+        detail = 'Your easy-run pace has slowed by about ' + paceAbsStr + '% over this period. Without heart-rate data to compare, this could be fatigue, heat, terrain, or simply an easier block -- not necessarily a red flag on its own.';
+      } else {
+        headline = 'Easy pace has been steady';
+        detail = 'No major change in easy-run pace over this period, and there is not enough heart-rate data yet to layer in the effort side of the picture.';
+      }
+    } else if (paceFaster && !hrHigher) {
+      headline = 'Aerobic fitness is trending up';
+      icon = '\ud83d\udcc8'; color = '#c8f06e';
+      detail = 'Easy pace has improved by about ' + paceAbsStr + '% while average heart rate has ' + (hrLower ? 'dropped' : 'stayed about the same') + ' (' + hrStr + '). That combination -- faster without a higher heart-rate cost -- is a genuine sign your aerobic engine is improving, not just that you happened to run harder.';
+    } else if (!paceFaster && !paceSlower && hrLower) {
+      headline = 'Same pace, lower heart rate';
+      icon = '\ud83d\udcc8'; color = '#c8f06e';
+      detail = 'Pace has held steady, but average heart rate has dropped about ' + Math.abs(hrDeltaBpm).toFixed(1) + ' bpm over this period. That is a classic efficiency gain -- your heart is doing less work for the same output.';
+    } else if (paceSlower && hrHigher) {
+      headline = 'Pace down, heart rate up -- worth watching';
+      icon = '\u26a0\ufe0f'; color = '#f0c060';
+      detail = 'Easy pace has slowed by about ' + paceAbsStr + '% while average heart rate has risen ' + hrStr + ' over the same runs. That combination can point to accumulated fatigue, heat, illness, or a spike in training load -- if it continues for another couple of weeks, it is worth checking recovery and sleep.';
+    } else if (paceFaster && hrHigher) {
+      headline = 'Running faster, but working harder for it';
+      detail = 'Pace has improved by about ' + paceAbsStr + '%, but so has average heart rate (' + hrStr + '). That looks more like pushing harder effort than a genuine efficiency gain -- not a bad thing, just worth knowing it is cost rather than free speed.';
+    } else if (paceSlower && hrLower) {
+      headline = 'Slower pace, lower heart rate';
+      detail = 'Easy pace has slowed by about ' + paceAbsStr + '%, but average heart rate has dropped too (' + hrStr + '). This can happen during easier/recovery blocks, warmer runs, or a deliberate step back in intensity -- not necessarily a concern.';
+    } else {
+      headline = 'No clear trend yet';
+      detail = 'Pace and heart rate have not moved together in either direction over this period. A few more weeks of data will give a clearer read.';
+    }
+
+    return { headline, detail, icon, color };
+  }
+
   // ── PACE VS HR TREND ──────────────────────────────────────────────────────
   try {
     const pvhPoints = weeks
@@ -13122,6 +13192,23 @@ function renderRunningStats() {
       pvhInfo.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
       pvhInfo.textContent = 'Tracks your easy run pace alongside average heart rate, week by week. If pace gets faster while HR stays flat or drops, that is a clear sign your aerobic fitness is improving -- independent of how fast you happened to run that particular week.';
       pvhWrap.appendChild(pvhInfo);
+
+      // Auto-analysis: compares the first half of the shown period against the second half
+      const pvhAnalysis = computePaceHRAnalysis(pvhPoints);
+      if (pvhAnalysis) {
+        const pvhAnalysisBox = document.createElement('div');
+        pvhAnalysisBox.style.cssText = 'margin-top:10px;background:#16181c;border:1px solid ' +
+          (pvhAnalysis.color === '#f0c060' ? 'rgba(240,192,96,0.25)' : pvhAnalysis.color === '#c8f06e' ? 'rgba(200,240,110,0.2)' : 'rgba(110,184,240,0.2)') +
+          ';border-radius:12px;padding:12px 14px;';
+        pvhAnalysisBox.innerHTML =
+          '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;">' +
+            '<span style="font-size:15px;flex-shrink:0;">' + pvhAnalysis.icon + '</span>' +
+            '<div style="font-size:12.5px;font-weight:700;color:' + pvhAnalysis.color + ';line-height:1.3;">' + pvhAnalysis.headline + '</div>' +
+          '</div>' +
+          '<div style="font-size:11px;color:#9ca3af;line-height:1.6;">' + pvhAnalysis.detail + '</div>';
+        pvhWrap.appendChild(pvhAnalysisBox);
+      }
+
       pvhSection.appendChild(pvhWrap);
       container.appendChild(pvhSection);
     }
