@@ -968,6 +968,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #stats-title { font-size:16px; font-weight:700; color:#f0ede8; flex:1; }
 #stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; margin-bottom:4px; display:inline-flex; }
 .stats-sport-btn.active { background:#f0ede8; color:#0e0f11 !important; }
+.jump-nav-scroll::-webkit-scrollbar { display:none; }
 .stats-view-btn { background:transparent !important; color:oklch(0.62 0.01 260) !important; transition:background 150ms,color 150ms; }
 .stats-view-btn.active { background:oklch(0.30 0.02 45) !important; color:oklch(0.96 0.01 260) !important; }
 #lt-pace-input:focus { border-color:rgba(252,76,2,0.6); box-shadow:0 0 0 3px rgba(252,76,2,0.12); }
@@ -1365,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.7.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.8.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9569,14 +9570,13 @@ async function renderLongRunFatigue() {
   const container = document.getElementById('stats-content');
 
   const sectionHdr = document.createElement('div');
-  sectionHdr.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;';
-  sectionHdr.textContent = '\ud83c\udfc3 Long run fatigue index';
+  sectionHdr.id = 'long-runs';
+  sectionHdr.style.cssText = 'display:flex;align-items:center;gap:6px;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;scroll-margin-top:56px;';
+  sectionHdr.innerHTML =
+    '<span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;white-space:nowrap;">\ud83c\udfc3 Long run fatigue index</span>' +
+    '<span title="Compares your pace in the first third of a long run to the last third. A well-executed long run typically slows 5-10% as fatigue builds; beyond 15% suggests starting too fast." ' +
+      'style="font-size:10px;color:#6b7280;border:1px solid #4b5563;border-radius:50%;width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:help;">i</span>';
   container.appendChild(sectionHdr);
-
-  const infoLine = document.createElement('div');
-  infoLine.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;padding:0 20px 12px;';
-  infoLine.textContent = 'Compares your pace in the first third of a long run to the last third. A well-executed long run typically slows 5-10% as fatigue builds; beyond 15% suggests starting too fast.';
-  container.appendChild(infoLine);
 
   if (Object.keys(longRunFatigueCache).length === 0 && !window._fatigueCacheLoaded) {
     await loadLongRunFatigueCache();
@@ -9586,7 +9586,7 @@ async function renderLongRunFatigue() {
   const longRuns = getAllLongRuns();
   if (!longRuns.length) {
     const empty = document.createElement('div');
-    empty.style.cssText = 'padding:0 20px 20px;color:#4b5563;font-size:13px;';
+    empty.style.cssText = 'padding:8px 20px 20px;color:#4b5563;font-size:13px;';
     empty.textContent = 'No long runs with Strava data found yet.';
     container.appendChild(empty);
     return;
@@ -9601,8 +9601,12 @@ async function renderLongRunFatigue() {
   if (analysed.length >= 2) {
     const chartWrap = document.createElement('div');
     chartWrap.className = 'stats-pace-chart';
-    chartWrap.style.margin = '0 20px 16px';
+    chartWrap.style.margin = '14px 20px 16px';
     chartWrap.appendChild(buildFatigueTrendSVG(analysed));
+    const bandCaption = document.createElement('div');
+    bandCaption.style.cssText = 'font-size:11px;color:#8fae5f;margin-top:8px;';
+    bandCaption.textContent = 'Shaded band = healthy 5\u201310% fatigue range';
+    chartWrap.appendChild(bandCaption);
     container.appendChild(chartWrap);
   }
 
@@ -9695,6 +9699,19 @@ function buildFatigueTrendSVG(analysed) {
     txt.textContent = v+'%'; svg.appendChild(txt);
   });
 
+  // Shaded "healthy" zone -- a well-executed long run typically slows 5-10%
+  if (10 >= minV && 5 <= maxV) {
+    const bandTopY = pad + (1-(10-minV)/(maxV-minV)) * (H-pad*2);
+    const bandBotY = pad + (1-(5-minV)/(maxV-minV)) * (H-pad*2);
+    const band = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    band.setAttribute('x',pad); band.setAttribute('y',bandTopY);
+    band.setAttribute('width',W-pad*2); band.setAttribute('height',bandBotY-bandTopY);
+    band.setAttribute('fill','rgba(200,240,110,0.08)');
+    band.setAttribute('stroke','rgba(200,240,110,0.4)');
+    band.setAttribute('stroke-width','1'); band.setAttribute('stroke-dasharray','4,3');
+    svg.appendChild(band);
+  }
+
   const pts = analysed.map((a,i) => ({
     x: pad + i*xStep,
     y: pad + (1-(a.f.fatigue_pct-minV)/(maxV-minV)) * (H-pad*2),
@@ -9734,7 +9751,8 @@ async function renderIntervalStats() {
 
   // Section header
   const sectionHdr = document.createElement('div');
-  sectionHdr.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;';
+  sectionHdr.id = 'intervals';
+  sectionHdr.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;scroll-margin-top:56px;';
   sectionHdr.textContent = '⚡ Interval history';
   container.appendChild(sectionHdr);
 
@@ -12419,7 +12437,7 @@ function renderMarathonReadiness(container, weeks) {
   const ltSecs = latestLTPaceSecs();
   const result = computeMarathonReadiness(plan, weeks, ltSecs);
 
-  const section = document.createElement('div'); section.className = 'stats-section';
+  const section = document.createElement('div'); section.className = 'stats-section'; section.id = 'readiness'; section.style.scrollMarginTop = '56px';
   section.innerHTML = '<div class="stats-section-title" style="display:flex;align-items:center;justify-content:space-between;">' +
     '<span>Marathon readiness</span>' +
     '<button class="ready-info-btn" onclick="openReadyInfoModal()">i</button></div>';
@@ -12769,7 +12787,8 @@ function renderRaceEstimate(container, weeks) {
 
   const card = document.createElement('div');
   card.className = 'race-est-card';
-  card.style.margin = '0 0 0';
+  card.id = 'estimate';
+  card.style.cssText = 'margin:0 0 0;scroll-margin-top:56px;';
 
   card.innerHTML =
     '<div class="race-est-headline">🏁 ' + raceDist.label + ' Finish Estimate</div>' +
@@ -12893,11 +12912,11 @@ function drawIntervalTrendChart(canvas, labels, paceData, volData) {
     ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(w-pad.right,y); ctx.stroke();
     // Left label: pace
     const pv = maxP - t*(maxP-minP);
-    ctx.fillStyle='#6eb8f0'; ctx.font='8px sans-serif'; ctx.textAlign='right';
+    ctx.fillStyle='#FC4C02'; ctx.font='8px sans-serif'; ctx.textAlign='right';
     ctx.fillText(secsToMinSec(Math.round(pv)), pad.left-4, y+3);
     // Right label: km
     const vv = maxV - t*(maxV-minV);
-    ctx.fillStyle='#c8f06e'; ctx.textAlign='left';
+    ctx.fillStyle='#dc3c14'; ctx.textAlign='left';
     ctx.fillText(vv.toFixed(1)+'km', w-pad.right+5, y+3);
   });
 
@@ -12907,28 +12926,28 @@ function drawIntervalTrendChart(canvas, labels, paceData, volData) {
     const x = xS(i);
     const y = yV(v);
     const barH = pad.top+cH - y;
-    ctx.fillStyle='rgba(200,240,110,0.15)';
+    ctx.fillStyle='rgba(220,60,20,0.22)';
     ctx.fillRect(x-barW/2, y, barW, barH);
-    ctx.strokeStyle='rgba(200,240,110,0.35)'; ctx.lineWidth=1;
+    ctx.strokeStyle='rgba(220,60,20,0.5)'; ctx.lineWidth=1;
     ctx.strokeRect(x-barW/2, y, barW, barH);
   });
 
   // Gradient fill under pace line
   const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top+cH);
-  grad.addColorStop(0,'rgba(110,184,240,0.25)');
-  grad.addColorStop(1,'rgba(110,184,240,0.02)');
+  grad.addColorStop(0,'rgba(252,76,2,0.25)');
+  grad.addColorStop(1,'rgba(252,76,2,0.02)');
   ctx.beginPath();
   paceData.forEach((v,i) => i===0 ? ctx.moveTo(xS(i),yP(v)) : ctx.lineTo(xS(i),yP(v)));
   ctx.lineTo(xS(n-1),pad.top+cH); ctx.lineTo(xS(0),pad.top+cH); ctx.closePath();
   ctx.fillStyle=grad; ctx.fill();
 
-  // Pace line (solid blue)
-  ctx.strokeStyle='#6eb8f0'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.setLineDash([]);
+  // Pace line (solid orange -- the locked color for pace everywhere in the app)
+  ctx.strokeStyle='#FC4C02'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.setLineDash([]);
   ctx.beginPath();
   paceData.forEach((v,i) => i===0 ? ctx.moveTo(xS(i),yP(v)) : ctx.lineTo(xS(i),yP(v)));
   ctx.stroke();
   paceData.forEach((v,i) => {
-    ctx.fillStyle='#6eb8f0'; ctx.beginPath(); ctx.arc(xS(i),yP(v),3.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#FC4C02'; ctx.beginPath(); ctx.arc(xS(i),yP(v),3.5,0,Math.PI*2); ctx.fill();
     ctx.fillStyle='#16181c'; ctx.beginPath(); ctx.arc(xS(i),yP(v),1.5,0,Math.PI*2); ctx.fill();
   });
 
@@ -12939,10 +12958,10 @@ function drawIntervalTrendChart(canvas, labels, paceData, volData) {
 
   // Legend
   const lx=pad.left, ly=6;
-  ctx.fillStyle='#6eb8f0'; ctx.fillRect(lx,ly,14,2);
+  ctx.fillStyle='#FC4C02'; ctx.fillRect(lx,ly,14,2);
   ctx.fillStyle='#9ca3af'; ctx.textAlign='left'; ctx.font='8px sans-serif';
   ctx.fillText('VW pace (↑ faster)', lx+18, ly+4);
-  ctx.fillStyle='rgba(200,240,110,0.4)'; ctx.fillRect(lx+130,ly-3,10,8);
+  ctx.fillStyle='rgba(220,60,20,0.4)'; ctx.fillRect(lx+130,ly-3,10,8);
   ctx.fillStyle='#9ca3af'; ctx.fillText('Quality km', lx+144, ly+4);
 }
 
@@ -13048,6 +13067,22 @@ function renderRunningStats() {
   container.innerHTML = '';
   const today = new Date(); today.setHours(0,0,0,0);
 
+  // ── Sticky jump-nav ─────────────────────────────────────────────────────
+  // Lets you jump straight to any section on this long page instead of
+  // scrolling through all ~10 chart modules to find the one you want.
+  const jumpNav = document.createElement('div');
+  jumpNav.style.cssText = 'position:sticky;top:52px;z-index:9;background:#0e0f11;padding:10px 20px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.08);overflow-x:auto;white-space:nowrap;scrollbar-width:none;';
+  jumpNav.className = 'jump-nav-scroll';
+  const jumpLinks = [
+    ['#stats-summary','Stats'], ['#readiness','Readiness'], ['#weekly-load','Weekly load'],
+    ['#estimate','Race estimate'], ['#lt-pace','LT pace'], ['#race-progression','Progression'],
+    ['#run-types','Run types'], ['#intervals','Intervals'], ['#long-runs','Long runs'], ['#pace-hr','Pace/HR'],
+  ];
+  jumpNav.innerHTML = jumpLinks.map(([href,label]) =>
+    '<a href="' + href + '" style="display:inline-block;font-size:12px;font-weight:600;color:#9ca3af;background:#20222a;border-radius:100px;padding:7px 13px;margin-right:8px;text-decoration:none;">' + label + '</a>'
+  ).join('');
+  container.appendChild(jumpNav);
+
   let weeks;
   try { weeks = buildStatsWeeks(); }
   catch(e) { container.innerHTML=`<div style="color:#f06e6e;padding:20px;font-size:12px;">Error building stats: ${e.message}</div>`; console.error(e); return; }
@@ -13115,7 +13150,7 @@ function renderRunningStats() {
   });
 
   // ── NEW KPI CARDS (full width) ───────────────────────────────────────────
-  const kpiGrid = document.createElement('div'); kpiGrid.className='stats-kpi-grid';
+  const kpiGrid = document.createElement('div'); kpiGrid.className='stats-kpi-grid'; kpiGrid.id='stats-summary'; kpiGrid.style.scrollMarginTop='56px';
 
   // Calculate extra metrics
   const allLongRuns = weeks.flatMap(wk=>{
@@ -13250,20 +13285,18 @@ function renderRunningStats() {
         hr: wk.hrRuns.length ? wk.hrRuns.reduce((a,b)=>a+b,0)/wk.hrRuns.length : null
       }));
     if (pvhPoints.length >= 2) {
-      const pvhSection = document.createElement('div'); pvhSection.className = 'stats-section';
-      pvhSection.innerHTML = '<div class="stats-section-title">Pace vs heart rate trend</div>';
+      const pvhSection = document.createElement('div'); pvhSection.className = 'stats-section'; pvhSection.id = 'pace-hr'; pvhSection.style.scrollMarginTop = '56px';
+      pvhSection.innerHTML = '<div class="stats-section-title"><span>Pace vs heart rate trend</span>' +
+        '<span title="Tracks easy run pace alongside average heart rate, week by week. Pace improving while HR stays flat or drops is a genuine aerobic-fitness gain." ' +
+          'style="font-size:10px;color:#6b7280;border:1px solid #4b5563;border-radius:50%;width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:help;">i</span></div>';
       const pvhWrap = document.createElement('div'); pvhWrap.className = 'stats-pace-chart';
       pvhWrap.appendChild(buildPaceHRTrendSVG(pvhPoints));
       const pvhLegend = document.createElement('div');
       pvhLegend.style.cssText = 'display:flex;gap:16px;margin-top:8px;font-size:10px;';
       pvhLegend.innerHTML =
         '<span style="color:#FC4C02;">─ Easy pace</span>' +
-        '<span style="color:#f08080;">┄ Avg HR</span>';
+        '<span style="color:#6eb8f0;">┄ Avg HR</span>';
       pvhWrap.appendChild(pvhLegend);
-      const pvhInfo = document.createElement('div');
-      pvhInfo.style.cssText = 'font-size:11px;color:#6b7280;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);';
-      pvhInfo.textContent = 'Tracks your easy run pace alongside average heart rate, week by week. If pace gets faster while HR stays flat or drops, that is a clear sign your aerobic fitness is improving -- independent of how fast you happened to run that particular week.';
-      pvhWrap.appendChild(pvhInfo);
 
       // Auto-analysis: compares the first half of the shown period against the second half
       const pvhAnalysis = computePaceHRAnalysis(pvhPoints);
@@ -13295,7 +13328,7 @@ function renderRunningStats() {
   renderMarathonReadiness(container, weeks);
 
   // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
-  const barSection=document.createElement('div'); barSection.className='stats-section';
+  const barSection=document.createElement('div'); barSection.className='stats-section'; barSection.id='weekly-load'; barSection.style.scrollMarginTop='56px';
   barSection.innerHTML='<div class="stats-section-title">Weekly km — planned vs actual</div>';
   const barWrap=document.createElement('div'); barWrap.className='stats-bar-chart';
   const barsEl=document.createElement('div'); barsEl.className='stats-bars';
@@ -13304,6 +13337,15 @@ function renderRunningStats() {
   weeks.forEach(wk=>{
     const ph=wk.phase; const color=phaseColors[ph]||'#6b7280';
     const col=document.createElement('div'); col.className='stats-bar-col';
+    // Health flag marker -- a small amber dot above the bar, replacing the old
+    // emoji faces which were unclear at this size. Tooltip carries the detail.
+    const wFlags = weekFlagMap[weeks.indexOf(wk)];
+    if (wFlags && wFlags.length) {
+      const dot = document.createElement('div');
+      dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#f0c060;margin-bottom:2px;flex-shrink:0;';
+      dot.title = wFlags.map(f=>flagInfo(f).label).join(', ');
+      col.appendChild(dot);
+    }
     const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
     const plannedH = Math.round((wk.plannedKm / maxKm) * 120);
     const actualH   = Math.round((wk.actualKm  / maxKm) * 120);
@@ -13328,28 +13370,19 @@ function renderRunningStats() {
     }
     wrap.appendChild(planned); wrap.appendChild(actual);
     const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'+(wk.isCurrent?' current':''); lbl.textContent=wk.shortLabel;
-    // Health flag marker inside bar at bottom
-    const wFlags = weekFlagMap[weeks.indexOf(wk)];
-    if (wFlags && wFlags.length) {
-      const hasSick = wFlags.includes('sick'), hasInj = wFlags.includes('injured_run');
-      const marker = document.createElement('div');
-      marker.style.cssText = 'position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;line-height:1;pointer-events:none;';
-      marker.textContent = hasSick && hasInj ? '🤒🤕' : hasSick ? '🤒' : '🤕';
-      marker.title = wFlags.map(f=>flagInfo(f).label).join(', ');
-      wrap.style.position = 'relative';
-      wrap.appendChild(marker);
-    }
     col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
   });
   const legend=document.createElement('div'); legend.className='stats-chart-legend';
-  legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div><div class="stats-legend-item"><div style="width:10px;height:10px;border-radius:2px;border-top:2px solid #fff3;background:rgba(200,240,110,0.5);flex-shrink:0;"></div>Over plan</div>';
+  legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div><div class="stats-legend-item"><div style="width:10px;height:10px;border-radius:2px;border-top:2px solid #fff3;background:rgba(200,240,110,0.5);flex-shrink:0;"></div>Over plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="border-radius:50%;background:#f0c060;width:6px;height:6px;"></div>Sick/injured</div>';
   barWrap.appendChild(barsEl); barWrap.appendChild(legend);
   barSection.appendChild(barWrap); container.appendChild(barSection);
 
   // ── LT PACE PROGRESSION ───────────────────────────────────────────────────
   if (ltHistory.length >= 1) {
-    const ltSection = document.createElement('div'); ltSection.className = 'stats-section';
-    ltSection.innerHTML = '<div class="stats-section-title">Lactate threshold pace</div>';
+    const ltSection = document.createElement('div'); ltSection.className = 'stats-section'; ltSection.id = 'lt-pace'; ltSection.style.scrollMarginTop = '56px';
+    ltSection.innerHTML = '<div class="stats-section-title"><span>Lactate threshold pace</span>' +
+      '<span title="Your estimated pace at lactate threshold -- the intensity you can sustain for about an hour. Lower is fitter." ' +
+        'style="font-size:10px;color:#6b7280;border:1px solid #4b5563;border-radius:50%;width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:help;">i</span></div>';
     const ltWrap = document.createElement('div'); ltWrap.className = 'stats-pace-chart';
     ltWrap.appendChild(buildLTProgressionSVG(ltHistory));
     if (ltHistory.length === 1) {
@@ -13364,7 +13397,7 @@ function renderRunningStats() {
 
   // ── RACE ESTIMATE HISTORY ─────────────────────────────────────────────────
   if (raceEstimateHistory.length >= 1) {
-    const estSection = document.createElement('div'); estSection.className = 'stats-section';
+    const estSection = document.createElement('div'); estSection.className = 'stats-section'; estSection.id = 'race-progression'; estSection.style.scrollMarginTop = '56px';
     estSection.innerHTML = '<div class="stats-section-title">Race estimate progression</div>';
     const estWrap = document.createElement('div'); estWrap.className = 'stats-pace-chart';
     estWrap.appendChild(buildEstimateHistorySVG(raceEstimateHistory));
@@ -13384,15 +13417,21 @@ function renderRunningStats() {
   const totalLong    = weeks.reduce((a,wk)=>a+(wk.longRuns||0),0);
   const totalRunsDone = totalEasy+totalQuality+totalLong;
 
-  const rtSection=document.createElement('div'); rtSection.className='stats-section';
-  rtSection.innerHTML='<div class="stats-section-title">Run type breakdown</div>';
+  // Locked activity-type colors -- same palette used on the Overview activity
+  // chart and everywhere else in the app an activity type appears.
+  const RT_EASY = '#6eb8f0', RT_QUALITY = '#FC4C02', RT_LONG = '#c8f06e';
+
+  const rtSection=document.createElement('div'); rtSection.className='stats-section'; rtSection.id='run-types'; rtSection.style.scrollMarginTop='56px';
+  rtSection.innerHTML='<div class="stats-section-title"><span>Run type breakdown</span>' +
+    '<span title="Share of training time spent easy, at quality intensity, or on long runs." ' +
+      'style="font-size:10px;color:#6b7280;border:1px solid #4b5563;border-radius:50%;width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:help;">i</span></div>';
   const rtWrap=document.createElement('div'); rtWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
 
   if (totalRunsDone===0) {
     rtWrap.innerHTML='<div style="color:#4b5563;font-size:12px;padding:8px 0;">No Strava runs logged yet in this plan.</div>';
   } else {
     const badges=document.createElement('div'); badges.style.cssText='display:flex;gap:10px;margin-bottom:16px;';
-    [{label:'Easy',count:totalEasy,color:'#66BB6A'},{label:'Quality',count:totalQuality,color:'#43A047'},{label:'Long',count:totalLong,color:'#c8f06e'}].forEach(({label,count,color})=>{
+    [{label:'Easy',count:totalEasy,color:RT_EASY},{label:'Quality',count:totalQuality,color:RT_QUALITY},{label:'Long',count:totalLong,color:RT_LONG}].forEach(({label,count,color})=>{
       const pct=Math.round(count/totalRunsDone*100);
       const b=document.createElement('div'); b.style.cssText='background:rgba(255,255,255,0.05);border-radius:8px;padding:10px;flex:1;text-align:center;';
       b.innerHTML=`<div style="font-size:22px;font-weight:800;color:${color};">${count}</div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;">${label}</div><div style="font-size:10px;color:#4b5563;margin-top:2px;">${pct}%</div>`;
@@ -13414,16 +13453,16 @@ function renderRunningStats() {
         const colWrap=document.createElement('div'); colWrap.style.cssText='flex:1;display:flex;flex-direction:column;align-items:stretch;';
         const bar=document.createElement('div'); bar.style.cssText='display:flex;flex-direction:column;justify-content:flex-end;height:72px;gap:1px;';
         bar.title=`${wk.label}: ${wk.easyRuns||0} easy, ${wk.qualityRuns||0} quality, ${wk.longRuns||0} long`;
-        if (lH>0){const s=document.createElement('div');s.style.cssText=`height:${lH}px;background:#c8f06e;border-radius:2px 2px 0 0;`;bar.appendChild(s);}
-        if (qH>0){const s=document.createElement('div');s.style.cssText=`height:${qH}px;background:#43A047;`;bar.appendChild(s);}
-        if (eH>0){const s=document.createElement('div');s.style.cssText=`height:${eH}px;background:#66BB6A;`;bar.appendChild(s);}
+        if (lH>0){const s=document.createElement('div');s.style.cssText=`height:${lH}px;background:${RT_LONG};border-radius:2px 2px 0 0;`;bar.appendChild(s);}
+        if (qH>0){const s=document.createElement('div');s.style.cssText=`height:${qH}px;background:${RT_QUALITY};`;bar.appendChild(s);}
+        if (eH>0){const s=document.createElement('div');s.style.cssText=`height:${eH}px;background:${RT_EASY};`;bar.appendChild(s);}
         const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;color:#4b5563;text-align:center;margin-top:3px;overflow:hidden;';
         lbl.textContent=wk.shortLabel;
         colWrap.appendChild(bar); colWrap.appendChild(lbl); chartEl.appendChild(colWrap);
       });
       rtWrap.appendChild(chartEl);
       const leg=document.createElement('div'); leg.style.cssText='display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;';
-      [{c:'#66BB6A',l:'Easy'},{c:'#43A047',l:'Quality'},{c:'#c8f06e',l:'Long'}].forEach(({c,l})=>{
+      [{c:RT_EASY,l:'Easy'},{c:RT_QUALITY,l:'Quality'},{c:RT_LONG,l:'Long'}].forEach(({c,l})=>{
         const li=document.createElement('div'); li.style.cssText='display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;';
         li.innerHTML=`<div style="width:8px;height:8px;border-radius:2px;background:${c};flex-shrink:0;"></div>${l}`;
         leg.appendChild(li);
@@ -14844,7 +14883,7 @@ function buildPaceHRTrendSVG(points) {
   if (hrPts.length >= 2) {
     const hrLineD = hrPts.map((pt,i) => `${i===0?'M':'L'}${pt.x},${pt.y}`).join(' ');
     const hrLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    hrLine.setAttribute('d', hrLineD); hrLine.setAttribute('stroke', '#f08080');
+    hrLine.setAttribute('d', hrLineD); hrLine.setAttribute('stroke', '#6eb8f0');
     hrLine.setAttribute('stroke-width', '2'); hrLine.setAttribute('fill', 'none');
     hrLine.setAttribute('stroke-linecap', 'round'); hrLine.setAttribute('stroke-dasharray', '4,3');
     svg.appendChild(hrLine);
@@ -14852,7 +14891,7 @@ function buildPaceHRTrendSVG(points) {
   hrPts.forEach(pt => {
     const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.setAttribute('r', '3.5');
-    c.setAttribute('fill', '#f08080'); c.setAttribute('stroke', '#0e0f11'); c.setAttribute('stroke-width', '1.2');
+    c.setAttribute('fill', '#6eb8f0'); c.setAttribute('stroke', '#0e0f11'); c.setAttribute('stroke-width', '1.2');
     svg.appendChild(c);
   });
 
@@ -14877,7 +14916,7 @@ function buildPaceHRTrendSVG(points) {
     const hrVal = Math.round(maxHR - t * (maxHR - minHR));
     const hrTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     hrTxt.setAttribute('x', W - pad.r + 4); hrTxt.setAttribute('y', y + 3);
-    hrTxt.setAttribute('fill', '#f08080'); hrTxt.setAttribute('font-size', '8'); hrTxt.setAttribute('text-anchor', 'start');
+    hrTxt.setAttribute('fill', '#6eb8f0'); hrTxt.setAttribute('font-size', '8'); hrTxt.setAttribute('text-anchor', 'start');
     hrTxt.textContent = hrVal + 'bpm'; svg.appendChild(hrTxt);
   });
 
