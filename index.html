@@ -29,7 +29,7 @@
   --ink-meta:    oklch(0.56 0.04 25);
 
   /* ── RUN (greens) ─────────────────────────────────────── */
-  --easy-bg:#E8F5E9;  --easy-c:#1B5E20;  --easy-b:#66BB6A;   /* light green  */
+  --easy-bg:#E8F5E9;  --easy-c:#1B5E20;  --easy-b:#66BB6A;   /* light green */
   --pm-bg:#DCEDC8;    --pm-c:#33691E;    --pm-b:#8BC34A;     /* lime green */
   --qual-bg:#C8E6C9;  --qual-c:#2E7D32;  --qual-b:#43A047;   /* medium green */
   --long-bg:#1B5E20;  --long-c:#E8F5E9;  --long-b:#388E3C;   /* deep forest green (inverted) */
@@ -968,6 +968,8 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 #stats-title { font-size:16px; font-weight:700; color:#f0ede8; flex:1; }
 #stats-scope-toggle { display:flex; gap:2px; background:rgba(255,255,255,0.05); border-radius:8px; padding:2px; margin-bottom:4px; display:inline-flex; }
 .stats-sport-btn.active { background:#f0ede8; color:#0e0f11 !important; }
+.stats-view-btn { background:transparent !important; color:oklch(0.62 0.01 260) !important; transition:background 150ms,color 150ms; }
+.stats-view-btn.active { background:oklch(0.30 0.02 45) !important; color:oklch(0.96 0.01 260) !important; }
 #lt-pace-input:focus { border-color:rgba(252,76,2,0.6); box-shadow:0 0 0 3px rgba(252,76,2,0.12); }
 .race-est-card { background:linear-gradient(135deg,#1a1d22 0%,#16181c 100%); border:1px solid rgba(252,76,2,0.25); border-radius:16px; padding:20px; margin:0 0 0; }
 .race-est-headline { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#FC4C02; margin-bottom:12px; }
@@ -1363,7 +1365,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.5.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.6.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1536,9 +1538,9 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 
     <!-- Top-level view selector: Overview vs Deep Dive -->
     <div style="padding:10px 20px 0;">
-      <div id="stats-view-toggle" style="display:flex;gap:2px;background:rgba(255,255,255,0.05);border-radius:8px;padding:2px;">
-        <button class="stats-view-btn active" data-view="overview" onclick="setStatsView('overview')" style="flex:1;padding:7px 10px;border:none;background:none;color:#e5e7eb;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">📊 Overview</button>
-        <button class="stats-view-btn" data-view="deepdive" onclick="setStatsView('deepdive')" style="flex:1;padding:7px 10px;border:none;background:none;color:#e5e7eb;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;">🔬 Deep Dive</button>
+      <div id="stats-view-toggle" style="display:flex;gap:0;background:oklch(0.20 0.012 260);border-radius:12px;padding:4px;">
+        <button class="stats-view-btn active" data-view="overview" onclick="setStatsView('overview')" style="flex:1;padding:9px 10px;border:none;font-size:14px;font-weight:600;border-radius:9px;cursor:pointer;font-family:inherit;">Overview</button>
+        <button class="stats-view-btn" data-view="deepdive" onclick="setStatsView('deepdive')" style="flex:1;padding:9px 10px;border:none;font-size:14px;font-weight:600;border-radius:9px;cursor:pointer;font-family:inherit;">Deep Dive</button>
       </div>
     </div>
 
@@ -10686,23 +10688,23 @@ async function renderOverviewStats() {
     const banner = document.createElement('div');
     banner.style.cssText = 'padding:16px 20px 0;';
     const inner = document.createElement('div');
-    inner.style.cssText = 'background:linear-gradient(135deg,rgba(252,76,2,0.12),rgba(252,76,2,0.04));' +
-      'border:1px solid rgba(252,76,2,0.25);border-radius:14px;padding:14px 16px;' +
+    inner.style.cssText = 'background:oklch(0.19 0.013 260);' +
+      'border:1px solid oklch(0.72 0.15 45 / 0.35);border-left:3px solid oklch(0.72 0.15 45);border-radius:12px;padding:16px 18px;' +
       'display:flex;align-items:center;justify-content:space-between;';
     inner.innerHTML =
       '<div>' +
-        '<div style="font-size:10px;color:#FC4C02;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:3px;">' +
+        '<div style="font-size:11px;color:oklch(0.72 0.15 45);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:4px;">' +
           (plan.race_name || 'Race day') +
         '</div>' +
-        '<div style="font-size:13px;color:#f0ede8;font-weight:600;">' +
+        '<div style="font-size:17px;color:#f0ede8;font-weight:600;">' +
           raceDate.toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'}) +
         '</div>' +
       '</div>' +
       '<div style="text-align:right;">' +
-        '<div style="font-size:22px;font-weight:800;color:#FC4C02;line-height:1;white-space:nowrap;">' +
+        '<div style="font-size:24px;font-weight:700;color:oklch(0.72 0.15 45);line-height:1;white-space:nowrap;">' +
           weeksLeft + 'w ' + remDays + 'd' +
         '</div>' +
-        '<div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">to go</div>' +
+        '<div style="font-size:11px;color:oklch(0.6 0.01 260);text-transform:uppercase;letter-spacing:0.05em;">to go</div>' +
       '</div>';
     banner.appendChild(inner);
     container.appendChild(banner);
@@ -10747,27 +10749,22 @@ async function renderOverviewStats() {
     monday.setDate(baseMonday.getDate() + window.overviewWeekOffset * 7);
     const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
 
-    const weekLabel = isThisWeek ? 'This week' :
-      monday.toLocaleDateString('en-GB', {day:'numeric', month:'short'}) +
-      ' \u2013 ' + sunday.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
-
     const sec = document.createElement('div');
     sec.id = 'overview-week-section';
     sec.style.cssText = 'padding:14px 20px 0;';
 
     // ── Week selector ──────────────────────────────────────────────────────
     const selectorRow = document.createElement('div');
-    selectorRow.style.cssText = 'display:flex;gap:6px;margin-bottom:14px;';
+    selectorRow.style.cssText = 'display:inline-flex;background:oklch(0.20 0.012 260);border-radius:10px;padding:4px;margin-bottom:14px;';
     ['This week', 'Last week'].forEach((label, i) => {
       const offset = i === 0 ? 0 : -1;
       const btn = document.createElement('button');
       btn.textContent = label;
       const active = window.overviewWeekOffset === offset;
-      btn.style.cssText = 'padding:6px 14px;border-radius:14px;border:1px solid ' +
-        (active ? 'rgba(252,76,2,0.5)' : 'rgba(255,255,255,0.1)') + ';' +
-        'background:' + (active ? 'rgba(252,76,2,0.12)' : 'none') + ';' +
-        'color:' + (active ? '#FC4C02' : '#9ca3af') + ';' +
-        'font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;';
+      btn.style.cssText = 'padding:8px 18px;border-radius:8px;border:none;' +
+        'background:' + (active ? 'oklch(0.72 0.15 45 / 0.18)' : 'transparent') + ';' +
+        'color:' + (active ? 'oklch(0.72 0.15 45)' : 'oklch(0.62 0.01 260)') + ';' +
+        'font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 150ms,color 150ms;';
       btn.addEventListener('click', () => {
         window.overviewWeekOffset = offset;
         renderUnifiedWeekView();
@@ -10778,7 +10775,15 @@ async function renderOverviewStats() {
 
     // ── Main card ──────────────────────────────────────────────────────────
     const card = document.createElement('div');
-    card.style.cssText = 'background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;';
+    card.style.cssText = 'background:oklch(0.185 0.012 260);border-radius:16px;overflow:hidden;';
+    function appendSection(el) {
+      if (card.children.length > 0) {
+        const divider = document.createElement('div');
+        divider.style.cssText = 'height:1px;background:oklch(0.30 0.012 260);margin:0 20px;';
+        card.appendChild(divider);
+      }
+      card.appendChild(el);
+    }
 
     // ── Training time headline ─────────────────────────────────────────────
     const fmtHrs = secs => {
@@ -10831,18 +10836,21 @@ async function renderOverviewStats() {
     const totalSecs = runSecs + rideSecs + strSecs;
 
     // Training time row
+    const rangeLabel = monday.toLocaleDateString('en-GB', {day:'numeric', month:'short'}) +
+      '\u2013' + sunday.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
     if (totalSecs > 0) {
       const timeRow = document.createElement('div');
-      timeRow.style.cssText = 'padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
+      timeRow.style.cssText = 'padding:20px 20px 16px;';
+      const swatch = color => '<span style="width:10px;height:10px;border-radius:3px;background:' + color + ';display:inline-block;"></span>';
       timeRow.innerHTML =
-        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Time trained ' + (isThisWeek ? 'this week' : weekLabel) + '</div>' +
-        '<div style="font-size:26px;font-weight:800;color:#f0ede8;margin-bottom:8px;">' + fmtHrs(totalSecs) + '</div>' +
-        '<div style="display:flex;gap:14px;flex-wrap:wrap;">' +
-          (runSecs > 0 ? '<span style="font-size:12px;">\uD83C\uDFC3 <span style="font-weight:700;color:#c8f06e;">' + fmtHrs(runSecs) + '</span></span>' : '') +
-          (strSecs > 0 ? '<span style="font-size:12px;">\uD83D\uDCAA <span style="font-weight:700;color:#f06e6e;">' + fmtHrs(strSecs) + '</span></span>' : '') +
-          (rideSecs > 0 ? '<span style="font-size:12px;">\uD83D\uDEB4 <span style="font-weight:700;color:#6eb8f0;">' + fmtHrs(rideSecs) + '</span></span>' : '') +
+        '<div style="font-size:11px;font-weight:600;color:oklch(0.58 0.01 260);text-transform:uppercase;letter-spacing:0.08em;">Time trained \u00b7 ' + rangeLabel + '</div>' +
+        '<div style="font-size:40px;font-weight:700;color:#f0ede8;margin-top:6px;line-height:1;">' + fmtHrs(totalSecs) + '</div>' +
+        '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;">' +
+          (runSecs > 0 ? '<div style="display:flex;align-items:center;gap:8px;">' + swatch('oklch(0.70 0.14 25)') + '<span style="font-size:14px;color:oklch(0.85 0.006 260);">Run ' + fmtHrs(runSecs) + '</span></div>' : '') +
+          (strSecs > 0 ? '<div style="display:flex;align-items:center;gap:8px;">' + swatch('oklch(0.72 0.14 0)') + '<span style="font-size:14px;color:oklch(0.85 0.006 260);">Strength ' + fmtHrs(strSecs) + '</span></div>' : '') +
+          (rideSecs > 0 ? '<div style="display:flex;align-items:center;gap:8px;">' + swatch('oklch(0.72 0.12 300)') + '<span style="font-size:14px;color:oklch(0.85 0.006 260);">Cross ' + fmtHrs(rideSecs) + '</span></div>' : '') +
         '</div>';
-      card.appendChild(timeRow);
+      appendSection(timeRow);
     }
 
     // ── Steps chart with numbers above bars ──────────────────────────────
@@ -10858,34 +10866,40 @@ async function renderOverviewStats() {
     if (stepsWithData.length) {
       const avgSteps = Math.round(stepsWithData.reduce((a,d) => a + d.steps, 0) / stepsWithData.length);
       const stepsRow = document.createElement('div');
-      stepsRow.style.cssText = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
-      stepsRow.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Steps \u00b7 avg ' + Math.round(avgSteps/1000*10)/10 + 'k/day</div>';
+      stepsRow.style.cssText = 'padding:18px 20px 16px;';
+      stepsRow.innerHTML = '<div style="font-size:11px;font-weight:600;color:oklch(0.58 0.01 260);text-transform:uppercase;letter-spacing:0.08em;">Steps \u00b7 avg ' + Math.round(avgSteps/1000*10)/10 + 'k/day</div>';
 
       const maxSteps = Math.max(9000, ...stepsByDay.map(d => d.steps || 0));
       const chartWrap = document.createElement('div');
-      chartWrap.style.cssText = 'display:flex;gap:3px;align-items:flex-end;';
+      chartWrap.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-end;height:140px;margin-top:16px;';
 
       stepsByDay.forEach(d => {
         const col = document.createElement('div');
-        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;';
+        col.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;width:36px;';
         const isFuture = d.date > today && isThisWeek;
         if (d.steps != null && !isFuture) {
-          const barH = Math.max(4, Math.round((d.steps / maxSteps) * 44));
-          const color = d.steps >= 9000 ? '#c8f06e' : '#6eb8f0';
+          const barH = Math.max(4, Math.round((d.steps / maxSteps) * 110));
           const kStr = d.steps >= 1000 ? (d.steps/1000).toFixed(1) + 'k' : d.steps;
           col.innerHTML =
-            '<div style="font-size:7px;color:#9ca3af;font-weight:600;">' + kStr + '</div>' +
-            '<div style="width:100%;border-radius:2px 2px 0 0;background:' + color + ';height:' + barH + 'px;"></div>' +
-            '<div style="font-size:8px;color:#4b5563;font-weight:600;">' + d.day + '</div>';
+            '<div style="font-size:11px;color:oklch(0.62 0.01 260);margin-bottom:6px;font-weight:600;">' + kStr + '</div>' +
+            '<div style="width:26px;border-radius:4px;background:oklch(0.70 0.11 195);height:' + barH + 'px;"></div>';
         } else {
           col.innerHTML =
-            '<div style="font-size:7px;color:transparent;">0</div>' +
-            '<div style="width:100%;border-radius:2px 2px 0 0;background:#1f2937;height:4px;"></div>' +
-            '<div style="font-size:8px;color:#374151;font-weight:600;">' + d.day + '</div>';
+            '<div style="font-size:11px;color:transparent;margin-bottom:6px;">0</div>' +
+            '<div style="width:26px;border-radius:4px;background:oklch(0.25 0.012 260);height:4px;"></div>';
         }
         chartWrap.appendChild(col);
       });
       stepsRow.appendChild(chartWrap);
+      const stepsLabelsRow = document.createElement('div');
+      stepsLabelsRow.style.cssText = 'display:flex;justify-content:space-between;margin-top:8px;';
+      stepsByDay.forEach(d => {
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'width:36px;text-align:center;font-size:12px;color:oklch(0.58 0.01 260);font-weight:500;';
+        lbl.textContent = d.day;
+        stepsLabelsRow.appendChild(lbl);
+      });
+      stepsRow.appendChild(stepsLabelsRow);
       stepsRowEl = stepsRow;
     }
 
@@ -10935,31 +10949,52 @@ async function renderOverviewStats() {
                rideKm: rideKm2, rideSecs: rideSecs2, strSecsActual };
     });
 
-    const maxKm = Math.max(1, ...dayData.map(d => d.runKm));
     const hasAny = dayData.some(d => d.runKm > 0 || d.hasStr || d.hasCross);
     const strEstSecs = 45 * 60;
 
     const prefixColor = {
-      easy: '#6eb8f0', 'easy-pm': '#6eb8f0',
-      quality: '#FC4C02', kinder: '#FC4C02',
-      long: '#c8f06e', race: '#c8f06e',
+      easy: 'oklch(0.72 0.12 240)', 'easy-pm': 'oklch(0.72 0.12 240)',
+      quality: 'oklch(0.70 0.14 25)', kinder: 'oklch(0.70 0.14 25)',
+      long: 'oklch(0.74 0.13 140)', race: 'oklch(0.74 0.13 140)',
     };
+    const STRENGTH_COLOR = 'oklch(0.72 0.14 0)';
+    const CROSS_COLOR = 'oklch(0.72 0.12 300)';
+    const IN_BAR_TEXT = 'oklch(0.15 0.01 260)';
 
     if (hasAny) {
-      const actRow = document.createElement('div');
-      actRow.style.cssText = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.05);';
-      actRow.innerHTML = '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Activity per day</div>';
+      const loadRow = document.createElement('div');
+      loadRow.style.cssText = 'padding:18px 20px 16px;';
+      loadRow.innerHTML = '<div style="font-size:11px;font-weight:600;color:oklch(0.58 0.01 260);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Training load per day ' +
+        '<span style="text-transform:none;font-weight:500;color:oklch(0.5 0.008 260);">\u00b7 km for runs, time for strength/cross</span></div>';
+
+      // Every segment is scaled by actual MINUTES trained -- not a mix of km-scaled run
+      // bars and fixed-height strength/cross bars -- so bar height is a fair, comparable
+      // measure of time invested across every activity type on a given day.
+      const chartMaxH = 140;
+      const dayMinutes = dayData.map(d => {
+        const strMin = d.hasStr ? (d.strSecsActual > 0 ? d.strSecsActual : strEstSecs) / 60 : 0;
+        const crossMin = d.hasCross ? d.rideSecs / 60 : 0;
+        const runMin = d.runSecs / 60;
+        return runMin + strMin + crossMin;
+      });
+      const maxTotalMin = Math.max(1, ...dayMinutes);
 
       const barsWrap = document.createElement('div');
-      barsWrap.style.cssText = 'display:flex;gap:3px;align-items:flex-end;height:80px;';
+      barsWrap.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-end;height:' + chartMaxH + 'px;';
+
+      const labelsRow = document.createElement('div');
+      labelsRow.style.cssText = 'display:flex;justify-content:space-between;margin-top:8px;';
 
       dayData.forEach((d, i) => {
         const col = document.createElement('div');
-        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;justify-content:flex-end;height:100%;';
+        col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;';
+        const dayLabel = document.createElement('div');
+        dayLabel.style.cssText = 'width:36px;text-align:center;font-size:12px;color:oklch(0.58 0.01 260);font-weight:500;';
+        dayLabel.textContent = dayNames[i];
+        labelsRow.appendChild(dayLabel);
+
         if (d.isFut) {
-          col.innerHTML =
-            '<div style="width:100%;background:#1f2937;height:2px;border-radius:2px 2px 0 0;"></div>' +
-            '<div style="font-size:8px;color:#374151;font-weight:600;">' + dayNames[i] + '</div>';
+          col.innerHTML = '<div style="width:100%;background:oklch(0.25 0.012 260);height:2px;border-radius:2px 2px 0 0;"></div>';
           barsWrap.appendChild(col);
           return;
         }
@@ -10970,58 +11005,62 @@ async function renderOverviewStats() {
         // produce overlapping/stacked number labels above the bars.
         const segments = []; // topmost first
 
-        // Only show cross bar if there's an actual ride/cross Strava activity
-        // (not just a calendar pill -- pills can be planned but not yet done)
         if (d.hasCross && d.rideKm > 0) {
-          segments.push({ height: 15, bg: '#a78bfa', text: '#1a0b33', label: fmtDur(d.rideSecs) });
+          const h = Math.max(14, Math.round((d.rideSecs / 60) / maxTotalMin * chartMaxH));
+          segments.push({ height: h, bg: CROSS_COLOR, label: fmtDur(d.rideSecs) });
         }
 
         if (d.hasStr) {
-          // Use actual Strava strength duration when available, else 45min estimate
           const strDurSecs = d.strSecsActual > 0 ? d.strSecsActual : strEstSecs;
-          segments.push({ height: 15, bg: '#f06e6e', text: '#330a0a', label: fmtDur(strDurSecs) });
+          const h = Math.max(14, Math.round((strDurSecs / 60) / maxTotalMin * chartMaxH));
+          segments.push({ height: h, bg: STRENGTH_COLOR, label: fmtDur(strDurSecs) });
         }
 
         if (d.runKm > 0) {
-          const barH = Math.max(16, Math.round((d.runKm / maxKm) * 40));
-          const color = prefixColor[d.prefix] || '#6eb8f0';
-          const textColor = (d.prefix === 'quality' || d.prefix === 'kinder') ? '#fff3ec' : '#0b1220';
-          segments.push({ height: barH, bg: color, text: textColor, label: d.runKm.toFixed(1) });
+          const h = Math.max(16, Math.round((d.runSecs / 60) / maxTotalMin * chartMaxH));
+          const color = prefixColor[d.prefix] || prefixColor.easy;
+          segments.push({ height: h, bg: color, label: d.runKm.toFixed(1) });
         }
 
         let barsHtml = '';
         if (!segments.length) {
-          barsHtml = '<div style="width:100%;background:#1f2937;height:2px;border-radius:2px 2px 0 0;"></div>';
+          barsHtml = '<div style="width:100%;background:oklch(0.25 0.012 260);height:2px;border-radius:2px 2px 0 0;"></div>';
         } else {
           segments.forEach((seg, si) => {
             const isTop = si === 0;
             barsHtml += '<div style="width:100%;background:' + seg.bg + ';height:' + seg.height + 'px;' +
-              (isTop ? 'border-radius:2px 2px 0 0;' : '') +
-              'opacity:0.92;display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
-                '<span style="font-size:7px;font-weight:700;color:' + seg.text + ';white-space:nowrap;">' + seg.label + '</span>' +
+              (isTop ? 'border-radius:4px 4px 0 0;' : '') +
+              'display:flex;align-items:center;justify-content:center;overflow:hidden;' +
+              (si < segments.length - 1 ? 'margin-bottom:1px;' : '') + '">' +
+                '<span style="font-size:9px;font-weight:700;color:' + IN_BAR_TEXT + ';white-space:nowrap;">' + seg.label + '</span>' +
               '</div>';
           });
         }
 
-        col.innerHTML = barsHtml +
-          '<div style="font-size:8px;color:#4b5563;font-weight:600;margin-top:2px;">' + dayNames[i] + '</div>';
+        col.innerHTML = '<div style="width:30px;display:flex;flex-direction:column;border-radius:4px;overflow:hidden;">' + barsHtml + '</div>';
         barsWrap.appendChild(col);
       });
 
-      actRow.appendChild(barsWrap);
+      loadRow.appendChild(barsWrap);
+      loadRow.appendChild(labelsRow);
 
       // Legend
       const legend = document.createElement('div');
-      legend.style.cssText = 'display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;';
-      legend.innerHTML =
-        '<span style="font-size:10px;color:#6b7280;"><span style="color:#6eb8f0;">■</span> Easy</span>' +
-        '<span style="font-size:10px;color:#6b7280;"><span style="color:#FC4C02;">■</span> Quality</span>' +
-        '<span style="font-size:10px;color:#6b7280;"><span style="color:#c8f06e;">■</span> Long</span>' +
-        '<span style="font-size:10px;color:#6b7280;"><span style="color:#f06e6e;">■</span> Strength</span>' +
-        '<span style="font-size:10px;color:#6b7280;"><span style="color:#a78bfa;">■</span> Cross</span>';
-      actRow.appendChild(legend);
+      legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;';
+      const legendItems = [
+        ['Easy', prefixColor.easy], ['Quality', prefixColor.quality], ['Long', prefixColor.long],
+        ['Strength', STRENGTH_COLOR], ['Cross', CROSS_COLOR],
+      ];
+      legend.innerHTML = legendItems.map(([name, color]) =>
+        '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<span style="width:8px;height:8px;border-radius:2px;background:' + color + ';display:inline-block;"></span>' +
+          '<span style="font-size:12px;color:oklch(0.68 0.01 260);">' + name + '</span>' +
+        '</div>').join('');
+      loadRow.appendChild(legend);
 
-      // ── Stats row: distance, long run, quality km ─────────────────────
+      appendSection(loadRow);
+
+      // ── Stat tiles: distance, long run, quality km (own section) ───────────
       const allWks2 = buildStatsWeeks ? buildStatsWeeks() : [];
       const thisWk2 = allWks2.find(wk => {
         const [wy,wm,wd] = WEEK_MONDAYS[wk.wi];
@@ -11043,31 +11082,31 @@ async function renderOverviewStats() {
         });
         const qualPct2 = thisWk2.actualKm > 0 && qualKm2 > 0 ? Math.round((qualKm2/thisWk2.actualKm)*100) : null;
         const longKm = thisWk2.longestRun > 0 ? (thisWk2.longestRun/1000).toFixed(1) : null;
+        const longRunDayIdx = dayData.findIndex(d => thisWk2.longestRun > 0 && Math.abs(d.runKm - thisWk2.longestRun/1000) < 0.05 && d.prefix === 'long');
+        const longRunDayName = longRunDayIdx >= 0 ? ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][longRunDayIdx] : '';
 
         const statsRow = document.createElement('div');
-        statsRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:12px 0 0;border-top:1px solid rgba(255,255,255,0.05);margin-top:10px;';
+        statsRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:18px 20px;';
 
         const cell = (label, val, sub, color) =>
-          '<div><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">' + label + '</div>' +
-          '<div style="font-size:15px;font-weight:800;color:' + (color||'#f0ede8') + ';">' + val + '</div>' +
-          (sub ? '<div style="font-size:10px;color:#6b7280;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
+          '<div><div style="font-size:10.5px;font-weight:600;color:oklch(0.58 0.01 260);text-transform:uppercase;letter-spacing:0.06em;">' + label + '</div>' +
+          '<div style="font-size:22px;font-weight:700;margin-top:4px;color:' + (color||'#f0ede8') + ';">' + val + '</div>' +
+          (sub ? '<div style="font-size:11.5px;color:oklch(0.58 0.01 260);margin-top:2px;">' + sub + '</div>' : '') + '</div>';
 
         statsRow.innerHTML =
           cell('Distance', (thisWk2.actualKm||0).toFixed(1) + ' km',
-            pct2 != null ? pct2 + '% of ' + thisWk2.plannedKm + 'km' : '', '#c8f06e') +
+            pct2 != null ? pct2 + '% of ' + thisWk2.plannedKm + 'km' : '') +
           cell('Long run',
-            longKm ? longKm + ' km' : '\u2014', '', '#FC4C02') +
+            longKm ? longKm + ' km' : '\u2014', longRunDayName, prefixColor.long) +
           cell('Quality km',
             qualPct2 != null ? qualPct2 + '%' : '\u2014',
-            bestRepPace2 ? 'best ' + secsToMinSec(Math.round(bestRepPace2)) + '/km' : '', '#f0ede8');
+            bestRepPace2 ? 'best ' + secsToMinSec(Math.round(bestRepPace2)) + '/km' : '');
 
-        actRow.appendChild(statsRow);
+        appendSection(statsRow);
       }
-
-      card.appendChild(actRow);
     }
 
-    if (stepsRowEl) card.appendChild(stepsRowEl);
+    if (stepsRowEl) appendSection(stepsRowEl);
 
     // ── Recovery row (resting HR) ─────────────────────────────────────────
     const weekGarmin = garmin.filter(r => {
@@ -11083,13 +11122,17 @@ async function renderOverviewStats() {
       const arrow = trendArrow(avgRhr, prevRhr);
       const rhrGood = prevRhr != null && avgRhr <= prevRhr;
       const rhrRow = document.createElement('div');
-      rhrRow.style.cssText = 'padding:12px 16px;';
+      rhrRow.style.cssText = 'padding:18px 20px 22px;display:flex;align-items:center;justify-content:space-between;';
       rhrRow.innerHTML =
-        '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Avg resting HR</div>' +
-        '<div style="font-size:18px;font-weight:800;color:#f06e6e;">' + Math.round(avgRhr) + ' bpm ' +
-          '<span style="font-size:14px;color:' + (rhrGood ? '#c8f06e' : '#f0c060') + ';">' + arrow + '</span></div>' +
-        (prevRhr ? '<div style="font-size:11px;color:#6b7280;">vs ' + Math.round(prevRhr) + ' bpm prev week</div>' : '');
-      card.appendChild(rhrRow);
+        '<div>' +
+          '<div style="font-size:11px;font-weight:600;color:oklch(0.58 0.01 260);text-transform:uppercase;letter-spacing:0.08em;">Avg resting HR</div>' +
+          '<div style="font-size:26px;font-weight:700;margin-top:4px;color:#f0ede8;">' + Math.round(avgRhr) + ' bpm</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div style="font-size:18px;color:' + (rhrGood ? 'oklch(0.74 0.13 140)' : 'oklch(0.55 0.008 260)') + ';">' + arrow + '</div>' +
+          (prevRhr ? '<div style="font-size:11.5px;color:oklch(0.58 0.01 260);margin-top:2px;">vs ' + Math.round(prevRhr) + ' bpm prev week</div>' : '') +
+        '</div>';
+      appendSection(rhrRow);
     }
 
     sec.appendChild(card);
