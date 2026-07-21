@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.10.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.11.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9743,6 +9743,53 @@ function buildFatigueTrendSVG(analysed) {
   return svg;
 }
 
+// Single source of truth for "recent analysed interval sessions with volume-weighted
+// pace" -- used by both the Overview training-direction card and the Deep Dive
+// Interval History page. Previously these were two separate, hand-duplicated
+// implementations that had drifted apart (different data freshness, different rep-count
+// thresholds, and the Overview copy used a plain average instead of volume-weighting),
+// which is why the two pages could show different "Training direction" verdicts for the
+// same underlying data. Always fetches fresh from Supabase rather than trusting a
+// potentially-stale local cache.
+async function fetchTrainingDirectionData() {
+  const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&order=activity_date.desc&limit=50', { headers: SUPA_HDR });
+  if (!res.ok) throw new Error('Failed to load interval history');
+  const allRows = await res.json();
+
+  // Long runs with an MP/quality segment (tagged via the "Long run interval" toggle)
+  // still count toward Quality km in the weekly stats, but they aren't standalone
+  // interval sessions -- keep them out of the pace trend so a 33km long run doesn't
+  // get compared against actual track/tempo sessions.
+  const rows = allRows.filter(r => r.session_type !== 'long_run');
+
+  const sessionsWithPace = rows.slice().reverse().filter(r => r.intervals?.length).map(r => {
+    const ivs = r.intervals || [];
+    let totalDist = 0, totalDur = 0, bestSecs = Infinity;
+    ivs.forEach(iv => {
+      const secs = paceStrToSecs(iv.avgPaceStr);
+      const dist = iv.distance || 0;
+      if (secs && dist > 0) {
+        totalDist += dist;
+        totalDur  += (secs / 1000) * dist; // secs per km * km = total seconds
+        if (secs < bestSecs) bestSecs = secs;
+      }
+    });
+    // Volume-weighted pace in sec/km -- weights each rep by its own distance rather
+    // than averaging the reported per-rep paces equally.
+    const vwPace = totalDist > 0 ? totalDur / totalDist * 1000 : null;
+    return {
+      date: r.activity_date || r.created_at,
+      vwPace,
+      bestSecs: bestSecs < Infinity ? bestSecs : null,
+      totalKm: totalDist / 1000,
+      n: ivs.length,
+      name: r.activity_name || 'Interval session',
+    };
+  }).filter(s => s.vwPace);
+
+  return { allRows, rows, rowsAsc: rows.slice().reverse(), sessionsWithPace };
+}
+
 async function renderIntervalStats() {
   const container = document.getElementById('stats-content');
 
@@ -9759,16 +9806,8 @@ async function renderIntervalStats() {
   container.appendChild(loading);
 
   try {
-    const res = await fetch(SUPA_BASE + 'interval_analysis?select=*&order=activity_date.desc&limit=50', { headers: SUPA_HDR });
-    if (!res.ok) throw new Error('Failed to load interval history');
-    const allRows = await res.json();
+    const { rows, rowsAsc, sessionsWithPace } = await fetchTrainingDirectionData();
     loading.remove();
-
-    // Long runs with an MP/quality segment (tagged via the "Long run interval" toggle)
-    // still count toward Quality km in the weekly stats, but they aren't standalone
-    // interval sessions -- keep them out of this list, the KPIs, and the pace trend
-    // so a 33km long run doesn't sit alongside actual track/tempo sessions.
-    const rows = allRows.filter(r => r.session_type !== 'long_run');
 
     if (!rows.length) {
       const empty = document.createElement('div');
@@ -9800,32 +9839,6 @@ async function renderIntervalStats() {
     container.appendChild(kpiGrid);
 
     // ── Pace trend chart ─────────────────────────────────────────────────────
-    // Volume-weighted pace = total interval time / total interval distance
-    // Also track total quality km per session
-    const sessionsWithPace = rows.slice().reverse().filter(r=>r.intervals?.length).map(r => {
-      const ivs = r.intervals||[];
-      let totalDist=0, totalDur=0, bestSecs=Infinity;
-      ivs.forEach(iv => {
-        const secs = paceStrToSecs(iv.avgPaceStr);
-        const dist = iv.distance||0;
-        if (secs && dist>0) {
-          totalDist += dist;
-          totalDur  += (secs/1000) * dist; // secs per km * km = total seconds
-          if (secs < bestSecs) bestSecs = secs;
-        }
-      });
-      // Volume-weighted pace in sec/km
-      const vwPace = totalDist>0 ? totalDur/totalDist*1000 : null;
-      const totalKm = totalDist/1000;
-      return {
-        date: r.activity_date||r.created_at,
-        vwPace,                              // sec/km, volume-weighted
-        bestSecs: bestSecs<Infinity ? bestSecs : null,
-        totalKm,                             // total km of fast running
-        n: ivs.length,
-        name: r.activity_name||'Interval session',
-      };
-    }).filter(s=>s.vwPace);
 
     if (sessionsWithPace.length > 1) {
       const trendSection = document.createElement('div');
@@ -9857,7 +9870,7 @@ async function renderIntervalStats() {
     // fade pattern, recent volume, and training phase into a specific
     // recommendation, rather than a generic "run faster" suggestion.
     try {
-      renderTrainingDirection(container, sessionsWithPace, rows);
+      renderTrainingDirection(container, sessionsWithPace, rowsAsc);
     } catch(e) { console.warn('[training direction] error:', e); }
 
     // ── Session list ─────────────────────────────────────────────────────────
@@ -10998,7 +11011,10 @@ async function renderOverviewStats() {
       // between days, so the plan for day i isn't always what was really run that day.
       const actualHasIntervals = runActs.some(a => {
         const r = intervalAnalysisCache && intervalAnalysisCache[a.id];
-        return r && (r.intervals || []).length >= 2;
+        // A single continuous threshold/tempo effort is still a real quality session --
+        // it just has 1 rep instead of several. Requiring 2+ wrongly reclassified those
+        // as "easy" (falling back to the plan) any time the actual run differed from plan.
+        return r && (r.intervals || []).length >= 1;
       });
       if (runKmDay >= 18) prefix = 'long';
       else if (actualHasIntervals) prefix = 'quality';
@@ -11213,31 +11229,15 @@ async function renderOverviewStats() {
   }
 
   // ── Training direction card ─────────────────────────────────────────────
+  // Uses the same shared fetch+computation as the Deep Dive Interval History page,
+  // so the two pages can never show a different verdict for the same underlying data.
   try {
-    const cachedRows = Object.values(intervalAnalysisCache)
-      .filter(r => r.session_type !== 'long_run'); // MP segments inside long runs run at a
-      // deliberately slower pace than threshold/interval work -- mixing them in here made
-      // the pace trend look like it had slipped when it hadn't.
-    const rawRows = cachedRows
-      .sort((a,b) => (a.activity_date||'').localeCompare(b.activity_date||''))
-      .slice(-50);
-    if (rawRows.length >= 1) {
-      const sessionsWithPace = rawRows
-        .filter(r => r.intervals && r.intervals.length >= 2)
-        .map(r => {
-          const paces = r.intervals.map(iv => paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
-          if (!paces.length) return null;
-          const totalDist = r.intervals.reduce((a,iv)=>a+(iv.distance||0),0)/1000;
-          const vwPace = paces.reduce((a,b)=>a+b,0)/paces.length;
-          return { vwPace, totalKm: totalDist, date: r.activity_date };
-        }).filter(Boolean);
-
-      if (sessionsWithPace.length >= 2) {
-        const dirSec = document.createElement('div');
-        dirSec.style.cssText = 'padding:14px 20px 0;';
-        renderTrainingDirection(dirSec, sessionsWithPace, rawRows, true);
-        container.appendChild(dirSec);
-      }
+    const { rowsAsc, sessionsWithPace } = await fetchTrainingDirectionData();
+    if (sessionsWithPace.length >= 2) {
+      const dirSec = document.createElement('div');
+      dirSec.style.cssText = 'padding:14px 20px 0;';
+      renderTrainingDirection(dirSec, sessionsWithPace, rowsAsc, true);
+      container.appendChild(dirSec);
     }
   } catch(e) { console.warn('[overview] training direction error:', e); }
 
