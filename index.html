@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.11.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.12.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9417,7 +9417,7 @@ function renderStats() {
   renderRunningStats();
   // Run sequentially so the fatigue section always lands AFTER interval
   // history finishes appending its DOM, instead of racing and interleaving.
-  renderIntervalStats().then(() => renderLongRunFatigue());
+  renderIntervalStats().then(() => renderLongRunFatigue()).then(() => renderTrainingLog());
 }
 
 // ── LONG RUN FATIGUE INDEX ───────────────────────────────────────────────────
@@ -9788,6 +9788,87 @@ async function fetchTrainingDirectionData() {
   }).filter(s => s.vwPace);
 
   return { allRows, rows, rowsAsc: rows.slice().reverse(), sessionsWithPace };
+}
+
+// ── TRAINING LOG ──────────────────────────────────────────────────────────
+// A flat, scannable log of every logged run in the current scope, grouped by
+// week. Tapping a row opens the exact same detail panel as tapping its pill
+// on the calendar -- no separate view to build or keep in sync.
+function renderTrainingLog() {
+  const container = document.getElementById('stats-content');
+
+  // Recomputes weeks via the same canonical functions every other section
+  // uses (buildStatsWeeks + applyAllTimeRangeFilter), so this always matches
+  // whatever scope (Active plan / Date range preset) is currently selected.
+  const weeks = applyAllTimeRangeFilter(buildStatsWeeks());
+  if (!weeks.length) return;
+
+  const sectionHdr = document.createElement('div');
+  sectionHdr.id = 'training-log';
+  sectionHdr.style.cssText = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;scroll-margin-top:56px;';
+  sectionHdr.textContent = '📋 Training log';
+  container.appendChild(sectionHdr);
+
+  const prefixColor = {
+    easy: '#6eb8f0', 'easy-pm': '#6eb8f0',
+    quality: '#FC4C02', kinder: '#FC4C02',
+    long: '#c8f06e', race: '#c8f06e',
+  };
+  const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let anyRuns = false;
+
+  // Most recent week first -- what you just ran is usually what you want to check
+  [...weeks].reverse().forEach(wk => {
+    const runEntries = [];
+    wk.days.forEach((day, di) => {
+      const acts = getStravaForDay(wk.wi, di, 'runs');
+      if (!acts) return;
+      acts.forEach(a => runEntries.push({ day, di, activity: a }));
+    });
+    if (!runEntries.length) return; // skip weeks with nothing logged
+
+    anyRuns = true;
+    const weekHdr = document.createElement('div');
+    weekHdr.style.cssText = 'font-size:12px;font-weight:700;color:#9ca3af;padding:16px 20px 4px;';
+    weekHdr.textContent = wk.label + (wk.dates ? ' \u00b7 ' + wk.dates : '');
+    container.appendChild(weekHdr);
+
+    const listWrap = document.createElement('div');
+    listWrap.style.cssText = 'padding:0 20px;';
+
+    runEntries.forEach(({ day, di, activity }) => {
+      const prefix = (state[wk.wi]?.runs?.[di] || '').split(':')[0] || 'easy';
+      const color = prefixColor[prefix] || prefixColor.easy;
+      const km = ((activity.distance||0)/1000).toFixed(1);
+      const paceSecs = activity.distance && activity.moving_time ? (activity.moving_time/activity.distance*1000) : null;
+      const paceStr = paceSecs ? secsToMinSec(Math.round(paceSecs)) + '/km' : '';
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;';
+      row.innerHTML =
+        '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;"></div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;color:#e5e7eb;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (activity.name||'Run') + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;">' + DAY_NAMES[di] + ' ' + day.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0;">' +
+          '<div style="font-size:13px;color:#e5e7eb;font-weight:600;">' + km + ' km</div>' +
+          '<div style="font-size:11px;color:#6b7280;">' + paceStr + '</div>' +
+        '</div>' +
+        '<div style="color:#4b5563;font-size:14px;flex-shrink:0;">\u203a</div>';
+      row.addEventListener('click', () => openStravaDetail(activity));
+      listWrap.appendChild(row);
+    });
+
+    container.appendChild(listWrap);
+  });
+
+  if (!anyRuns) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:8px 20px 20px;color:#4b5563;font-size:13px;';
+    empty.textContent = 'No runs logged yet in this scope.';
+    container.appendChild(empty);
+  }
 }
 
 async function renderIntervalStats() {
@@ -13187,7 +13268,7 @@ function renderRunningStats() {
     ['#stats-summary','Stats'],
     ...(statsScope === 'plan' ? [['#readiness','Readiness'], ['#estimate','Race estimate']] : []),
     ['#weekly-load','Weekly load'], ['#lt-pace','LT pace'], ['#race-progression','Progression'],
-    ['#run-types','Run types'], ['#intervals','Intervals'], ['#long-runs','Long runs'], ['#pace-hr','Pace/HR'],
+    ['#run-types','Run types'], ['#intervals','Intervals'], ['#long-runs','Long runs'], ['#pace-hr','Pace/HR'], ['#training-log','Log'],
   ];
   jumpNav.innerHTML = jumpLinks.map(([href,label]) =>
     '<a href="' + href + '" style="display:inline-block;font-size:12px;font-weight:600;color:#9ca3af;background:#20222a;border-radius:100px;padding:7px 13px;margin-right:8px;text-decoration:none;">' + label + '</a>'
