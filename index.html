@@ -840,7 +840,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 
 /* STRAVA DETAIL PANEL */
 #strava-panel-overlay {
-  display: none; position: fixed; inset: 0; z-index: 11000;
+  display: none; position: fixed; inset: 0; z-index: 15500;
   background: rgba(0,0,0,0.4);
   align-items: flex-end;
   justify-content: center;
@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.12.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.12.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9828,13 +9828,26 @@ function renderTrainingLog() {
     if (!runEntries.length) return; // skip weeks with nothing logged
 
     anyRuns = true;
+    const totalKmWk = runEntries.reduce((a,{activity}) => a + (activity.distance||0)/1000, 0);
     const weekHdr = document.createElement('div');
-    weekHdr.style.cssText = 'font-size:12px;font-weight:700;color:#9ca3af;padding:16px 20px 4px;';
-    weekHdr.textContent = wk.label + (wk.dates ? ' \u00b7 ' + wk.dates : '');
+    weekHdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:16px 20px 4px;cursor:pointer;';
+    weekHdr.innerHTML =
+      '<span style="font-size:12px;font-weight:700;color:#9ca3af;">' + wk.label + (wk.dates ? ' \u00b7 ' + wk.dates : '') + '</span>' +
+      '<span style="display:flex;align-items:center;gap:8px;">' +
+        '<span style="font-size:11px;color:#6b7280;">' + runEntries.length + ' run' + (runEntries.length!==1?'s':'') + ' \u00b7 ' + totalKmWk.toFixed(1) + 'km</span>' +
+        '<span class="tlog-chevron" style="color:#4b5563;font-size:12px;transition:transform 150ms;display:inline-block;">\u203a</span>' +
+      '</span>';
     container.appendChild(weekHdr);
 
     const listWrap = document.createElement('div');
-    listWrap.style.cssText = 'padding:0 20px;';
+    // Collapsed by default -- tap the week header to expand.
+    listWrap.style.cssText = 'padding:0 20px;display:none;';
+    const chevron = weekHdr.querySelector('.tlog-chevron');
+    weekHdr.addEventListener('click', () => {
+      const expanded = listWrap.style.display !== 'none';
+      listWrap.style.display = expanded ? 'none' : 'block';
+      chevron.style.transform = expanded ? 'rotate(0deg)' : 'rotate(90deg)';
+    });
 
     runEntries.forEach(({ day, di, activity }) => {
       const prefix = (state[wk.wi]?.runs?.[di] || '').split(':')[0] || 'easy';
