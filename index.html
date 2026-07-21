@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.11.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.11.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -13004,7 +13004,7 @@ function drawIntervalTrendChart(canvas, labels, paceData, volData) {
   const lx=pad.left, ly=6;
   ctx.fillStyle='#FC4C02'; ctx.fillRect(lx,ly,14,2);
   ctx.fillStyle='#9ca3af'; ctx.textAlign='left'; ctx.font='8px sans-serif';
-  ctx.fillText('VW pace (↑ faster)', lx+18, ly+4);
+  ctx.fillText('Pace (\u2191 faster)', lx+18, ly+4);
   ctx.fillStyle='rgba(220,60,20,0.4)'; ctx.fillRect(lx+130,ly-3,10,8);
   ctx.fillStyle='#9ca3af'; ctx.fillText('Quality km', lx+144, ly+4);
 }
