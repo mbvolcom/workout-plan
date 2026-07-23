@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.14.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.14.3</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -6091,21 +6091,32 @@ async function runIntervalAnalysis(activityId) {
       const hrSlice = hrArr ? hrArr.slice(iv.startIdx, iv.endIdx+1) : null;
       const avgHr = hrSlice ? Math.round(hrSlice.reduce((a,b)=>a+b,0)/hrSlice.length) : null;
 
-      // Grade-adjusted pace: point-by-point grade across the interval using the
-      // smoothed altitude stream, same Minetti cost model used for Long Run Fatigue.
-      // Purely additional -- doesn't affect which segments got detected as intervals above.
+      // Grade-adjusted pace: grade computed over ~20m distance chunks (not every
+      // single second) using the smoothed altitude stream, same Minetti cost model
+      // used for Long Run Fatigue. A 1-second denominator is only a few metres at
+      // running pace, so dividing altitude change by that little distance amplifies
+      // noise into wild instantaneous grade swings even with smoothed altitude values
+      // -- chunking over a larger, stable distance is what actually fixes it. Purely
+      // additional -- doesn't affect which segments got detected as intervals above.
       let avgPaceGapStr = null, elevGain = null, elevLoss = null;
       if (smoothedAlt) {
         let totalGapTime = 0, totalGapDist = 0, gain = 0, loss = 0;
+        const CHUNK_DIST = 20; // metres
+        let chunkStart = iv.startIdx;
         for (let j = iv.startIdx+1; j <= iv.endIdx; j++) {
-          const dt = timeArr[j] - timeArr[j-1];
-          const dd = distArr[j] - distArr[j-1];
-          if (dd <= 0 || dt <= 0) continue;
-          const dAlt = smoothedAlt[j] - smoothedAlt[j-1];
-          if (dAlt > 0) gain += dAlt; else loss += -dAlt;
-          const factor = gapCostFactor(dAlt / dd);
-          totalGapTime += dt / factor;
-          totalGapDist += dd;
+          const distSoFar = distArr[j] - distArr[chunkStart];
+          if (distSoFar >= CHUNK_DIST || j === iv.endIdx) {
+            const dt = timeArr[j] - timeArr[chunkStart];
+            const dd = distArr[j] - distArr[chunkStart];
+            if (dd > 0 && dt > 0) {
+              const dAlt = smoothedAlt[j] - smoothedAlt[chunkStart];
+              if (dAlt > 0) gain += dAlt; else loss += -dAlt;
+              const factor = gapCostFactor(dAlt / dd);
+              totalGapTime += dt / factor;
+              totalGapDist += dd;
+            }
+            chunkStart = j;
+          }
         }
         if (totalGapDist > 0) {
           avgPaceGapStr = formatPace(totalGapDist, totalGapTime);
@@ -10143,7 +10154,7 @@ async function renderIntervalStats() {
           <div style="font-size:12px;color:#d1d5db;">${Math.floor(iv.duration/60)}:${String(iv.duration%60).padStart(2,'0')}</div>
           <div style="text-align:right;">
             <div style="font-size:13px;font-weight:700;color:#FC4C02;">${iv.avgPaceGapStr || iv.avgPaceStr}</div>
-            ${iv.avgPaceGapStr ? `<div style="font-size:9px;color:#4b5563;">raw ${iv.avgPaceStr}${(iv.elevGain||iv.elevLoss)?' · +'+iv.elevGain+'m/\u2212'+iv.elevLoss+'m':''}</div>` : ''}
+            ${iv.avgPaceGapStr ? `<div style="font-size:9px;color:#4b5563;">raw ${iv.avgPaceStr}${(iv.elevGain!=null&&iv.elevLoss!=null)?' · +'+iv.elevGain+'m/\u2212'+iv.elevLoss+'m':(iv.elevGain!=null?' · +'+iv.elevGain+'m':'')}</div>` : ''}
           </div>
           ${iv.avgHr?`<div style="font-size:11px;color:#6b7280;">${iv.avgHr} bpm</div>`:''}
         </div>`).join('');
