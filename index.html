@@ -1403,7 +1403,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.15.0</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.15.1</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9485,9 +9485,29 @@ async function saveRaceEstimateSnapshot() {
     const plan = getActivePlan ? getActivePlan() : null;
     const raceDist = plan ? detectRaceDistance(plan.race_name || plan.name) : null;
     if (!raceDist) return;
+
+    // Longest-run coverage depends on Strava activity data. If it hasn't loaded
+    // yet in this page session, fetch it now rather than computing off an empty
+    // set -- an empty set reads as "no long runs done", which triggers the full
+    // under-preparation penalty and produces a badly inflated, permanently-saved
+    // snapshot even though the live card would self-correct once data arrives.
+    if (!Object.keys(stravaActivities).length) {
+      try { await fetchStravaActivities(); } catch(e) { /* fall through with whatever we have */ }
+    }
+
     let weeks = [];
     try { weeks = buildStatsWeeks(); } catch(e) { return; }
     const longestRun = Math.max(...weeks.map(wk => wk.longestRun), 0);
+
+    // If longest run still reads as zero despite real training already being
+    // logged this plan, that's a data-not-ready signal, not truth -- skip saving
+    // rather than baking in a misleadingly slow snapshot.
+    const hasLoggedTraining = weeks.some(wk => wk.actualKm > 0);
+    if (longestRun === 0 && hasLoggedTraining) {
+      console.warn('[estimate history] skipped save: longestRun read as 0 despite logged training -- likely incomplete data at save time');
+      return;
+    }
+
     const est = computeRaceEstimate(ltSecs, raceDist.km, longestRun, weeks);
     // Store in Supabase race_estimate_history table
     await fetch(SUPA_BASE + 'race_estimate_history', {
