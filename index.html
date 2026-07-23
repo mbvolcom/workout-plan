@@ -839,6 +839,43 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
 .wp-day-text.is-race    { color:#791F1F; font-weight:600; }
 
 /* STRAVA DETAIL PANEL */
+#chart-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 15600;
+  background: rgba(0,0,0,0.6);
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+#chart-modal-overlay.open { display: flex; }
+#chart-modal {
+  background: #16181c; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+  width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto;
+  padding: 20px;
+}
+#chart-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+#chart-modal-title { font-size: 15px; font-weight: 700; color: #f0ede8; }
+#chart-modal-close {
+  background: rgba(255,255,255,0.06); border: none; color: #9ca3af;
+  width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer;
+}
+#chart-modal-body { width: 100%; }
+#chart-modal-table { margin-top: 18px; }
+#chart-modal-table table { width: 100%; border-collapse: collapse; }
+#chart-modal-table th {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280;
+  text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+#chart-modal-table td {
+  font-size: 13px; color: #d1d5db; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.chart-expand-wrap { position: relative; cursor: pointer; }
+.chart-expand-hint {
+  position: absolute; top: -2px; right: 0; font-size: 10px; color: #4b5563;
+  display: flex; align-items: center; gap: 3px; pointer-events: none;
+}
+
 #strava-panel-overlay {
   display: none; position: fixed; inset: 0; z-index: 15500;
   background: rgba(0,0,0,0.4);
@@ -1366,7 +1403,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.14.4</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.15.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -1897,6 +1934,17 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <button id="week-plan-close">✕</button>
     </div>
     <div id="week-plan-days"></div>
+  </div>
+</div>
+
+<div id="chart-modal-overlay">
+  <div id="chart-modal">
+    <div id="chart-modal-header">
+      <div id="chart-modal-title"></div>
+      <button id="chart-modal-close">✕</button>
+    </div>
+    <div id="chart-modal-body"></div>
+    <div id="chart-modal-table"></div>
   </div>
 </div>
 
@@ -5637,6 +5685,71 @@ if (window.location.search.includes('strava=connected')) {
 }
 
 // ── STRAVA DETAIL PANEL ────────────────────────────────────────────────────
+// ── CHART EXPAND MODAL ───────────────────────────────────────────────────────
+// Generic "tap to expand" system for Deep Dive charts. SVG charts scale up for
+// free (viewBox-based, so no blur); the caller just re-invokes the same builder
+// function and this widens it to fill the modal. tableRows is optional -- an
+// array of row arrays for a simple data table shown under the enlarged chart.
+const chartModalOverlay = document.getElementById('chart-modal-overlay');
+const chartModalTitle   = document.getElementById('chart-modal-title');
+const chartModalBody    = document.getElementById('chart-modal-body');
+const chartModalTable   = document.getElementById('chart-modal-table');
+
+function openChartModal(title, chartNode, tableHeaders, tableRows) {
+  chartModalTitle.textContent = title;
+  chartModalBody.innerHTML = '';
+  // SVGs set a fixed pixel height inline; override to auto so the viewBox's
+  // intrinsic aspect ratio scales it up to fill the wider modal instead of
+  // just stretching (or staying stuck at the small inline size).
+  if (chartNode.tagName === 'svg') {
+    chartNode.style.width = '100%';
+    chartNode.style.height = 'auto';
+  } else {
+    chartNode.querySelectorAll('svg').forEach(svg => {
+      svg.style.width = '100%';
+      svg.style.height = 'auto';
+    });
+  }
+  chartModalBody.appendChild(chartNode);
+
+  chartModalTable.innerHTML = '';
+  if (tableRows && tableRows.length) {
+    const table = document.createElement('table');
+    if (tableHeaders) {
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr>' + tableHeaders.map(h => `<th>${h}</th>`).join('') + '</tr>';
+      table.appendChild(thead);
+    }
+    const tbody = document.createElement('tbody');
+    tableRows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = row.map(c => `<td>${c}</td>`).join('');
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    chartModalTable.appendChild(table);
+  }
+
+  chartModalOverlay.classList.add('open');
+}
+function closeChartModal() { chartModalOverlay.classList.remove('open'); }
+document.getElementById('chart-modal-close').addEventListener('click', closeChartModal);
+chartModalOverlay.addEventListener('click', e => { if (e.target === chartModalOverlay) closeChartModal(); });
+
+// Wraps an inline chart container so tapping it opens the enlarged modal version.
+// rebuildFn() must return a *fresh* chart node each call (not the same DOM node
+// already in the page) since a node can only exist in one place in the DOM.
+function makeChartExpandable(containerEl, title, rebuildFn, tableHeaders, tableRows) {
+  containerEl.classList.add('chart-expand-wrap');
+  const hint = document.createElement('div');
+  hint.className = 'chart-expand-hint';
+  hint.innerHTML = '\u2922';
+  containerEl.appendChild(hint);
+  containerEl.addEventListener('click', () => {
+    openChartModal(title, rebuildFn(), tableHeaders, typeof tableRows === 'function' ? tableRows() : tableRows);
+  });
+}
+
 const stravaPanel        = document.getElementById('strava-panel-overlay');
 const stravaPanelName    = document.getElementById('strava-panel-name');
 const stravaPanelDate    = document.getElementById('strava-panel-date');
@@ -9630,6 +9743,13 @@ async function renderLongRunFatigue() {
     bandCaption.textContent = 'Shaded band = healthy 5\u201310% fatigue range';
     chartWrap.appendChild(bandCaption);
     container.appendChild(chartWrap);
+    makeChartExpandable(chartWrap, 'Long run fatigue index', () => buildFatigueTrendSVG(analysed),
+      ['Date', 'Distance', 'Fatigue'],
+      () => analysed.map(({r,f}) => [
+        new Date(r.dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
+        ((r.distance||0)/1000).toFixed(1) + 'km',
+        (f.fatigue_pct>0?'+':'') + f.fatigue_pct + '%',
+      ]));
   }
 
   // List of long runs, newest first -- only the 3 most recent show by
@@ -9998,13 +10118,36 @@ async function renderIntervalStats() {
       canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;';
       canWrap.appendChild(canvas); trendSection.appendChild(canWrap);
       container.appendChild(trendSection);
+      const labels   = sessionsWithPace.map(s => new Date(s.date).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
+      const paceData = sessionsWithPace.map(s => s.vwPace);
+      const volData  = sessionsWithPace.map(s => s.totalKm);
       setTimeout(() => {
         if (!canvas.offsetWidth) return;
-        const labels   = sessionsWithPace.map(s => new Date(s.date).toLocaleDateString('no-NO',{day:'numeric',month:'short'}));
-        const paceData = sessionsWithPace.map(s => s.vwPace);
-        const volData  = sessionsWithPace.map(s => s.totalKm);
         drawIntervalTrendChart(canvas, labels, paceData, volData);
       }, 80);
+
+      canWrap.classList.add('chart-expand-wrap');
+      const hint = document.createElement('div');
+      hint.className = 'chart-expand-hint';
+      hint.innerHTML = '\u2922';
+      canWrap.appendChild(hint);
+      canWrap.addEventListener('click', () => {
+        const bigWrap = document.createElement('div');
+        bigWrap.style.cssText = 'position:relative;width:100%;height:320px;';
+        const bigCanvas = document.createElement('canvas');
+        bigCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;';
+        bigWrap.appendChild(bigCanvas);
+        openChartModal('Effort trend \u2014 pace \u00d7 volume', bigWrap, ['Date', 'Pace', 'Quality km'],
+          sessionsWithPace.map(s => [
+            new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+            secsToMinSec(Math.round(s.vwPace)) + '/km',
+            s.totalKm.toFixed(1) + 'km',
+          ]));
+        setTimeout(() => {
+          if (!bigCanvas.offsetWidth) return;
+          drawIntervalTrendChart(bigCanvas, labels, paceData, volData);
+        }, 80);
+      });
     }
 
     // Training direction card -- synthesises pace trend, within-session
@@ -13506,13 +13649,21 @@ function renderRunningStats() {
         '<span title="Tracks easy run pace alongside average heart rate, week by week. Pace improving while HR stays flat or drops is a genuine aerobic-fitness gain." ' +
           'style="font-size:10px;color:#6b7280;border:1px solid #4b5563;border-radius:50%;width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:help;">i</span></div>';
       const pvhWrap = document.createElement('div'); pvhWrap.className = 'stats-pace-chart';
-      pvhWrap.appendChild(buildPaceHRTrendSVG(pvhPoints));
+      const pvhChartArea = document.createElement('div');
+      pvhChartArea.appendChild(buildPaceHRTrendSVG(pvhPoints));
       const pvhLegend = document.createElement('div');
       pvhLegend.style.cssText = 'display:flex;gap:16px;margin-top:8px;font-size:10px;';
       pvhLegend.innerHTML =
         '<span style="color:#FC4C02;">─ Easy pace</span>' +
         '<span style="color:#6eb8f0;">┄ Avg HR</span>';
-      pvhWrap.appendChild(pvhLegend);
+      pvhChartArea.appendChild(pvhLegend);
+      pvhWrap.appendChild(pvhChartArea);
+      makeChartExpandable(pvhChartArea, 'Pace vs heart rate trend', () => {
+        const wrap = document.createElement('div');
+        wrap.appendChild(buildPaceHRTrendSVG(pvhPoints));
+        return wrap;
+      }, ['Week', 'Pace', 'Avg HR'],
+        () => pvhPoints.map(p => [p.label, secsToMinSec(Math.round(p.pace)) + '/km', p.hr ? Math.round(p.hr) + ' bpm' : '\u2014']));
 
       // Auto-analysis: compares the first half of the shown period against the second half
       const pvhAnalysis = computePaceHRAnalysis(pvhPoints);
@@ -13548,54 +13699,61 @@ function renderRunningStats() {
   }
 
   // ── WEEKLY KM BAR CHART ───────────────────────────────────────────────────
+  function buildWeeklyKmChart(barMaxH) {
+    const barWrap=document.createElement('div'); barWrap.className='stats-bar-chart';
+    const barsEl=document.createElement('div'); barsEl.className='stats-bars';
+    const maxKm=Math.max(...weeks.map(w=>Math.max(w.plannedKm,w.actualKm)),1);
+    const phaseColors={'Pre-plan':'#6eb8f0','Build':'#c8f06e','Peak':'#f0a96e','Taper':'#f0c060'};
+    weeks.forEach(wk=>{
+      const ph=wk.phase; const color=phaseColors[ph]||'#6b7280';
+      const col=document.createElement('div'); col.className='stats-bar-col';
+      // Health flag marker -- a small amber dot above the bar, replacing the old
+      // emoji faces which were unclear at this size. Tooltip carries the detail.
+      const wFlags = weekFlagMap[weeks.indexOf(wk)];
+      if (wFlags && wFlags.length) {
+        const dot = document.createElement('div');
+        dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#f0c060;margin-bottom:2px;flex-shrink:0;';
+        dot.title = wFlags.map(f=>flagInfo(f).label).join(', ');
+        col.appendChild(dot);
+      }
+      const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height=barMaxH+'px';
+      const plannedH = Math.round((wk.plannedKm / maxKm) * barMaxH);
+      const actualH   = Math.round((wk.actualKm  / maxKm) * barMaxH);
+      const exceeded  = wk.actualKm > wk.plannedKm && wk.plannedKm > 0;
+
+      const planned = document.createElement('div'); planned.className = 'stats-bar-planned';
+      planned.style.height = plannedH + 'px';
+      planned.title = `${wk.label}: ${wk.plannedKm}km planned`;
+
+      const actual = document.createElement('div'); actual.className = 'stats-bar-actual';
+      // When exceeded: show planned height in colour, then a brighter top section for the extra
+      if (exceeded) {
+        const extraH = actualH - plannedH;
+        actual.style.cssText = `height:${plannedH}px;background:${color}${wk.isCurrent?'':'99'};`;
+        const extra = document.createElement('div');
+        extra.style.cssText = `height:${extraH}px;background:${color};border-radius:2px 2px 0 0;border-top:2px solid #fff3;`;
+        extra.title = `${wk.actualKm.toFixed(1)}km logged (+${(wk.actualKm-wk.plannedKm).toFixed(1)}km over plan)`;
+        wrap.appendChild(extra);
+      } else {
+        actual.style.cssText = `height:${actualH}px;background:${color}${wk.isCurrent?'':'99'};`;
+        actual.title = `${wk.label}: ${wk.actualKm.toFixed(1)}km logged`;
+      }
+      wrap.appendChild(planned); wrap.appendChild(actual);
+      const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'+(wk.isCurrent?' current':''); lbl.textContent=wk.shortLabel;
+      col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
+    });
+    const legend=document.createElement('div'); legend.className='stats-chart-legend';
+    legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div><div class="stats-legend-item"><div style="width:10px;height:10px;border-radius:2px;border-top:2px solid #fff3;background:rgba(200,240,110,0.5);flex-shrink:0;"></div>Over plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="border-radius:50%;background:#f0c060;width:6px;height:6px;"></div>Sick/injured</div>';
+    barWrap.appendChild(barsEl); barWrap.appendChild(legend);
+    return barWrap;
+  }
   const barSection=document.createElement('div'); barSection.className='stats-section'; barSection.id='weekly-load'; barSection.style.scrollMarginTop='56px';
   barSection.innerHTML='<div class="stats-section-title">Weekly km — planned vs actual</div>';
-  const barWrap=document.createElement('div'); barWrap.className='stats-bar-chart';
-  const barsEl=document.createElement('div'); barsEl.className='stats-bars';
-  const maxKm=Math.max(...weeks.map(w=>Math.max(w.plannedKm,w.actualKm)),1);
-  const phaseColors={'Pre-plan':'#6eb8f0','Build':'#c8f06e','Peak':'#f0a96e','Taper':'#f0c060'};
-  weeks.forEach(wk=>{
-    const ph=wk.phase; const color=phaseColors[ph]||'#6b7280';
-    const col=document.createElement('div'); col.className='stats-bar-col';
-    // Health flag marker -- a small amber dot above the bar, replacing the old
-    // emoji faces which were unclear at this size. Tooltip carries the detail.
-    const wFlags = weekFlagMap[weeks.indexOf(wk)];
-    if (wFlags && wFlags.length) {
-      const dot = document.createElement('div');
-      dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#f0c060;margin-bottom:2px;flex-shrink:0;';
-      dot.title = wFlags.map(f=>flagInfo(f).label).join(', ');
-      col.appendChild(dot);
-    }
-    const wrap=document.createElement('div'); wrap.className='stats-bar-wrap'; wrap.style.height='120px';
-    const plannedH = Math.round((wk.plannedKm / maxKm) * 120);
-    const actualH   = Math.round((wk.actualKm  / maxKm) * 120);
-    const exceeded  = wk.actualKm > wk.plannedKm && wk.plannedKm > 0;
-
-    const planned = document.createElement('div'); planned.className = 'stats-bar-planned';
-    planned.style.height = plannedH + 'px';
-    planned.title = `${wk.label}: ${wk.plannedKm}km planned`;
-
-    const actual = document.createElement('div'); actual.className = 'stats-bar-actual';
-    // When exceeded: show planned height in colour, then a brighter top section for the extra
-    if (exceeded) {
-      const extraH = actualH - plannedH;
-      actual.style.cssText = `height:${plannedH}px;background:${color}${wk.isCurrent?'':'99'};`;
-      const extra = document.createElement('div');
-      extra.style.cssText = `height:${extraH}px;background:${color};border-radius:2px 2px 0 0;border-top:2px solid #fff3;`;
-      extra.title = `${wk.actualKm.toFixed(1)}km logged (+${(wk.actualKm-wk.plannedKm).toFixed(1)}km over plan)`;
-      wrap.appendChild(extra);
-    } else {
-      actual.style.cssText = `height:${actualH}px;background:${color}${wk.isCurrent?'':'99'};`;
-      actual.title = `${wk.label}: ${wk.actualKm.toFixed(1)}km logged`;
-    }
-    wrap.appendChild(planned); wrap.appendChild(actual);
-    const lbl=document.createElement('div'); lbl.className='stats-bar-lbl'+(wk.isCurrent?' current':''); lbl.textContent=wk.shortLabel;
-    col.appendChild(wrap); col.appendChild(lbl); barsEl.appendChild(col);
-  });
-  const legend=document.createElement('div'); legend.className='stats-chart-legend';
-  legend.innerHTML='<div class="stats-legend-item"><div class="stats-legend-dot" style="background:rgba(255,255,255,0.08)"></div>Planned</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#6eb8f0"></div>Pre-plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#c8f06e"></div>Build</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0a96e"></div>Peak</div><div class="stats-legend-item"><div class="stats-legend-dot" style="background:#f0c060"></div>Taper</div><div class="stats-legend-item"><div style="width:10px;height:10px;border-radius:2px;border-top:2px solid #fff3;background:rgba(200,240,110,0.5);flex-shrink:0;"></div>Over plan</div><div class="stats-legend-item"><div class="stats-legend-dot" style="border-radius:50%;background:#f0c060;width:6px;height:6px;"></div>Sick/injured</div>';
-  barWrap.appendChild(barsEl); barWrap.appendChild(legend);
+  const barWrap = buildWeeklyKmChart(120);
   barSection.appendChild(barWrap); container.appendChild(barSection);
+  makeChartExpandable(barWrap, 'Weekly km — planned vs actual', () => buildWeeklyKmChart(240),
+    ['Week', 'Planned', 'Actual'],
+    () => weeks.map(wk => [wk.label, wk.plannedKm + 'km', wk.actualKm.toFixed(1) + 'km']));
 
   // ── LT PACE PROGRESSION ───────────────────────────────────────────────────
   if (ltHistory.length >= 1) {
@@ -13613,6 +13771,15 @@ function renderRunningStats() {
     }
     ltSection.appendChild(ltWrap);
     container.appendChild(ltSection);
+
+    if (ltHistory.length >= 2) {
+      makeChartExpandable(ltWrap, 'Lactate threshold pace', () => buildLTProgressionSVG(ltHistory),
+        ['Date', 'Pace'],
+        () => [...ltHistory].reverse().map(e => [
+          new Date(e.recorded_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}),
+          e.pace + '/km',
+        ]));
+    }
   }
 
   // ── RACE ESTIMATE HISTORY ─────────────────────────────────────────────────
@@ -13629,6 +13796,15 @@ function renderRunningStats() {
     }
     estSection.appendChild(estWrap);
     container.appendChild(estSection);
+
+    if (raceEstimateHistory.length >= 2) {
+      makeChartExpandable(estWrap, 'Race estimate progression', () => buildEstimateHistorySVG(raceEstimateHistory),
+        ['Date', 'Estimate'],
+        () => [...raceEstimateHistory].reverse().map(e => [
+          new Date(e.recorded_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}),
+          e.estimated_finish || secsToHMS(e.estimated_finish_secs || 0),
+        ]));
+    }
   }
 
   // ── RUN TYPE BREAKDOWN ────────────────────────────────────────────────────
@@ -13645,11 +13821,13 @@ function renderRunningStats() {
   rtSection.innerHTML='<div class="stats-section-title"><span>Run type breakdown</span>' +
     '<span title="Share of training time spent easy, at quality intensity, or on long runs." ' +
       'style="font-size:10px;color:#6b7280;border:1px solid #4b5563;border-radius:50%;width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:help;">i</span></div>';
-  const rtWrap=document.createElement('div'); rtWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
 
-  if (totalRunsDone===0) {
-    rtWrap.innerHTML='<div style="color:#4b5563;font-size:12px;padding:8px 0;">No Strava runs logged yet in this plan.</div>';
-  } else {
+  function buildRunTypeBreakdown(barH) {
+    const rtWrap=document.createElement('div'); rtWrap.style.cssText='background:#16181c;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;';
+    if (totalRunsDone===0) {
+      rtWrap.innerHTML='<div style="color:#4b5563;font-size:12px;padding:8px 0;">No Strava runs logged yet in this plan.</div>';
+      return rtWrap;
+    }
     const badges=document.createElement('div'); badges.style.cssText='display:flex;gap:10px;margin-bottom:16px;';
     [{label:'Easy',count:totalEasy,color:RT_EASY},{label:'Quality',count:totalQuality,color:RT_QUALITY},{label:'Long',count:totalLong,color:RT_LONG}].forEach(({label,count,color})=>{
       const pct=Math.round(count/totalRunsDone*100);
@@ -13663,15 +13841,15 @@ function renderRunningStats() {
     const runTypeWeeks=weeks.filter(wk=>(wk.easyRuns||0)+(wk.qualityRuns||0)+(wk.longRuns||0)>0);
     if (runTypeWeeks.length) {
       const maxR=Math.max(...runTypeWeeks.map(wk=>(wk.easyRuns||0)+(wk.qualityRuns||0)+(wk.longRuns||0)),1);
-      const chartEl=document.createElement('div'); chartEl.style.cssText='display:flex;align-items:flex-end;gap:4px;height:90px;';
+      const chartEl=document.createElement('div'); chartEl.style.cssText=`display:flex;align-items:flex-end;gap:4px;height:${barH+18}px;`;
       runTypeWeeks.forEach(wk=>{
         const tot=(wk.easyRuns||0)+(wk.qualityRuns||0)+(wk.longRuns||0);
-        const h=Math.round((tot/maxR)*72);
+        const h=Math.round((tot/maxR)*barH);
         const eH=Math.round(((wk.easyRuns||0)/tot)*h);
         const qH=Math.round(((wk.qualityRuns||0)/tot)*h);
         const lH=h-eH-qH;
         const colWrap=document.createElement('div'); colWrap.style.cssText='flex:1;display:flex;flex-direction:column;align-items:stretch;';
-        const bar=document.createElement('div'); bar.style.cssText='display:flex;flex-direction:column;justify-content:flex-end;height:72px;gap:1px;';
+        const bar=document.createElement('div'); bar.style.cssText=`display:flex;flex-direction:column;justify-content:flex-end;height:${barH}px;gap:1px;`;
         bar.title=`${wk.label}: ${wk.easyRuns||0} easy, ${wk.qualityRuns||0} quality, ${wk.longRuns||0} long`;
         if (lH>0){const s=document.createElement('div');s.style.cssText=`height:${lH}px;background:${RT_LONG};border-radius:2px 2px 0 0;`;bar.appendChild(s);}
         if (qH>0){const s=document.createElement('div');s.style.cssText=`height:${qH}px;background:${RT_QUALITY};`;bar.appendChild(s);}
@@ -13689,8 +13867,16 @@ function renderRunningStats() {
       });
       rtWrap.appendChild(leg);
     }
+    return rtWrap;
   }
+  const rtWrap = buildRunTypeBreakdown(72);
   rtSection.appendChild(rtWrap); container.appendChild(rtSection);
+  if (totalRunsDone > 0) {
+    makeChartExpandable(rtWrap, 'Run type breakdown', () => buildRunTypeBreakdown(160),
+      ['Week', 'Easy', 'Quality', 'Long'],
+      () => weeks.filter(wk=>(wk.easyRuns||0)+(wk.qualityRuns||0)+(wk.longRuns||0)>0)
+        .map(wk => [wk.label, wk.easyRuns||0, wk.qualityRuns||0, wk.longRuns||0]));
+  }
 
 }
 
