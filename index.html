@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.12.2</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.13.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -9496,6 +9496,29 @@ function getAllLongRuns() {
   return longRuns;
 }
 
+// Grade-Adjusted Pace: converts an uphill/downhill split's actual pace into the
+// flat-ground-equivalent pace it represents, using the metabolic cost of running
+// on a gradient (Minetti et al. 2002). This is what stops a long run's natural
+// elevation profile (e.g. more climbing in the back half) from being misread as
+// fatigue when comparing first-third vs last-third pace.
+function gapCostFactor(gradeDecimal) {
+  const i = Math.max(-0.30, Math.min(0.30, gradeDecimal)); // clamp to a sane range
+  const cost = 155.4*Math.pow(i,5) - 30.4*Math.pow(i,4) - 43.3*Math.pow(i,3) + 46.3*Math.pow(i,2) + 19.5*i + 3.6;
+  return cost / 3.6; // ratio vs flat-ground metabolic cost
+}
+function gradeAdjustedPace(splits) {
+  // Returns { paceSecsPerKm, totalDist } using grade-adjusted (flat-equivalent) time
+  let totalGapTime = 0, totalDist = 0;
+  splits.forEach(s => {
+    if (!s.distance) return;
+    const grade = (s.elevation_difference || 0) / s.distance; // decimal, e.g. 0.05 = 5% uphill
+    const factor = gapCostFactor(grade);
+    totalGapTime += (s.moving_time || 0) / factor; // uphill (factor>1) -> faster flat-equivalent time
+    totalDist += s.distance;
+  });
+  return totalDist > 0 ? (totalGapTime / totalDist * 1000) : null; // sec/km
+}
+
 async function analyseLongRunFatigue(activity, btnEl) {
   btnEl.textContent = 'Analysing\u2026'; btnEl.disabled = true;
   try {
@@ -9513,15 +9536,14 @@ async function analyseLongRunFatigue(activity, btnEl) {
     const third = Math.floor(splits.length / 3);
     const firstThird = splits.slice(0, third);
     const lastThird = splits.slice(-third);
-    const paceOf = arr => {
-      const totalDist = arr.reduce((a,s)=>a+s.distance,0);
-      const totalTime = arr.reduce((a,s)=>a+s.moving_time,0);
-      return totalDist > 0 ? totalTime / totalDist * 1000 : null; // sec/km
-    };
-    const firstPace = paceOf(firstThird);
-    const lastPace = paceOf(lastThird);
+
+    // Grade-adjusted pace per third -- uses each split's elevation_difference so a
+    // hillier back half doesn't get misread as the legs fading.
+    const firstPace = gradeAdjustedPace(firstThird);
+    const lastPace  = gradeAdjustedPace(lastThird);
     if (!firstPace || !lastPace) { btnEl.textContent = 'No pace data'; return; }
     const fatiguePct = Math.round(((lastPace - firstPace) / firstPace) * 1000) / 10;
+    const elevationGain = splits.reduce((a,s) => a + Math.max(0, s.elevation_difference||0), 0);
 
     const row = {
       activity_id: activity.id,
@@ -9531,6 +9553,8 @@ async function analyseLongRunFatigue(activity, btnEl) {
       last_third_pace_secs: Math.round(lastPace),
       fatigue_pct: fatiguePct,
       total_km: Math.round((activity.distance||0)/100)/10,
+      grade_adjusted: true,
+      elevation_gain_m: Math.round(elevationGain),
       analysed_at: new Date().toISOString()
     };
 
@@ -9571,7 +9595,7 @@ async function renderLongRunFatigue() {
   sectionHdr.style.cssText = 'display:flex;align-items:center;gap:6px;padding:24px 20px 8px;border-top:1px solid rgba(255,255,255,0.07);margin-top:8px;scroll-margin-top:56px;';
   sectionHdr.innerHTML =
     '<span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;font-weight:600;white-space:nowrap;">\ud83c\udfc3 Long run fatigue index</span>' +
-    '<span title="Compares your pace in the first third of a long run to the last third. A well-executed long run typically slows 5-10% as fatigue builds; beyond 15% suggests starting too fast." ' +
+    '<span title="Compares your pace in the first third of a long run to the last third, grade-adjusted so hills in the route aren\u2019t mistaken for fatigue. A well-executed long run typically slows 5-10% as fatigue builds; beyond 15% suggests starting too fast." ' +
       'style="font-size:10px;color:#6b7280;border:1px solid #4b5563;border-radius:50%;width:14px;height:14px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;cursor:help;">i</span>';
   container.appendChild(sectionHdr);
 
@@ -9623,17 +9647,28 @@ async function renderLongRunFatigue() {
 
     if (f) {
       const color = fatigueColor(f.fatigue_pct);
+      const gapBadge = f.grade_adjusted
+        ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:rgba(200,240,110,0.12);color:#c8f06e;margin-left:6px;vertical-align:middle;">\u26f0\ufe0f grade-adj</span>'
+        : '';
+      const elevLine = f.elevation_gain_m ? ' \u00b7 ' + Math.round(f.elevation_gain_m) + 'm\u2191' : '';
       card.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-          '<div><div style="font-size:12px;font-weight:600;color:#d1d5db;">' + (r.name||'Long run') + '</div>' +
-          '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + ' \u00b7 ' + km + 'km</div></div>' +
+          '<div><div style="font-size:12px;font-weight:600;color:#d1d5db;">' + (r.name||'Long run') + gapBadge + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + dt + ' \u00b7 ' + km + 'km' + elevLine + '</div></div>' +
           '<div style="text-align:right;"><div style="font-size:16px;font-weight:800;color:' + color + ';">' + (f.fatigue_pct>0?'+':'') + f.fatigue_pct + '%</div>' +
           '<div style="font-size:10px;color:' + color + ';">' + fatigueLabel(f.fatigue_pct) + '</div></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);font-size:11px;color:#9ca3af;">' +
-          '<span>First third: ' + secsToMinSec(f.first_third_pace_secs) + '/km</span>' +
-          '<span>Last third: ' + secsToMinSec(f.last_third_pace_secs) + '/km</span>' +
+          '<span>First third: ' + secsToMinSec(f.first_third_pace_secs) + '/km' + (f.grade_adjusted ? ' (adj)' : '') + '</span>' +
+          '<span>Last third: ' + secsToMinSec(f.last_third_pace_secs) + '/km' + (f.grade_adjusted ? ' (adj)' : '') + '</span>' +
         '</div>';
+      if (!f.grade_adjusted) {
+        const reBtn = document.createElement('button');
+        reBtn.textContent = '\u26f0\ufe0f Re-analyse with grade adjustment';
+        reBtn.style.cssText = 'width:100%;margin-top:8px;padding:7px;background:rgba(200,240,110,0.08);border:1px solid rgba(200,240,110,0.25);border-radius:8px;color:#c8f06e;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit;';
+        reBtn.addEventListener('click', () => analyseLongRunFatigue(r, reBtn));
+        card.appendChild(reBtn);
+      }
     } else {
       const infoDiv = document.createElement('div');
       infoDiv.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
@@ -9829,12 +9864,13 @@ function renderTrainingLog() {
 
     anyRuns = true;
     const totalKmWk = runEntries.reduce((a,{activity}) => a + (activity.distance||0)/1000, 0);
+    const totalElevWk = runEntries.reduce((a,{activity}) => a + (activity.total_elevation_gain||0), 0);
     const weekHdr = document.createElement('div');
     weekHdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:16px 20px 4px;cursor:pointer;';
     weekHdr.innerHTML =
       '<span style="font-size:12px;font-weight:700;color:#9ca3af;">' + wk.label + (wk.dates ? ' \u00b7 ' + wk.dates : '') + '</span>' +
       '<span style="display:flex;align-items:center;gap:8px;">' +
-        '<span style="font-size:11px;color:#6b7280;">' + runEntries.length + ' run' + (runEntries.length!==1?'s':'') + ' \u00b7 ' + totalKmWk.toFixed(1) + 'km</span>' +
+        '<span style="font-size:11px;color:#6b7280;">' + runEntries.length + ' run' + (runEntries.length!==1?'s':'') + ' \u00b7 ' + totalKmWk.toFixed(1) + 'km' + (totalElevWk>=10 ? ' \u00b7 ' + Math.round(totalElevWk) + 'm\u2191' : '') + '</span>' +
         '<span class="tlog-chevron" style="color:#4b5563;font-size:12px;transition:transform 150ms;display:inline-block;">\u203a</span>' +
       '</span>';
     container.appendChild(weekHdr);
@@ -9855,6 +9891,13 @@ function renderTrainingLog() {
       const km = ((activity.distance||0)/1000).toFixed(1);
       const paceSecs = activity.distance && activity.moving_time ? (activity.moving_time/activity.distance*1000) : null;
       const paceStr = paceSecs ? secsToMinSec(Math.round(paceSecs)) + '/km' : '';
+      const elevGain = activity.total_elevation_gain || 0;
+      // Flag genuinely hilly runs (15m+ of climbing per km) so the pace above
+      // can be read with that context in mind -- no pace math is adjusted here,
+      // this is just visibility (see Long Run Fatigue for grade-adjusted pace).
+      const elevPerKm = activity.distance ? elevGain / (activity.distance/1000) : 0;
+      const isHilly = elevPerKm >= 15;
+      const elevStr = elevGain >= 10 ? Math.round(elevGain) + 'm\u2191' + (isHilly ? ' \u26f0\ufe0f' : '') : '';
 
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;';
@@ -9862,7 +9905,7 @@ function renderTrainingLog() {
         '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;"></div>' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:13px;color:#e5e7eb;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (activity.name||'Run') + '</div>' +
-          '<div style="font-size:11px;color:#6b7280;">' + DAY_NAMES[di] + ' ' + day.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + '</div>' +
+          '<div style="font-size:11px;color:#6b7280;">' + DAY_NAMES[di] + ' ' + day.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + (elevStr ? ' \u00b7 ' + elevStr : '') + '</div>' +
         '</div>' +
         '<div style="text-align:right;flex-shrink:0;">' +
           '<div style="font-size:13px;color:#e5e7eb;font-weight:600;">' + km + ' km</div>' +
