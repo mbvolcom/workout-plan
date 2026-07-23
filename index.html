@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.14.3</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.14.4</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -5992,7 +5992,6 @@ async function runIntervalAnalysis(activityId) {
     // Prefer raw velocity over velocity_smooth to avoid double-smoothing
     const rawVelArr = streams.velocity_smooth?.data;
     const hrArr   = streams.heartrate?.data;
-    const altArr  = streams.altitude?.data; // not yet returned by strava-streams -- see below
 
     if (!timeArr || !rawVelArr) throw new Error('No stream data returned');
     const n = rawVelArr.length;
@@ -6007,19 +6006,6 @@ async function runIntervalAnalysis(activityId) {
       }
       return sum / count;
     });
-
-    // Altitude needs a much wider smoothing window than velocity: GPS elevation is
-    // noisy point-to-point (a few metres of jitter is normal), and since grade-adjusted
-    // pace runs that through a steep, nonlinear cost curve, unsmoothed 1-second grade
-    // values produce erratic swings that don't reflect the actual terrain.
-    const ALT_SMOOTH_WIN = 15;
-    const smoothedAlt = altArr ? altArr.map((_, i) => {
-      let sum = 0, count = 0;
-      for (let j = Math.max(0, i-ALT_SMOOTH_WIN); j <= Math.min(n-1, i+ALT_SMOOTH_WIN); j++) {
-        sum += altArr[j]; count++;
-      }
-      return sum / count;
-    }) : null;
 
     // Step 2: Build a per-second "fast" boolean array
     // A point is "fast" if it is >= threshold
@@ -6091,43 +6077,8 @@ async function runIntervalAnalysis(activityId) {
       const hrSlice = hrArr ? hrArr.slice(iv.startIdx, iv.endIdx+1) : null;
       const avgHr = hrSlice ? Math.round(hrSlice.reduce((a,b)=>a+b,0)/hrSlice.length) : null;
 
-      // Grade-adjusted pace: grade computed over ~20m distance chunks (not every
-      // single second) using the smoothed altitude stream, same Minetti cost model
-      // used for Long Run Fatigue. A 1-second denominator is only a few metres at
-      // running pace, so dividing altitude change by that little distance amplifies
-      // noise into wild instantaneous grade swings even with smoothed altitude values
-      // -- chunking over a larger, stable distance is what actually fixes it. Purely
-      // additional -- doesn't affect which segments got detected as intervals above.
-      let avgPaceGapStr = null, elevGain = null, elevLoss = null;
-      if (smoothedAlt) {
-        let totalGapTime = 0, totalGapDist = 0, gain = 0, loss = 0;
-        const CHUNK_DIST = 20; // metres
-        let chunkStart = iv.startIdx;
-        for (let j = iv.startIdx+1; j <= iv.endIdx; j++) {
-          const distSoFar = distArr[j] - distArr[chunkStart];
-          if (distSoFar >= CHUNK_DIST || j === iv.endIdx) {
-            const dt = timeArr[j] - timeArr[chunkStart];
-            const dd = distArr[j] - distArr[chunkStart];
-            if (dd > 0 && dt > 0) {
-              const dAlt = smoothedAlt[j] - smoothedAlt[chunkStart];
-              if (dAlt > 0) gain += dAlt; else loss += -dAlt;
-              const factor = gapCostFactor(dAlt / dd);
-              totalGapTime += dt / factor;
-              totalGapDist += dd;
-            }
-            chunkStart = j;
-          }
-        }
-        if (totalGapDist > 0) {
-          avgPaceGapStr = formatPace(totalGapDist, totalGapTime);
-          elevGain = Math.round(gain);
-          elevLoss = Math.round(loss);
-        }
-      }
-
       return { num:i+1, startDist:distArr[iv.startIdx], endDist:distArr[iv.endIdx],
         distance, duration, avgPaceStr:formatPace(avgVel*duration, duration),
-        avgPaceGapStr, elevGain, elevLoss,
         avgHr, startIdx:iv.startIdx, endIdx:iv.endIdx };
     });
 
@@ -9854,7 +9805,7 @@ async function fetchTrainingDirectionData() {
       // Prefer grade-adjusted pace when this interval was analysed with altitude
       // data -- falls back to raw pace for older analyses or flat routes where
       // the difference is negligible anyway.
-      const secs = paceStrToSecs(iv.avgPaceGapStr || iv.avgPaceStr);
+      const secs = paceStrToSecs(iv.avgPaceStr);
       const dist = iv.distance || 0;
       if (secs && dist > 0) {
         totalDist += dist;
@@ -10079,8 +10030,7 @@ async function renderIntervalStats() {
     rows.forEach((r) => {
       const intervals = r.intervals||[];
       if (!intervals.length) return;
-      const hasGap = intervals.some(iv => iv.avgPaceGapStr);
-      const paces = intervals.map(iv=>paceStrToSecs(iv.avgPaceGapStr || iv.avgPaceStr)).filter(Boolean);
+      const paces = intervals.map(iv=>paceStrToSecs(iv.avgPaceStr)).filter(Boolean);
       const avgSecs  = paces.length ? paces.reduce((a,b)=>a+b,0)/paces.length : null;
       const bestSecs = paces.length ? Math.min(...paces) : null;
       const date = r.activity_date ? new Date(r.activity_date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '—';
@@ -10096,12 +10046,9 @@ async function renderIntervalStats() {
 
       const header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;';
-      const gapBadgeS = hasGap
-        ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:rgba(200,240,110,0.12);color:#c8f06e;margin-left:6px;vertical-align:middle;">\u26f0\ufe0f grade-adj</span>'
-        : '';
       header.innerHTML = `
         <div>
-          <div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}${lriBadgeW||''}${gapBadgeS}</div>
+          <div style="font-size:13px;font-weight:600;color:#d1d5db;">${r.activity_name||'Interval session'}${lriBadgeW||''}</div>
           <div style="font-size:11px;color:#4b5563;margin-top:2px;">${date} · ${r.threshold_pace||''} threshold</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
@@ -10152,10 +10099,7 @@ async function renderIntervalStats() {
           <div style="font-size:12px;color:#9ca3af;">${i+1}</div>
           <div style="font-size:12px;color:#d1d5db;">${(iv.distance/1000).toFixed(2)} km</div>
           <div style="font-size:12px;color:#d1d5db;">${Math.floor(iv.duration/60)}:${String(iv.duration%60).padStart(2,'0')}</div>
-          <div style="text-align:right;">
-            <div style="font-size:13px;font-weight:700;color:#FC4C02;">${iv.avgPaceGapStr || iv.avgPaceStr}</div>
-            ${iv.avgPaceGapStr ? `<div style="font-size:9px;color:#4b5563;">raw ${iv.avgPaceStr}${(iv.elevGain!=null&&iv.elevLoss!=null)?' · +'+iv.elevGain+'m/\u2212'+iv.elevLoss+'m':(iv.elevGain!=null?' · +'+iv.elevGain+'m':'')}</div>` : ''}
-          </div>
+          <div style="font-size:13px;font-weight:700;color:#FC4C02;">${iv.avgPaceStr}/km</div>
           ${iv.avgHr?`<div style="font-size:11px;color:#6b7280;">${iv.avgHr} bpm</div>`:''}
         </div>`).join('');
       card.addEventListener('click', () => {
