@@ -1366,7 +1366,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.12.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.12.2</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -12301,44 +12301,13 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
   // Central estimate from LT pace
   const racePaceSecs = ltPaceSecs * coeff;
   const finishSecs   = racePaceSecs * raceKm;
-
-  // Cross-check with easy run pace data (paceRuns stores min/km, convert to sec/km)
-  const allEasyPaces = weeks.flatMap(wk => wk.paceRuns || []).filter(Boolean);
-  let intervalCheck = null;
-  if (allEasyPaces.length >= 3) {
-    const paces = allEasyPaces.map(p => p * 60).sort((a,b)=>a-b);
-    const topN = Math.max(1, Math.floor(paces.length * 0.3));
-    const bestEasySecs = paces.slice(0, topN).reduce((a,b)=>a+b,0) / topN;
-    const derivedMarathonPace = bestEasySecs * (raceKm >= 42 ? 1.12 : raceKm >= 21 ? 1.07 : 1.02);
-    intervalCheck = derivedMarathonPace * raceKm;
-  }
-
-  // Blend: LT-based is primary, but the cross-check is never fully discarded any more.
-  // When it disagrees a lot AND says the LT number is too optimistic (the documented
-  // failure mode of watch-estimated LT), lean toward it rather than ignoring it.
-  let blendedSecs = finishSecs;
-  let crossCheckDominant = false;
-  if (intervalCheck) {
-    const diff = Math.abs(intervalCheck - finishSecs) / finishSecs;
-    const crossCheckSlower = intervalCheck > finishSecs;
-    if (diff < 0.10) {
-      blendedSecs = finishSecs * 0.85 + intervalCheck * 0.15;
-    } else if (crossCheckSlower) {
-      blendedSecs = finishSecs * 0.45 + intervalCheck * 0.55;
-      crossCheckDominant = true;
-    } else {
-      // Cross-check suggests LT number is too slow -- less common/trustworthy a signal,
-      // so still lean LT, but don't discard it outright either.
-      blendedSecs = finishSecs * 0.75 + intervalCheck * 0.25;
-    }
-  }
+  const blendedSecs  = finishSecs;
 
   // Confidence factors
   let confidence = 60; // base confidence with LT pace only
   const longestKm = longestRunM / 1000;
   if (longestKm >= raceKm * 0.75) confidence += 20; // long run coverage
   else if (longestKm >= raceKm * 0.5) confidence += 10;
-  if (intervalCheck) confidence += 10; // interval data adds confidence
   if (weeks.filter(wk => wk.doneSessions > 0).length >= 4) confidence += 10; // training consistency
   confidence = Math.min(confidence, 92);
 
@@ -12351,9 +12320,7 @@ function computeRaceEstimate(ltPaceSecs, raceKm, longestRunM, weeks) {
     racePaceStr: secsToMinSec(Math.round(racePaceSecs)),
     confidence,
     ltBased: Math.round(finishSecs),
-    intervalBased: intervalCheck ? Math.round(intervalCheck) : null,
-    volumeAdjPct: adjPct,          // how much the coefficient was scaled up for under-preparation
-    crossCheckDominant,             // true when the cross-check pulled the estimate meaningfully slower
+    volumeAdjPct: adjPct, // how much the coefficient was scaled up for under-preparation
   };
 }
 
@@ -12917,9 +12884,6 @@ function renderRaceEstimate(container, weeks) {
   const adjNotes = [];
   if (est.volumeAdjPct > 0.005) {
     adjNotes.push('Race pace adjusted ' + (est.volumeAdjPct*100).toFixed(1) + '% slower than a pure LT calculation, based on your long-run coverage and training consistency so far.');
-  }
-  if (est.crossCheckDominant) {
-    adjNotes.push('Your easy-run pace data suggested a notably slower finish than LT pace alone predicted, so this estimate leans toward that cross-check rather than the raw LT number.');
   }
 
   const card = document.createElement('div');
