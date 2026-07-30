@@ -1403,7 +1403,7 @@ body.wife-edit-mode .drop-zone.wife-zone { outline:1px dashed #EF9F27; border-ra
       <span class="dot"></span>
       <span>Goal <span class="pill-tag mono" id="header-goal">3:25</span></span>
     </div>
-    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.15.1</div>
+    <div style="font-size:10px;color:var(--ink-meta);margin-top:3px;letter-spacing:0.04em;">v5.16.0</div>
     <div class="profile-switcher">
       <button class="profile-btn p-marius active" id="profile-btn-marius" onclick="setProfile('marius')">
         <span class="avatar">M</span> Marius
@@ -8255,6 +8255,19 @@ async function renderSessionTab(wi, di) {
     }
   }
 
+  if (session.pace_segments && session.pace_segments.length) {
+    const segLines = session.pace_segments
+      .slice().sort((a,b) => a.start_km - b.start_km)
+      .map(seg => {
+        const paceStr = seg.pace_min ? (seg.pace_min + (seg.pace_max && seg.pace_max !== seg.pace_min ? '\u2013' + seg.pace_max : '')) + '/km' : '';
+        return seg.start_km + '\u2013' + seg.end_km + 'km' + (paceStr ? ' @ ' + paceStr : '');
+      });
+    planHtml += '<div style="margin-top:6px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.05);">' +
+      '<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Pace segments</div>' +
+      segLines.map(l => '<div style="font-size:13px;color:#1a1626;padding:2px 0;">' + l + '</div>').join('') +
+      '<div style="font-size:11px;color:#9ca3af;margin-top:4px;">Rest of run at easy pace</div>' +
+      '</div>';
+  }
   if (session.cooldown_km) planHtml += row('Cool-down', session.cooldown_km + ' km');
   if (totalKm) planHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0 0;margin-top:4px;">' +
     '<span style="font-size:13px;font-weight:700;color:#1a1626;">Total</span>' +
@@ -8442,6 +8455,14 @@ function openSessionEditor(existing, wi, di) {
       </div>
     </div>
 
+    <div id="se-segments-section" style="display:none;">
+      <label style="display:block;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">
+        Pace segments <span style="font-weight:400;text-transform:none;color:#9ca3af;">(rest of run at easy pace)</span>
+      </label>
+      <div id="se-segments-list"></div>
+      <button type="button" id="se-add-segment" style="width:100%;padding:8px;background:#fff;border:1.5px dashed #d1d5db;border-radius:8px;color:#6b7280;font-size:13px;font-weight:600;cursor:pointer;margin-top:2px;margin-bottom:12px;">+ Add pace segment</button>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
       <div class="sess-field"><label>Warm-up (km)</label><input id="se-warmup" type="number" step="0.5" value="${s.warmup_km||''}"></div>
       <div class="sess-field"><label>Cool-down (km)</label><input id="se-cooldown" type="number" step="0.5" value="${s.cooldown_km||''}"></div>
@@ -8474,6 +8495,12 @@ function openSessionEditor(existing, wi, di) {
       .sess-field input, .sess-field select { width:100%;padding:9px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font:14px inherit;background:#fff;color:#1a1626; }
       .se-toggle { flex:1;padding:8px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font:600 13px inherit;cursor:pointer;color:#6b7280; }
       .se-toggle.active { background:#FC4C02;border-color:#FC4C02;color:#fff; }
+      .se-segment-row { display:flex;gap:5px;align-items:center;margin-bottom:8px; }
+      .se-segment-row input { padding:8px 6px;border:1.5px solid #e5e7eb;border-radius:7px;font:13px inherit;background:#fff;color:#1a1626;text-align:center; }
+      .se-segment-row .seg-km { width:52px; }
+      .se-segment-row .seg-pace { width:56px; }
+      .se-segment-row .seg-dash { color:#9ca3af;font-size:12px; }
+      .se-segment-remove { background:none;border:none;color:#c1440e;font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0; }
     `;
     document.head.appendChild(style);
   }
@@ -8482,14 +8509,57 @@ function openSessionEditor(existing, wi, di) {
   const subtypeSel = document.getElementById('se-subtype');
   const intervalFields = document.getElementById('se-interval-fields');
   const continuousFields = document.getElementById('se-continuous-fields');
+  const segmentsSection = document.getElementById('se-segments-section');
   const updateSubtype = () => {
     const v = subtypeSel.value;
     const isContinuous = v === 'lt_tempo' || v === 'easy' || v === 'long';
     intervalFields.style.display = isContinuous ? 'none' : 'block';
     continuousFields.style.display = isContinuous ? 'block' : 'none';
+    segmentsSection.style.display = v === 'long' ? 'block' : 'none';
   };
   subtypeSel.addEventListener('change', updateSubtype);
   updateSubtype();
+
+  // ── Pace segments (long runs only) ──────────────────────────────────────
+  // Each segment: { start_km, end_km, pace_min, pace_max }. Anything not
+  // covered by a segment is understood as easy pace -- no need to enter that
+  // explicitly.
+  let segments = Array.isArray(s.pace_segments) ? s.pace_segments.map(seg => ({...seg})) : [];
+  const segmentsList = document.getElementById('se-segments-list');
+  function renderSegmentRows() {
+    segmentsList.innerHTML = '';
+    segments.forEach((seg, i) => {
+      const row = document.createElement('div');
+      row.className = 'se-segment-row';
+      row.innerHTML = `
+        <input type="number" step="0.1" class="seg-km seg-start" placeholder="From" value="${seg.start_km ?? ''}">
+        <span class="seg-dash">&ndash;</span>
+        <input type="number" step="0.1" class="seg-km seg-end" placeholder="To" value="${seg.end_km ?? ''}">
+        <span class="seg-dash">km @</span>
+        <input type="text" class="seg-pace seg-pace-min" placeholder="4:50" value="${seg.pace_min || ''}">
+        <span class="seg-dash">&ndash;</span>
+        <input type="text" class="seg-pace seg-pace-max" placeholder="4:55" value="${seg.pace_max || ''}">
+        <button type="button" class="se-segment-remove" data-i="${i}">&times;</button>`;
+      segmentsList.appendChild(row);
+
+      const sync = () => {
+        seg.start_km = parseFloat(row.querySelector('.seg-start').value) || null;
+        seg.end_km   = parseFloat(row.querySelector('.seg-end').value) || null;
+        seg.pace_min = row.querySelector('.seg-pace-min').value || null;
+        seg.pace_max = row.querySelector('.seg-pace-max').value || null;
+      };
+      row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', sync));
+      row.querySelector('.se-segment-remove').addEventListener('click', () => {
+        segments.splice(i, 1);
+        renderSegmentRows();
+      });
+    });
+  }
+  renderSegmentRows();
+  document.getElementById('se-add-segment').addEventListener('click', () => {
+    segments.push({ start_km: null, end_km: null, pace_min: null, pace_max: null });
+    renderSegmentRows();
+  });
 
   // Rep unit toggle
   let repUnit = s.rep_unit || 'time';
@@ -8555,6 +8625,13 @@ function openSessionEditor(existing, wi, di) {
       data.target_pace_max = document.getElementById('se-cont-pace-max').value || null;
       data.rep_pace_min = data.target_pace_min;
       data.rep_pace_max = data.target_pace_max;
+    }
+
+    if (subtype === 'long') {
+      // Only keep segments with both a start and end km -- pace is optional
+      // (a segment with no pace set just marks a distance range, e.g. for notes).
+      data.pace_segments = segments.filter(seg => seg.start_km != null && seg.end_km != null && seg.end_km > seg.start_km);
+      if (!data.pace_segments.length) data.pace_segments = null;
     }
 
     try {
